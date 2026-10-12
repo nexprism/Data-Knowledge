@@ -173,7 +173,7 @@ const DashboardPersonality = () => {
         category: c.categoryId?.name?.toUpperCase() || "SKILL",
         title: c.title,
         description: c.description,
-        image: c.thumbnail ? (c.thumbnail.startsWith('http') ? c.thumbnail : `https://api.edrilla.com/${c.thumbnail}`) : "/news_placeholder.png"
+        image: c.thumbnail ? (c.thumbnail.startsWith('http') ? c.thumbnail : `${(import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/${c.thumbnail.replace(/^\/+/, '')}`) : "/news_placeholder.png"
     })) || resultData.recommendedCourses
   }
 

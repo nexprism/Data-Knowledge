@@ -23,7 +23,7 @@ interface TrackerContextType {
 
 const TrackerContext = createContext<TrackerContextType | null>(null);
 
-const rawBase = import.meta.env.VITE_BASE_URL || 'https://api.edrilla.com';
+const rawBase = import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in';
 const BASE = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
 
 export const useAdminTracker = () => {

@@ -138,7 +138,7 @@ const DashboardReading = () => {
                                             </div>
                                         </div>
                                         <a 
-                                            href={`https://api.edrilla.com/${file.file}`} 
+                                            href={file.file?.startsWith('http') ? file.file : `${(import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/${file.file?.replace(/^\/+/, '')}`} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             className="w-10 h-10 flex items-center text-dark justify-center border border-white/10 hover:bg-accent hover:scale-105 action:scale-105 hover:text-dark transition-all relative z-10 bg-accent"

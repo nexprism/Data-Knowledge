@@ -15,11 +15,14 @@ const server = http.createServer(app);
 // Setup Socket.io server
 const io = new Server(server, {
   cors: {
-    origin: [
-      "https://your-frontend.vercel.app", // ✅ Vercel frontend (replace with your actual domain)
-      "http://localhost:3000",
-      "http://localhost:5174"
-    ],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+      if (/^https?:\/\/([a-zA-Z0-9-]+\.)*dataknowledge\.in(:\d+)?$/.test(origin)) return callback(null, true);
+      if (/^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
+      if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) return callback(null, true);
+      return callback(null, true);
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },

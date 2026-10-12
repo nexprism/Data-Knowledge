@@ -29,23 +29,34 @@ const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
-      if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+      if (/^https?:\/\/([a-zA-Z0-9-]+\.)*dataknowledge\.in(:\d+)?$/.test(origin)) return callback(null, true);
+      if (/^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
+      if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) return callback(null, true);
       const allowed = [
         "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "https://dataknowledge.in",
+        "https://www.dataknowledge.in",
+        "https://api.dataknowledge.in",
+        "https://admin.dataknowledge.in",
+        "https://classes.dataknowledge.in",
+        "https://data-knowledge.onrender.com",
+        "https://dataknowledge.vercel.app",
+        "https://dataknowledgeadmin.vercel.app",
         "https://edrilla.com",
         "https://edrila.nexprism.in",
         "http://edrila.nexprism.in",
         "https://lapaas.com",
         "https://www.lapaas.com",
-        "http://localhost:5174",
-        "http://localhost:5175",
         process.env.ADMIN_URL,
         process.env.CLIENT_URL,
         process.env.FRONTEND_URL
       ].filter(Boolean);
       if (allowed.includes(origin)) return callback(null, true);
-      callback(null, true); // Allow connection if origin matches
+      callback(null, true); // Allow connection
     },
     methods: ['GET', 'POST'],
     credentials: true

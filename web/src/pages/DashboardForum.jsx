@@ -212,7 +212,7 @@ const DashboardForum = () => {
                   const pic = question.profilePicture;
                   if (!pic) return '/news_placeholder.png';
                   if (pic.startsWith('http')) return pic;
-                  const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+                  const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
                   const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
                   return `${baseUrl}/uploads/profiles/${pic}`;
                 })()}
@@ -262,7 +262,7 @@ const DashboardForum = () => {
                   return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(path);
                 }).map((att, idx) => {
                   const path = typeof att === 'string' ? att : (att.type || '');
-                  const fullUrl = path.startsWith('http') ? path : `https://api.edrilla.com/${path.startsWith('uploads/') ? path : `uploads/forum/${path}`}`;
+                  const fullUrl = path.startsWith('http') ? path : `${(import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/${path.startsWith('uploads/') ? path : `uploads/forum/${path}`}`;
 
                   return (
                     <div key={idx} className="attachment-item relative aspect-video bg-slate-100 border border-slate-200 rounded-xl overflow-hidden group/img shadow-sm">
@@ -326,7 +326,7 @@ const DashboardForum = () => {
                       const pic = reply.profilePicture;
                       if (!pic) return '/news_placeholder.png';
                       if (pic.startsWith('http')) return pic;
-                      const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+                      const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
                       const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
                       return `${baseUrl}/uploads/profiles/${pic}`;
                     })()}

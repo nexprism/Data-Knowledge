@@ -112,7 +112,7 @@ const ProfileSkills = () => {
                      <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         {doc.Doc && (
                            <a 
-                              href={`https://api.edrilla.com/uploads/${doc.Doc}`} 
+                              href={doc.Doc?.startsWith('http') ? doc.Doc : `${(import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/uploads/${doc.Doc?.replace(/^\/?(uploads\/)?/, '')}`} 
                               target="_blank" 
                               rel="noreferrer"
                               className="text-accent hover:text-white transition-colors"

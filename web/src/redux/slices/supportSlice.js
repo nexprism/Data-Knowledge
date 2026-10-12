@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://api.edrilla.com';
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in';
 const LAPAAS_TICKET_URL = import.meta.env.VITE_LAPAAS_TICKET_URL || `${BASE_URL}/lapaas-ticket`;
 
 export const createSupportTicket = createAsyncThunk(

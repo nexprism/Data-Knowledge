@@ -20,15 +20,21 @@ const app = express();
 // Trust reverse proxy (Render, Cloudflare, AWS, etc.) for HTTPS detection & cookies
 app.set("trust proxy", 1);
 
-// Serve static files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 // CORS config — dynamic origin to support credentials (wildcard '*' is
 // incompatible with credentials:true per the browser spec)
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:5174",
+  "http://localhost:5175",
+  "https://dataknowledge.in",
+  "https://www.dataknowledge.in",
+  "https://api.dataknowledge.in",
+  "https://admin.dataknowledge.in",
+  "https://classes.dataknowledge.in",
+  "https://data-knowledge.onrender.com",
+  "https://dataknowledge.vercel.app",
+  "https://dataknowledgeadmin.vercel.app",
   "https://edrilla.com",
   "https://www.edrilla.com",
   "https://admin.edrilla.com",
@@ -40,19 +46,24 @@ const ALLOWED_ORIGINS = [
   process.env.ADMIN_URL,
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : []),
 ].filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
-    // Allow any localhost port for local development
-    if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+    // Allow any localhost port or 127.0.0.1 for local development
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+    // Allow all dataknowledge.in domains and subdomains
+    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*dataknowledge\.in(:\d+)?$/.test(origin)) return callback(null, true);
     // Allow Vercel deployments (*.vercel.app)
-    if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
+    // Allow Render deployments (*.onrender.com)
+    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) return callback(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    // Deny unknown origins
-    callback(new Error('Origin not allowed by CORS'));
+    // Deny unknown origins cleanly without throwing a 500 error
+    callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
@@ -64,12 +75,19 @@ const corsOptions = {
     "x-refresh-token",
     "X-Requested-With",
     "Accept",
+    "Origin",
+    "Access-Control-Request-Method",
+    "Access-Control-Request-Headers",
+    "Range",
   ],
   exposedHeaders: ["x-access-token", "x-refresh-token"],
 };
 app.use(cors(corsOptions));
 // Handle OPTIONS preflight for all routes (path-to-regexp v8+ compatible syntax)
 app.options("/{*splat}", cors(corsOptions));
+
+// Serve static files with CORS enabled
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Rate limiting
 const authLimiter = rateLimit({

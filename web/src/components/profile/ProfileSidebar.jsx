@@ -47,7 +47,7 @@ const ProfileSidebar = ({ compact = false }) => {
             {/* Avatar Protocol */}
             {user?.profilePicture ? (
                <img 
-                  src={user.profilePicture.startsWith('http') ? user.profilePicture : `https://api.edrilla.com/uploads/${user.profilePicture}`} 
+                  src={user.profilePicture.startsWith('http') ? user.profilePicture : `${(import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/uploads/${user.profilePicture.replace(/^\/?(uploads\/)?/, '')}`} 
                   alt={user.fullName} 
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                />

@@ -170,7 +170,7 @@ const CuratedCatalog = () => {
                 category: item.category?.name || item.category || 'COURSE',
                 description: item.shortDescription || item.description,
                 price: item.salePrice ? `₹${item.salePrice}` : item.price ? `₹${item.price}` : 'FREE',
-                image: item.thumbnail ? `https://api.edrilla.com/${item.thumbnail}` : '/herocard.png',
+                image: item.thumbnail ? (item.thumbnail.startsWith('http') ? item.thumbnail : `${(import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/${item.thumbnail.replace(/^\/+/, '')}`) : '/herocard.png',
                 isNew: true,
               }} 
             />

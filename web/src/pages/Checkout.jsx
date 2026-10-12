@@ -26,7 +26,7 @@ const Checkout = () => {
    const { settings, coupons, couponData, couponError, couponLoading } = useSelector(state => state.config)
    const authUser = useSelector(state => state.auth?.user)
 
-   const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com'
+   const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in'
    const BASE_API = rawBase.replace(/\/api\/v1\/?$/, '')
 
    const [formData, setFormData] = useState(() => {
@@ -315,8 +315,8 @@ const Checkout = () => {
    }
 
    const courseThumbnail = course.thumbnail
-      ? (course.thumbnail.startsWith('http') ? course.thumbnail : `https://api.edrilla.com/${course.thumbnail}`)
-      : (course.coverImage ? (course.coverImage.startsWith('http') ? course.coverImage : `https://api.edrilla.com/${course.coverImage}`) : bannerImg)
+      ? (course.thumbnail.startsWith('http') ? course.thumbnail : `${BASE_API}/${course.thumbnail.replace(/^\/+/, '')}`)
+      : (course.coverImage ? (course.coverImage.startsWith('http') ? course.coverImage : `${BASE_API}/${course.coverImage.replace(/^\/+/, '')}`) : bannerImg)
 
    return (
       <div className="min-h-screen bg-slate-50 text-slate-900 font-inter">
