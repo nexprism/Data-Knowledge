@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { gsap } from 'gsap'
 import { fetchSettings, validateCoupon, clearCoupon, fetchAllCoupons } from '../redux/slices/configSlice'
 import { buyNow } from '../redux/slices/enrollmentSlice'
 import bannerImg from '../assets/images/banner.png'
@@ -20,25 +19,25 @@ const Checkout = () => {
    const urlAcc = searchParams.get('acc')
    const urlAmount = searchParams.get('amount')
 
-   const selectedPlan = location.state?.plan || (urlPlanId ? { id: urlPlanId, title: 'Selected Plan', price: urlAmount ? Number(urlAmount) : 3499 } : { id: '1year', title: '1 Year', price: 3499 })
+   const selectedPlan = location.state?.plan || (urlPlanId ? { id: urlPlanId, title: 'Selected Plan', price: urlAmount ? Number(urlAmount) : 3499 } : { id: '1year', title: '1 Year Access', price: 3499 })
    const course = location.state?.course || (urlCourseId ? { id: urlCourseId, _id: urlCourseId, title: 'Course Purchase' } : {})
    const accParam = urlAcc || location.state?.acc || ''
 
    const { settings, coupons, couponData, couponError, couponLoading } = useSelector(state => state.config)
    const authUser = useSelector(state => state.auth?.user)
 
-   const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
-   const BASE_API = rawBase.replace(/\/api\/v1\/?$/, '');
+   const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com'
+   const BASE_API = rawBase.replace(/\/api\/v1\/?$/, '')
 
    const [formData, setFormData] = useState(() => {
-      let savedUser = null;
+      let savedUser = null
       try {
-         const lsUser = localStorage.getItem('user') || localStorage.getItem('userInfo');
+         const lsUser = localStorage.getItem('user') || localStorage.getItem('userInfo')
          if (lsUser) {
-            savedUser = JSON.parse(lsUser);
+            savedUser = JSON.parse(lsUser)
          }
       } catch (e) {
-         console.error('Error parsing user from localstorage', e);
+         console.error('Error parsing user from localStorage', e)
       }
 
       return {
@@ -48,12 +47,12 @@ const Checkout = () => {
          company: (savedUser && (savedUser.company?.name || (typeof savedUser.company === 'string' ? savedUser.company : ''))) || '',
          gst: savedUser?.gst || '',
          coupon: ''
-      };
-   });
+      }
+   })
 
-   // If user is logged in via Redux, prefill any empty fields (don't overwrite user-typed values)
+   // Prefill from Redux auth if available
    useEffect(() => {
-      if (!authUser) return;
+      if (!authUser) return
       setFormData(prev => ({
          ...prev,
          fullName: prev.fullName || authUser.name || authUser.fullName || '',
@@ -63,7 +62,7 @@ const Checkout = () => {
          gst: prev.gst || (authUser.company && authUser.company.gstNumber) || prev.gst || ''
       }))
    }, [authUser])
-   const [displayTotal, setDisplayTotal] = useState(0)
+
    const [isVerified, setIsVerified] = useState(false)
    const [showOTPModal, setShowOTPModal] = useState(false)
    const [otp, setOtp] = useState('')
@@ -71,14 +70,11 @@ const Checkout = () => {
    const [verifyingOtp, setVerifyingOtp] = useState(false)
    const [otpMessage, setOtpMessage] = useState('')
    const [showSuccessModal, setShowSuccessModal] = useState(false)
-   const checkoutRef = useRef(null)
-   const leftWingRef = useRef(null)
-   const rightWingRef = useRef(null)
-   const scanLineRef = useRef(null)
+   const [paying, setPaying] = useState(false)
 
-   const basePrice = selectedPlan.price
+   const basePrice = Number(selectedPlan.price || 0)
    const gstRate = Number(settings?.gstRate ?? 0.18)
-   const discount = couponData ? (couponData.discountType === 'percentage' ? (basePrice * couponData.discountPercent / 100) : couponData.discountAmount) : 0
+   const discount = couponData ? (couponData.discountType === 'percentage' ? (basePrice * couponData.discountPercent / 100) : Number(couponData.discountAmount || 0)) : 0
    const discountedBase = Math.max(0, basePrice - discount)
    const gstAmount = discountedBase * gstRate
    const total = discountedBase + gstAmount
@@ -89,28 +85,7 @@ const Checkout = () => {
       dispatch(fetchSettings())
       dispatch(fetchAllCoupons())
       dispatch(clearCoupon())
-
-      const ctx = gsap.context(() => {
-         // Entrance and loop animations remain the same...
-         const tl = gsap.timeline()
-         tl.from(leftWingRef.current, { xPercent: -100, duration: 1.5, ease: 'expo.inOut' })
-            .from(rightWingRef.current, { xPercent: 100, duration: 1.5, ease: 'expo.inOut' }, '-=1.5')
-            .from('.protocol-reveal', { y: 30, opacity: 0, duration: 1, stagger: 0.1, ease: 'power3.out' }, '-=0.5')
-
-         gsap.to(scanLineRef.current, { top: '100%', duration: 3, repeat: -1, ease: 'none' })
-
-         const countObj = { val: 0 }
-         gsap.to(countObj, {
-            val: total,
-            duration: 2,
-            delay: 1,
-            ease: 'power3.out',
-            onUpdate: () => setDisplayTotal(countObj.val.toFixed(2))
-         })
-      }, checkoutRef)
-
-      return () => ctx.revert()
-   }, [total, dispatch])
+   }, [dispatch])
 
    // Load Razorpay script dynamically
    const loadRazorpayScript = () => new Promise((resolve, reject) => {
@@ -123,26 +98,40 @@ const Checkout = () => {
    })
 
    const handlePayment = async () => {
+      if (!formData.fullName.trim()) {
+         alert('Please enter your full name')
+         return
+      }
+      if (!formData.email.trim()) {
+         alert('Please enter your email address')
+         return
+      }
+      if (!formData.phone.trim()) {
+         alert('Please enter your phone number')
+         return
+      }
+
+      setPaying(true)
       try {
          await loadRazorpayScript()
       } catch (e) {
-         // eslint-disable-next-line no-console
          console.error('Razorpay SDK load error', e)
-         alert('Payment SDK failed to load')
+         alert('Payment gateway failed to load. Please check your internet connection.')
+         setPaying(false)
          return
       }
-      // Validate / create order on backend before opening Razorpay
+
       try {
          const payload = {
             courseId: course._id || course.id || '',
-            guestEmail: formData.email,
-            guestName: formData.fullName,
+            guestEmail: formData.email.trim(),
+            guestName: formData.fullName.trim(),
             couponCode: formData.coupon || '',
             is_verify: Boolean(isVerified),
             coursePlanId: selectedPlan.id || selectedPlan._id || ''
          }
 
-         if (accParam) payload.acc = accParam;
+         if (accParam) payload.acc = accParam
 
          const chkRes = await fetch(`${BASE_API}/checkout/check-order`, {
             method: 'POST',
@@ -150,17 +139,19 @@ const Checkout = () => {
             body: JSON.stringify(payload)
          })
          const chkData = await chkRes.json()
+
          if (!chkRes.ok) {
             alert(chkData?.message || 'Order validation failed')
+            setPaying(false)
             return
          }
 
          if (!chkData?.success || !chkData?.is_valid) {
             alert(chkData?.data?.message || 'Order cannot be placed')
+            setPaying(false)
             return
          }
 
-         // Use returned razorpay details if present
          const razor = chkData?.razorpay || {}
          const rKey = razor.key || settings?.RAZORPAY_KEY_ID || settings?.settings?.RAZORPAY_KEY_ID
          const order = razor.order || {}
@@ -168,24 +159,20 @@ const Checkout = () => {
 
          const options = {
             key: rKey,
-            amount: rAmount, // amount in paise expected
+            amount: rAmount,
             currency: razor.currency || 'INR',
             name: selectedPlan.title || 'Data Knowledge',
-            description: course.title || 'Course Purchase',
+            description: course.title || 'Course Enrollment',
             order_id: order.id,
             handler: async function (response) {
-               // eslint-disable-next-line no-console
-               console.log('Razorpay success', response)
-
                try {
-                  // Dispatch buyNow to finalize enrollment on backend
                   const buyPayload = {
                      courseId: course._id || course.id || '',
                      paymentId: response.razorpay_payment_id,
                      orderId: response.razorpay_order_id,
                      signature: response.razorpay_signature,
-                     guestEmail: formData.email,
-                     guestName: formData.fullName,
+                     guestEmail: formData.email.trim(),
+                     guestName: formData.fullName.trim(),
                      paymentProvider: 'razorpay',
                      coursePlanId: selectedPlan.id || selectedPlan._id || '',
                      couponCode: formData.coupon || '',
@@ -193,17 +180,20 @@ const Checkout = () => {
                      gst: formData.gst
                   }
 
-                  if (accParam) buyPayload.acc = accParam;
+                  if (accParam) buyPayload.acc = accParam
 
-                  const resultAction = await dispatch(buyNow(buyPayload)).unwrap()
-
-                  // On success (201 is handled by thunk success)
+                  await dispatch(buyNow(buyPayload)).unwrap()
                   setShowSuccessModal(true)
-
                } catch (error) {
-                  // eslint-disable-next-line no-console
-                  console.error('Finalization failed', error)
+                  console.error('Enrollment finalization failed', error)
                   alert(error || 'Payment succeeded but enrollment failed. Please contact support.')
+               } finally {
+                  setPaying(false)
+               }
+            },
+            modal: {
+               ondismiss: function () {
+                  setPaying(false)
                }
             },
             prefill: {
@@ -215,37 +205,41 @@ const Checkout = () => {
                courseId: course._id || '',
                planId: selectedPlan.id || ''
             },
-            theme: { color: '#8B5CF6' }
+            theme: { color: '#2563EB' }
          }
 
          const rzp = new window.Razorpay(options)
          rzp.open()
       } catch (err) {
-         // eslint-disable-next-line no-console
-         console.error('Order check failed', err)
+         console.error('Order creation failed', err)
          alert(err?.message || 'Order creation failed')
+         setPaying(false)
       }
    }
 
    const handleChange = (e) => {
-      const { name, value } = e.target;
-      setFormData({ ...formData, [name]: value });
+      const { name, value } = e.target
+      setFormData({ ...formData, [name]: value })
 
-      // Auto-validate if it's the coupon dropdown
       if (name === 'coupon' && value) {
-         dispatch(validateCoupon(value));
+         dispatch(validateCoupon(value))
       } else if (name === 'coupon' && !value) {
-         dispatch(clearCoupon());
+         dispatch(clearCoupon())
       }
    }
 
-   const handleApplyCoupon = () => {
-      if (formData.coupon) {
-         dispatch(validateCoupon(formData.coupon))
+   const handleApplyCoupon = (codeToApply) => {
+      const code = codeToApply || formData.coupon
+      if (code) {
+         dispatch(validateCoupon(code))
       }
    }
 
-   // Keep track of verified status from auth or localStorage
+   const handleRemoveCoupon = () => {
+      setFormData(prev => ({ ...prev, coupon: '' }))
+      dispatch(clearCoupon())
+   }
+
    useEffect(() => {
       const localUser = (() => {
          try {
@@ -261,7 +255,7 @@ const Checkout = () => {
 
    const sendOtp = async () => {
       if (!formData.email) {
-         setOtpMessage('Please enter an email to verify')
+         setOtpMessage('Please enter an email address to verify')
          return
       }
       setSendingOtp(true)
@@ -270,30 +264,29 @@ const Checkout = () => {
          const res = await fetch(`${BASE_API}/sendotp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: formData.email })
+            body: JSON.stringify({ email: formData.email.trim() })
          })
          const data = await res.json()
          if (!res.ok) throw new Error(data?.message || 'Failed to send OTP')
-         // If backend reports the email is already verified, mark verified and don't open modal
+
          if (data?.is_verify) {
             setIsVerified(true)
-            // Ignore backend message when already verified to avoid showing "OTP sent" text
-            setOtpMessage('Already verified')
+            setOtpMessage('Email is already verified')
             setShowOTPModal(false)
          } else {
-            setOtpMessage(data?.message || 'OTP sent — check your email')
+            setOtpMessage(data?.message || 'OTP sent! Please check your email inbox.')
             setShowOTPModal(true)
          }
       } catch (err) {
-         setOtpMessage(err.message || 'Network error')
+         setOtpMessage(err.message || 'Error sending OTP')
       } finally {
          setSendingOtp(false)
       }
    }
 
    const verifyOtp = async () => {
-      if (!otp) {
-         setOtpMessage('Enter the OTP')
+      if (!otp.trim()) {
+         setOtpMessage('Please enter the OTP')
          return
       }
       setVerifyingOtp(true)
@@ -302,380 +295,455 @@ const Checkout = () => {
          const res = await fetch(`${BASE_API}/verifyotp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: formData.email, otp })
+            body: JSON.stringify({ email: formData.email.trim(), otp: otp.trim() })
          })
          const data = await res.json()
          if (!res.ok) throw new Error(data?.message || 'OTP verification failed')
-         // Mark verified locally — backend may return updated user object
+
          setIsVerified(true)
-         // If backend returned updated user, persist it
          if (data?.data?.user) {
             try { localStorage.setItem('edrilla_user', JSON.stringify(data.data.user)) } catch { }
          }
-         setOtpMessage('Email verified')
+         setOtpMessage('Email verified successfully')
          setShowOTPModal(false)
          setOtp('')
       } catch (err) {
-         setOtpMessage(err.message || 'Verification failed')
+         setOtpMessage(err.message || 'Invalid or expired OTP')
       } finally {
          setVerifyingOtp(false)
       }
    }
 
+   const courseThumbnail = course.thumbnail
+      ? (course.thumbnail.startsWith('http') ? course.thumbnail : `https://api.edrilla.com/${course.thumbnail}`)
+      : (course.coverImage ? (course.coverImage.startsWith('http') ? course.coverImage : `https://api.edrilla.com/${course.coverImage}`) : bannerImg)
+
    return (
-      <div ref={checkoutRef} className="min-h-screen bg-dark flex flex-col lg:flex-row relative selection:bg-accent/40 selection:text-white">
+      <div className="min-h-screen bg-slate-50 text-slate-900 font-inter">
+         {/* Top Header Bar */}
+         <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+               <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+               >
+                  <svg className="w-5 h-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="m15 18-6-6 6-6" />
+                  </svg>
+                  <span>Back to Course</span>
+               </button>
 
-         {/* GLOBAL BACK BUTTON */}
-         <button
-            onClick={() => navigate(-1)}
-            className="fixed top-4 left-4 sm:top-10 sm:left-10 z-50 flex items-center gap-3 group px-4 py-2 bg-dark/40 backdrop-blur-md border border-white/10 hover:border-accent transition-all duration-500"
-         >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-accent stroke-accent group-hover:-translate-x-1 transition-transform">
-               <path d="M19 12H5M12 19l-7-7 7-7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="font-jetbrains text-[9px] text-normal/60 group-hover:text-accent tracking-[0.3em] font-black uppercase">Return to Archive</span>
-         </button>
-         <div ref={leftWingRef} className="lg:w-[45%] h-[65vh] min-h-[520px] lg:h-screen lg:sticky top-0 bg-black overflow-hidden relative border-r border-white/5">
+               <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+                  <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <span>256-Bit SSL Secure Checkout</span>
+               </div>
+            </div>
+         </header>
 
-            {/* Course Banner Wrap */}
-            <div className="absolute inset-0 opacity-100 group">
-               <img src={bannerImg} alt="Course Banner" className="w-full h-full object-cover scale-110 animate-pulse-slow" />
-               <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
-               <div className="absolute inset-0 bg-gradient-to-b from-dark/20 via-transparent to-dark" />
+         {/* Main Container */}
+         <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="mb-8">
+               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Checkout</h1>
+               <p className="text-sm text-slate-500 mt-1">Review your order and enter your details to complete your enrollment.</p>
             </div>
 
-            {/* Cinematic Scanning Overlay */}
-            <div ref={scanLineRef} className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent z-10 opacity-40 shadow-[0_0_15px_rgba(139, 92, 246,0.5)]" />
-            <div className="absolute inset-0 pointer-events-none z-10 p-6 sm:p-12 flex flex-col justify-between">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+               {/* Left Column: Form Details */}
+               <div className="lg:col-span-7 space-y-6">
 
-               {/* Top Identity Block */}
-               <div className="space-y-4 sm:space-y-6">
-                  <div className="flex gap-4 items-center opacity-40">
-                     <span className="font-jetbrains text-[8px] tracking-[0.5em] uppercase font-black">System Identity</span>
-                     <div className="h-[1px] w-24 bg-white/20" />
-                     <span className="font-jetbrains text-[8px] tracking-[0.3em] uppercase">VGD-0044-ACTV</span>
-                  </div>
-                  {authUser?.company?.name && (
-                     <div className="mt-2">
-                        <span className="font-jetbrains text-[10px] text-normal/60 uppercase tracking-[0.2em]">{authUser.company.name}</span>
+                  {/* Section 1: Student Information */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm">
+                     <div className="flex items-center gap-3 pb-5 border-b border-slate-100 mb-6">
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
+                           1
+                        </div>
+                        <div>
+                           <h2 className="text-lg font-bold text-slate-900">Student Details</h2>
+                           <p className="text-xs text-slate-500">Your enrollment and certificate will be issued under these credentials.</p>
+                        </div>
                      </div>
-                  )}
 
-                  <h2 className="font-inter text-[clamp(2.5rem,5vw,4.5rem)] text-normal leading-tight font-extralight tracking-tighter">
-                     MVP <br /> Engineering.
-                  </h2>
+                     <div className="space-y-5">
+                        {/* Full Name */}
+                        <div>
+                           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+                              Full Name <span className="text-red-500">*</span>
+                           </label>
+                           <input
+                              type="text"
+                              name="fullName"
+                              value={formData.fullName}
+                              onChange={handleChange}
+                              placeholder="e.g. Rahul Sharma"
+                              required
+                              className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                           />
+                        </div>
 
-                  <div className="inline-flex items-center gap-3 bg-accent/5 border border-accent/20 px-6 py-2">
-                     <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                     <span className="font-jetbrains text-[9px] text-accent tracking-[0.2em] font-black uppercase">PROTOCOL ACTIVE</span>
+                        {/* Email Address with Verify Button */}
+                        <div>
+                           <div className="flex items-center justify-between mb-2">
+                              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                                 Email Address <span className="text-red-500">*</span>
+                              </label>
+                              {isVerified ? (
+                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                       <path d="M20 6 9 17l-5-5" />
+                                    </svg>
+                                    Verified
+                                 </span>
+                              ) : (
+                                 <button
+                                    type="button"
+                                    onClick={sendOtp}
+                                    disabled={sendingOtp || !formData.email}
+                                    className={`text-xs font-semibold text-blue-600 hover:text-blue-700 underline ${
+                                       sendingOtp || !formData.email ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
+                                 >
+                                    {sendingOtp ? 'Sending OTP...' : 'Verify Email'}
+                                 </button>
+                              )}
+                           </div>
+                           <input
+                              type="email"
+                              name="email"
+                              value={formData.email}
+                              onChange={handleChange}
+                              disabled={isVerified}
+                              placeholder="e.g. rahul@example.com"
+                              required
+                              className={`w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
+                                 isVerified ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : ''
+                              }`}
+                           />
+                           {otpMessage && (
+                              <p className="mt-1.5 text-xs text-slate-500">{otpMessage}</p>
+                           )}
+                        </div>
+
+                        {/* Phone Number */}
+                        <div>
+                           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+                              Phone Number <span className="text-red-500">*</span>
+                           </label>
+                           <div className="flex">
+                              <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-600 font-semibold text-sm">
+                                 +91
+                              </span>
+                              <input
+                                 type="tel"
+                                 name="phone"
+                                 value={formData.phone}
+                                 onChange={handleChange}
+                                 placeholder="9876543210"
+                                 required
+                                 className="flex-1 h-12 px-4 rounded-r-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                              />
+                           </div>
+                        </div>
+                     </div>
                   </div>
+
+                  {/* Section 2: Business & Tax Details (Optional) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm">
+                     <div className="flex items-center gap-3 pb-5 border-b border-slate-100 mb-6">
+                        <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm">
+                           2
+                        </div>
+                        <div>
+                           <h2 className="text-lg font-bold text-slate-900">Billing & Business (Optional)</h2>
+                           <p className="text-xs text-slate-500">Add company details if you need a business tax invoice.</p>
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+                              Company / Organization
+                           </label>
+                           <input
+                              type="text"
+                              name="company"
+                              value={formData.company}
+                              onChange={handleChange}
+                              placeholder="e.g. Acme Inc."
+                              className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                           />
+                        </div>
+
+                        <div>
+                           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+                              GST Number (GSTIN)
+                           </label>
+                           <input
+                              type="text"
+                              name="gst"
+                              value={formData.gst}
+                              onChange={handleChange}
+                              placeholder="e.g. 29ABCDE1234F1Z5"
+                              className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                           />
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Section 3: Coupon Code */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm">
+                     <div className="flex items-center gap-3 pb-5 border-b border-slate-100 mb-5">
+                        <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
+                           %
+                        </div>
+                        <div>
+                           <h2 className="text-lg font-bold text-slate-900">Discount Coupon</h2>
+                           <p className="text-xs text-slate-500">Apply a promotional promo code or select an available coupon.</p>
+                        </div>
+                     </div>
+
+                     {couponData ? (
+                        <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 6 9 17l-5-5" />
+                                 </svg>
+                              </div>
+                              <div>
+                                 <div className="font-bold text-sm text-emerald-900">
+                                    Code '{couponData.code}' applied!
+                                 </div>
+                                 <div className="text-xs text-emerald-700 font-medium">
+                                    You save {formatCurrency(discount)} on this purchase.
+                                 </div>
+                              </div>
+                           </div>
+                           <button
+                              type="button"
+                              onClick={handleRemoveCoupon}
+                              className="text-xs font-bold text-red-600 hover:text-red-700 px-3 py-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 transition-colors"
+                           >
+                              Remove
+                           </button>
+                        </div>
+                     ) : (
+                        <div className="space-y-4">
+                           <div className="flex gap-2">
+                              <input
+                                 type="text"
+                                 name="coupon"
+                                 value={formData.coupon}
+                                 onChange={handleChange}
+                                 placeholder="Enter coupon code"
+                                 className="flex-1 h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 uppercase font-semibold placeholder:font-normal placeholder:normal-case placeholder:text-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                              />
+                              <button
+                                 type="button"
+                                 onClick={() => handleApplyCoupon()}
+                                 disabled={couponLoading || !formData.coupon.trim()}
+                                 className="h-12 px-6 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              >
+                                 {couponLoading ? 'Applying...' : 'Apply'}
+                              </button>
+                           </div>
+
+                           {/* Available Coupons Dropdown / Quick Select */}
+                           {Array.isArray(coupons) && coupons.length > 0 && (
+                              <div className="pt-2">
+                                 <label className="block text-xs font-semibold text-slate-500 mb-2">Or select from available offers:</label>
+                                 <div className="flex flex-wrap gap-2">
+                                    {coupons.map((c) => (
+                                       <button
+                                          key={c._id || c.code}
+                                          type="button"
+                                          onClick={() => {
+                                             setFormData(prev => ({ ...prev, coupon: c.code }))
+                                             handleApplyCoupon(c.code)
+                                          }}
+                                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 text-blue-700 hover:bg-blue-100 transition-all flex items-center gap-1.5"
+                                       >
+                                          <span>🏷️ {c.code}</span>
+                                          <span className="text-[10px] text-blue-500 font-normal">
+                                             ({c.discountType === 'percentage' ? `${c.discountPercent}% OFF` : `₹${c.discountAmount} OFF`})
+                                          </span>
+                                       </button>
+                                    ))}
+                                 </div>
+                              </div>
+                           )}
+
+                           {couponError && (
+                              <p className="text-xs font-semibold text-red-600 mt-1">{couponError}</p>
+                           )}
+                        </div>
+                     )}
+                  </div>
+
                </div>
 
-               {/* Bottom Total Block */}
-               <div className="space-y-6 sm:space-y-10">
-                  <div className="space-y-4">
-                     <p className="font-montserrat text-[14px] text-description uppercase tracking-[0.5em] font-black">Activation Total</p>
-                     <div className="flex items-baseline gap-4">
-                        <span className="font-inter text-[clamp(3rem,8vw,7rem)] text-accent tracking-tighter leading-none drop-shadow-[0_0_20px_rgba(139, 92, 246,0.3)]">
-                           ₹{displayTotal}
-                        </span>
-                        <span className="font-jetbrains text-xs text-accent/40 mb-4">INR</span>
-                     </div>
-                  </div>
+               {/* Right Column: Sticky Order Summary */}
+               <aside className="lg:col-span-5 lg:sticky lg:top-24 space-y-6">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm">
+                     <h2 className="text-lg font-bold text-slate-900 mb-5 pb-3 border-b border-slate-100">
+                        Order Summary
+                     </h2>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 max-w-sm pt-6 sm:pt-8 border-t border-white/10">
-                     <div className="hidden sm:block">
+                     {/* Course Snapshot */}
+                     <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
+                        <img
+                           src={courseThumbnail}
+                           alt={course.title || 'Course'}
+                           className="w-20 h-20 object-cover rounded-xl border border-slate-200 bg-slate-100 flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                           <span className="inline-block text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md mb-1">
+                              {selectedPlan.title || 'Course Plan'}
+                           </span>
+                           <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
+                              {course.title || selectedPlan.title || 'Course Enrollment'}
+                           </h3>
+                           <p className="text-xs text-slate-500 mt-0.5">Instant online access</p>
+                        </div>
+                     </div>
+
+                     {/* Breakdown Component */}
+                     <div className="py-4">
                         <CheckoutBreakdown
                            compact
                            basePrice={basePrice}
                            discount={discount}
                            gstRate={gstRate}
                            couponData={couponData}
-                           className="mt-8"
                         />
                      </div>
-                     <div className="sm:col-span-1">
-                        <p className="font-jetbrains text-[7px] text-description/80 uppercase tracking-[0.3em] mb-3">Access Tier</p>
-                        <p className="font-jetbrains text-[9px] text-normal uppercase tracking-widest leading-none font-black">{selectedPlan.title} PERSISTENCE</p>
-                     </div>
-                  </div>
-               </div>
 
-               {/* Corner Brackets */}
-               <div className="absolute top-4 left-4 sm:top-8 sm:left-8 w-6 h-6 border-l border-t border-white/20" />
-               <div className="absolute top-4 right-4 sm:top-8 sm:right-8 w-6 h-6 border-r border-t border-white/20" />
-               <div className="absolute bottom-4 left-4 sm:bottom-8 sm:left-8 w-6 h-6 border-l border-b border-white/20" />
-               <div className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 w-6 h-6 border-r border-b border-white/20" />
-            </div>
-         </div>
+                     {/* Pay Button CTA */}
+                     <button
+                        type="button"
+                        onClick={handlePayment}
+                        disabled={paying}
+                        className="w-full mt-4 h-14 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 text-white font-bold text-base rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer"
+                     >
+                        {paying ? (
+                           <>
+                              <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24" fill="none">
+                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                              </svg>
+                              <span>Processing Order...</span>
+                           </>
+                        ) : (
+                           <>
+                              <svg className="w-5 h-5 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                 <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                              </svg>
+                              <span>Pay {formatCurrency(total)}</span>
+                           </>
+                        )}
+                     </button>
 
-         {/* -------------------- RIGHT WING: SCROLLABLE FORM -------------------- */}
-         <div ref={rightWingRef} className="lg:flex-1 bg-dark pt-8 md:pt-14 px-6">
-            {/* <div ref={rightWingRef} className="lg:flex-1 bg-dark pt-32 lg:pt-52 pb-32 px-6 md:px-20 lg:px-24"> */}
-            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12 items-start scroll-mt-24">
-               <div className="lg:col-span-2 space-y-12 lg:space-y-24">
-
-                  {/* Protocol Head */}
-                  <div className="space-y-4 protocol-reveal">
-                     <h1 className="font-inter text-6xl text-normal font-extralight tracking-tighter">Activation Form.</h1>
-                     <div className="w-16 h-[1px] bg-accent" />
-                  </div>
-
-                  <form className="space-y-10 lg:space-y-16">
-
-                     {/* 01: IDENTITY IDENTIFIER */}
-                     <div className="space-y-10 protocol-reveal">
-                        <div className="flex items-center gap-6 group">
-                           <span className="font-montserrat text-[14px] text-accent font-black border border-accent/30 w-10 h-10 flex items-center justify-center rounded-full group-hover:bg-accent group-hover:text-dark transition-all duration-500">01</span>
-                           <h3 className="font-inter text-3xl text-normal">Carrier Identity</h3>
+                     {/* Security / Payment method icons */}
+                     <div className="mt-6 pt-5 border-t border-slate-100 space-y-3 text-center">
+                        <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
+                           <span>Secured by</span>
+                           <span className="font-bold text-slate-800">Razorpay</span>
+                           <span>•</span>
+                           <span>UPI, Cards, NetBanking, EMI</span>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                           <div className="space-y-3">
-                              <label className="font-jetbrains text-[9px] text-normal/40 uppercase tracking-[0.4em] mb-2 font-black">Full Legal Identity</label>
-                              <input
-                                 type="text" name="fullName" placeholder={t('enterName')}
-                                 value={formData.fullName}
-                                 className="w-full bg-white/[0.03] border border-white/10 p-7 font-jetbrains text-xs text-normal focus:border-accent focus:bg-white/[0.05] transition-all outline-none focus:ring-1 focus:ring-accent/40"
-                                 onChange={handleChange}
-                              />
-                              <div className="mt-3 flex items-center gap-3">
-                                 {isVerified ? (
-                                    <span className="text-green-400 font-jetbrains text-xs uppercase tracking-wider">Verified</span>
-                                 ) : (
-                                    <button
-                                       type="button"
-                                       onClick={sendOtp}
-                                       disabled={sendingOtp || !formData.email}
-                                       className={`px-4 py-2 text-sm font-jetbrains border rounded ${sendingOtp || !formData.email ? 'opacity-50 cursor-not-allowed' : 'bg-accent text-dark'}`}
-                                    >
-                                       {sendingOtp ? 'Sending...' : 'Verify Email'}
-                                    </button>
-                                 )}
-                                 {otpMessage && <span className="text-[11px] text-normal/70">{otpMessage}</span>}
-                              </div>
-
-
-
-
-
-
-                           </div>
-                           <div className="space-y-3">
-                              <label className="font-jetbrains text-[9px] text-normal/40 uppercase tracking-[0.4em] font-black">Digital Dispatch (Email)</label>
-                              <input
-                                 type="email" name="email" placeholder="EMAIL@PROTOCOL.ARCH"
-                                 value={formData.email}
-                                 disabled={isVerified}
-                                 className={`w-full bg-white/[0.03] border border-white/10 p-7 font-jetbrains text-xs text-normal focus:border-accent focus:bg-white/[0.05] transition-all outline-none focus:ring-1 focus:ring-accent/40 ${isVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                 onChange={handleChange}
-                              />
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* 02: COMMS & ENTITY */}
-                     <div className="space-y-10 protocol-reveal">
-                        <div className="flex items-center gap-6 group">
-                           <span className="font-montserrat text-[14px] text-accent font-black border border-accent/30 w-10 h-10 flex items-center justify-center rounded-full group-hover:bg-accent group-hover:text-dark transition-all duration-500">02</span>
-                           <h3 className="font-inter text-3xl text-normal">Comms & Business</h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                           <div className="space-y-3">
-                              <label className="font-jetbrains text-[9px] text-normal/40 uppercase tracking-[0.4em] font-black">Signal Connection (Phone)</label>
-                              <div className="flex">
-                                 <div className="bg-accent/10 border border-white/10 border-r-0 p-7 font-jetbrains text-xs text-accent">+91</div>
-                                 <input
-                                    type="tel" name="phone" placeholder={t('phoneNumber')}
-                                    value={formData.phone}
-                                    className="flex-1 bg-white/[0.03] border border-white/10 p-7 font-jetbrains text-xs text-normal focus:border-accent outline-none transition-all"
-                                    onChange={handleChange}
-                                 />
-                              </div>
-                           </div>
-                           <div className="space-y-3">
-                              <label className="font-jetbrains text-[9px] text-normal/40 uppercase tracking-[0.4em] font-black">Commercial Agency</label>
-                              <input
-                                 type="text" name="company" placeholder="BRAND / FIRM"
-                                 value={formData.company}
-                                 className="w-full bg-white/[0.03] border border-white/10 p-7 font-jetbrains text-xs text-normal focus:border-accent outline-none transition-all"
-                                 onChange={handleChange}
-                              />
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* 03: TAX & INCENTIVES */}
-                     <div className="space-y-10 protocol-reveal">
-                        <div className="flex items-center gap-6 group">
-                           <span className="font-montserrat text-[14px] text-accent font-black border border-accent/30 w-10 h-10 flex items-center justify-center rounded-full group-hover:bg-accent group-hover:text-dark transition-all duration-500">03</span>
-                           <h3 className="font-inter text-3xl text-normal">Tax Codes & Coupons</h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                           <div className="space-y-3">
-                              <label className="font-jetbrains text-[9px] text-normal/40 uppercase tracking-[0.4em] font-black">GST Identifier</label>
-                              <input
-                                 type="text" name="gst" placeholder="GSTN"
-                                 value={formData.gst}
-                                 className="w-full bg-white/[0.03] border border-white/10 p-7 font-jetbrains text-xs text-normal focus:border-accent outline-none transition-all"
-                                 onChange={handleChange}
-                              />
-                           </div>
-                           <div className="space-y-3">
-                              <label className="font-jetbrains text-[9px] text-normal/40 uppercase tracking-[0.4em] font-black">Promotional Dispatch</label>
-                              <div className="flex gap-2">
-                                 <select
-                                    name="coupon"
-                                    className="flex-1 bg-white/[0.03] border border-white/10 p-7 font-jetbrains text-xs text-normal focus:border-accent outline-none transition-all appearance-none"
-                                    onChange={handleChange}
-                                    value={formData.coupon}
-                                 >
-                                    <option value="" className="bg-dark text-normal/40">SELECT COUPON</option>
-                                    {Array.isArray(coupons) && coupons.map(c => (
-                                       <option key={c._id} value={c.code} className="bg-dark text-normal">
-                                          {c.code} - {c.discountType === 'percentage' ? `${c.discountPercent}% OFF` : `₹${c.discountAmount} OFF`}
-                                       </option>
-                                    ))}
-                                 </select>
-                                 <button
-                                    type="button"
-                                    onClick={handleApplyCoupon}
-                                    disabled={couponLoading || !formData.coupon}
-                                    className={`bg-accent/15 border border-accent/30 px-8 font-jetbrains text-[9px] text-accent font-black uppercase hover:bg-accent hover:text-dark transition-all duration-500 ${(couponLoading || !formData.coupon) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                 >
-                                    {couponLoading ? 'Verifying...' : 'Apply'}
-                                 </button>
-                              </div>
-                              {couponError && <p className="font-jetbrains text-[8px] text-red-500 uppercase tracking-widest mt-2">{couponError}</p>}
-                              {couponData && <p className="font-jetbrains text-[8px] text-accent uppercase tracking-widest mt-2">Protocol Applied: -₹{discount}</p>}
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* COMPLETE ACTIVATION CTA */}
-                     <div className="pt-10 protocol-reveal grid gap-4">
-
-                        <button onClick={handlePayment} type="button" className="w-full group relative bg-accent py-9 flex items-center justify-center gap-6 hover:scale-[1.01] active:scale-[0.98] transition-all duration-700 overflow-hidden shadow-[0_0_30px_rgba(139, 92, 246,0.1)]">
-                           <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
-                           <span className="relative z-10 font-jetbrains text-dark text-sm font-black tracking-[0.8em] uppercase">Pay Now</span>
-                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="relative z-10 text-dark stroke-dark group-hover:translate-x-3 transition-transform duration-700">
-                              <path d="M5 12h14M12 5l7 7-7 7" strokeWidth="4" />
-                           </svg>
-                        </button>
-
-                        <div className="mt-6">
-                           <div className="mt-2 flex justify-between items-center opacity-30 px-2">
-                              <p className="font-jetbrains text-[8px] uppercase tracking-[0.4em]">SSL ENCRYPTED 256-BIT</p>
-                              <p className="font-jetbrains text-[8px] uppercase tracking-[0.4em]">Activation Protocol v1.4</p>
-                           </div>
-                        </div>
-                     </div>
-
-                  </form>
-
-                  {/* Mobile: show breakdown lower on small screens (placed after form) */}
-                  <div className="lg:hidden mt-8 px-2">
-                     <CheckoutBreakdown
-                        basePrice={basePrice}
-                        discount={discount}
-                        gstRate={gstRate}
-                        couponData={couponData}
-                     />
-                     <div className="mt-4 text-center">
-                        <div className="text-sm text-normal/70">Quick total</div>
-                        <div className="font-inter text-2xl text-accent mt-1">{formatCurrency(total)}</div>
+                        <p className="text-[11px] text-slate-400">
+                           By proceeding with the payment, you agree to the Terms of Service & Privacy Policy.
+                        </p>
                      </div>
                   </div>
 
-               </div>
-
-               {/* RIGHT SIDEBAR: sticky breakdown */}
-               <aside className="hidden lg:block lg:col-span-1">
-                  <div className="sticky top-28">
-                     <CheckoutBreakdown
-                        basePrice={basePrice}
-                        discount={discount}
-                        gstRate={gstRate}
-                        couponData={couponData}
-                     />
-                     <div className="mt-6 p-4 text-center">
-                        <div className="text-sm text-normal/70">Quick total</div>
-                        <div className="font-inter text-3xl text-accent mt-2">{formatCurrency(total)}</div>
+                  {/* Trust Highlights */}
+                  <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
+                     <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-slate-200">
+                        <span className="text-base">⚡</span>
+                        <span className="font-medium">Instant Access</span>
+                     </div>
+                     <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-slate-200">
+                        <span className="text-base">🔒</span>
+                        <span className="font-medium">Encrypted Checkout</span>
                      </div>
                   </div>
                </aside>
             </div>
-         </div>
+         </main>
 
+         {/* OTP Verification Modal */}
          {showOTPModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-               <div className="bg-dark p-6 rounded max-w-sm w-full">
-                  <h3 className="font-inter text-xl text-normal mb-4">Verify OTP</h3>
-                  <p className="text-sm text-normal/70 mb-2">Enter the OTP sent to {formData.email}</p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+               <div className="bg-white rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="20" height="16" x="2" y="4" rx="2" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                     </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">Verify Your Email</h3>
+                  <p className="text-xs text-slate-500 mb-4">
+                     We sent a 6-digit one-time passcode to <span className="font-semibold text-slate-800">{formData.email}</span>.
+                  </p>
                   <input
                      value={otp}
                      onChange={e => setOtp(e.target.value)}
-                     placeholder="Enter OTP"
-                     className="w-full p-3 bg-white/[0.03] border border-white/10 mb-4 font-jetbrains text-sm"
+                     placeholder="Enter 6-digit OTP"
+                     autoFocus
+                     className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-lg font-bold tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 mb-3"
                   />
-                  <div className="flex gap-3 justify-end">
-                     <button type="button" onClick={() => { setShowOTPModal(false); setOtp(''); setOtpMessage('') }} className="px-4 py-2 border">Cancel</button>
-                     <button type="button" onClick={verifyOtp} disabled={verifyingOtp} className={`px-4 py-2 bg-accent text-dark ${verifyingOtp ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        {verifyingOtp ? 'Verifying...' : 'Verify'}
-                     </button>
-                  </div>
-                  {otpMessage && <p className="mt-3 text-sm text-normal/70">{otpMessage}</p>}
-               </div>
-            </div>
-         )}
-
-         {/* SUCCESS MODAL */}
-         {showSuccessModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-               <div className="bg-dark border border-accent/20 p-8 md:p-12 max-w-lg w-full relative overflow-hidden shadow-[0_0_50px_rgba(139, 92, 246,0.15)] group">
-                  {/* Decorative background elements */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-accent/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-
-                  {/* Content */}
-                  <div className="relative z-10 flex flex-col items-center text-center space-y-6">
-                     {/* Success Icon */}
-                     <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center border border-accent/30 relative">
-                        <div className="absolute inset-0 rounded-full border border-accent animate-ping opacity-20" />
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-accent stroke-accent">
-                           <path d="M20 6L9 17l-5-5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                     </div>
-
-                     <div className="space-y-2">
-                        <p className="font-jetbrains text-[10px] text-accent uppercase tracking-[0.4em] font-black">Transaction Verified</p>
-                        <h3 className="font-inter text-3xl md:text-4xl text-normal tracking-tight">Activation Complete.</h3>
-                        <p className="font-jetbrains text-[11px] text-normal/60 uppercase tracking-widest mt-2">
-                           Your credentials are now securely bound to the system.
-                        </p>
-                     </div>
-
-                     {/* CTA */}
+                  {otpMessage && (
+                     <p className="text-xs text-slate-600 mb-4 text-center">{otpMessage}</p>
+                  )}
+                  <div className="flex gap-2">
                      <button
-                        onClick={() => navigate('/dashboard/my-courses')}
-                        className="mt-4 w-full bg-accent text-dark py-5 font-jetbrains text-xs font-black uppercase tracking-[0.4em] hover:scale-[1.02] transition-transform duration-300 flex justify-center items-center gap-3"
+                        type="button"
+                        onClick={() => { setShowOTPModal(false); setOtp(''); setOtpMessage('') }}
+                        className="flex-1 h-11 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                      >
-                        Enter Dashboard
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                           <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
+                        Cancel
+                     </button>
+                     <button
+                        type="button"
+                        onClick={verifyOtp}
+                        disabled={verifyingOtp}
+                        className="flex-1 h-11 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                     >
+                        {verifyingOtp ? 'Verifying...' : 'Confirm OTP'}
                      </button>
                   </div>
-
-                  {/* Border accents */}
-                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
-                  <div className="absolute bottom-0 left-0 w-full h-[1px] bg-accent/20" />
                </div>
             </div>
          )}
 
+         {/* Success Modal */}
+         {showSuccessModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+               <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-200 text-center">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-5">
+                     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6 9 17l-5-5" />
+                     </svg>
+                  </div>
+                  <h3 className="text-2xl font-extrabold text-slate-900 mb-2">Enrollment Confirmed!</h3>
+                  <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                     Your payment was successful and access has been unlocked for <span className="font-semibold text-slate-900">{course.title || selectedPlan.title}</span>.
+                  </p>
+                  <button
+                     type="button"
+                     onClick={() => navigate('/dashboard/my-courses')}
+                     className="w-full h-12 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20"
+                  >
+                     Go to My Courses
+                  </button>
+               </div>
+            </div>
+         )}
       </div>
    )
 }
