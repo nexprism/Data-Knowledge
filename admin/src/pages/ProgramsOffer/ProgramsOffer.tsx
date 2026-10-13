@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import {
   fetchProgramsAdmin,
@@ -9,6 +9,7 @@ import {
   clearProgramOfferMessages,
   ProgramOffer,
 } from "../../store/slices/programOffer";
+import { fetchCourses } from "../../store/slices/course";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import {
@@ -25,6 +26,8 @@ import {
   ListPlus,
   Wrench,
   Link as LinkIcon,
+  BookOpen,
+  Loader2,
   Star,
   PieChart,
   Cloud,
@@ -77,9 +80,28 @@ const ProgramsOffer: React.FC = () => {
   const [order, setOrder] = useState(0);
   const [isActive, setIsActive] = useState(true);
 
+  const [coursesList, setCoursesList] = useState<any[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+
   useEffect(() => {
     dispatch(fetchProgramsAdmin());
   }, [dispatch]);
+
+  const loadCourses = useCallback(async () => {
+    setCoursesLoading(true);
+    try {
+      const result = await dispatch(fetchCourses({ page: 1, limit: 1000 })).unwrap();
+      setCoursesList(result?.courses || []);
+    } catch (err) {
+      console.error("Failed to fetch courses:", err);
+    } finally {
+      setCoursesLoading(false);
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
 
   useEffect(() => {
     if (successMessage || error) {
@@ -527,15 +549,36 @@ const ProgramsOffer: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
                     <LinkIcon className="w-3.5 h-3.5 text-gray-400" />
-                    Target Course ID / Slug (Optional)
+                    Target Course (Curriculum / Syllabus Page)
                   </label>
-                  <input
-                    type="text"
-                    value={courseId}
-                    onChange={(e) => setCourseId(e.target.value)}
-                    placeholder="e.g. 64ff..., or course-slug"
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#3498db]"
-                  />
+                  <div className="relative">
+                    <select
+                      value={courseId}
+                      onChange={(e) => setCourseId(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#3498db] appearance-none"
+                    >
+                      <option value="">Select a course</option>
+                      {coursesList.map((course) => (
+                        <option key={course._id} value={course._id}>
+                          {course.title}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                      <BookOpen className="h-4 w-4" />
+                    </div>
+                  </div>
+                  {coursesLoading ? (
+                    <p className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Loading courses...
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      When selected, the &quot;View Curriculum&quot; button on the homepage redirects
+                      users to this course&apos;s syllabus / details page.
+                    </p>
+                  )}
                 </div>
 
                 {/* Tab Ordering */}

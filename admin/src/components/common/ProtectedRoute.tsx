@@ -145,6 +145,20 @@ const ProtectedRoute = () => {
         return <Navigate to="/signin" replace />;
     }
 
+    // First-login / reset accounts must set their own password before entering.
+    let mustChangePassword = currentUser?.mustChangePassword === true;
+    if (!mustChangePassword) {
+        try {
+            const stored = JSON.parse(localStorage.getItem("user") || "{}");
+            mustChangePassword = stored?.mustChangePassword === true;
+        } catch {
+            mustChangePassword = false;
+        }
+    }
+    if (mustChangePassword) {
+        return <Navigate to="/change-password" replace />;
+    }
+
     return <Outlet />;
 };
 

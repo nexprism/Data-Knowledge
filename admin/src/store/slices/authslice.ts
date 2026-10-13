@@ -430,7 +430,7 @@ const authSlice = createSlice({
         state.loginStatus = "succeeded";
         state.user = action.payload.user;
         state.token = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
+        state.refreshToken = action.payload.refreshToken ?? null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -452,7 +452,7 @@ const authSlice = createSlice({
         state.signupStatus = "succeeded";
         state.user = action.payload.user;
         state.token = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
+        state.refreshToken = action.payload.refreshToken ?? null;
         state.isAuthenticated = true;
         state.error = null;
       })

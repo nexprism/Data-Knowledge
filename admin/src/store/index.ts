@@ -44,6 +44,7 @@ import heroSectionReducer from "./slices/heroSection";
 import whyChooseUsReducer from "./slices/whyChooseUs";
 import aboutSnapshotReducer from "./slices/aboutSnapshot";
 import mentorReducer from "./slices/mentor";
+import adminUsersReducer from "./slices/adminUsers";
 
 export const store = configureStore({
   reducer: {
@@ -91,6 +92,7 @@ export const store = configureStore({
     whyChooseUs: whyChooseUsReducer,
     aboutSnapshot: aboutSnapshotReducer,
     mentor: mentorReducer,
+    adminUsers: adminUsersReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

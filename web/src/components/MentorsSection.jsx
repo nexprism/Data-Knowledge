@@ -116,53 +116,70 @@ const MentorsSection = () => {
 
               <div className="relative z-10 space-y-6">
                 
-                {/* Header: Avatar, Name & Ex-Company Badges */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pb-6 border-b border-slate-100">
+                {/* Header: Large Prominent Portrait, Name & Ex-Company Badges */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-stretch gap-6 pb-6 border-b border-slate-100">
                   
-                  {/* Portrait with Verified Indicator */}
-                  <div className="relative shrink-0">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden ring-4 ring-white shadow-md border border-slate-200/80 bg-slate-100">
+                  {/* Portrait with Verified Indicator & Enhanced Framing */}
+                  <div className="relative shrink-0 w-full sm:w-44 md:w-48 self-center sm:self-auto">
+                    <div className="relative w-full aspect-[4/5] sm:h-full min-h-[220px] rounded-3xl overflow-hidden ring-4 ring-white shadow-lg border border-slate-200/80 bg-gradient-to-b from-slate-100 to-slate-200">
                       <img
                         src={getMediaUrl(mentor.image)}
                         alt={mentor.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
                         onError={(e) => {
                           e.target.src = '/herocard.png'
                         }}
                       />
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#3498db] text-white flex items-center justify-center border-2 border-white shadow-sm" title="Verified Industry Mentor">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+                      {/* Subtle Bottom Gradient Scrim */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
+
+                      {/* Verified Badge Overlay */}
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-center gap-1.5 py-1 px-2 rounded-full bg-white/95 backdrop-blur-md shadow-md border border-white/80">
+                        <span className="w-2 h-2 rounded-full bg-[#3498db] animate-pulse" />
+                        <span className="text-[10px] font-extrabold font-jetbrains text-slate-800 uppercase tracking-wider">
+                          Verified Mentor
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Name & Titles */}
-                  <div className="space-y-2 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-inter text-2xl font-bold text-slate-900 group-hover:text-[#3498db] transition-colors">
-                        {mentor.name}
-                      </h3>
-                      <span className="text-[10px] font-bold font-jetbrains tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-[#3498db]/10 text-[#1f6696] border border-[#3498db]/20">
-                        {mentor.experienceBadge}
-                      </span>
+                  {/* Name, Role & Ex-Company Badges */}
+                  <div className="flex flex-col justify-between space-y-3 flex-1 min-w-0">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-inter text-2xl sm:text-3xl font-extrabold text-slate-900 group-hover:text-[#3498db] transition-colors">
+                          {mentor.name}
+                        </h3>
+                        <span className="text-[10px] font-bold font-jetbrains tracking-wider uppercase px-2.5 py-1 rounded-full bg-[#3498db]/10 text-[#1f6696] border border-[#3498db]/20">
+                          {mentor.experienceBadge}
+                        </span>
+                      </div>
+
+                      <p className="font-inter text-xs sm:text-sm font-semibold text-[#3498db] leading-snug">
+                        {mentor.role}
+                      </p>
+
+                      {/* Ex-Company Tags */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {mentor.exCompanies && mentor.exCompanies.map((comp, cIdx) => (
+                          <span
+                            key={cIdx}
+                            className="text-[10px] font-jetbrains font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-slate-700 shadow-xs"
+                          >
+                            {comp}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    <p className="font-inter text-xs sm:text-sm font-semibold text-[#3498db]">
-                      {mentor.role}
-                    </p>
-
-                    {/* Ex-Company Tags */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {mentor.exCompanies && mentor.exCompanies.map((comp, cIdx) => (
-                        <span
-                          key={cIdx}
-                          className="text-[10px] font-jetbrains font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 text-slate-700"
-                        >
-                          {comp}
-                        </span>
-                      ))}
+                    {/* Quick Highlight Tag */}
+                    <div className="pt-2 sm:pt-0">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/60 text-slate-600 text-xs font-medium">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3498db" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        <span>Top Rated Industry Instructor</span>
+                      </div>
                     </div>
                   </div>
 

@@ -87,7 +87,9 @@ import MentorsPage from "./pages/Mentors";
 
 // Lazy load pages
 const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
+const ChangePassword = lazy(() => import("./pages/AuthPages/ChangePassword"));
 const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
+const AdminUsersPage = lazy(() => import("./pages/AdminUsers"));
 
 const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 const Videos = lazy(() => import("./pages/UiElements/Videos"));
@@ -129,6 +131,9 @@ export default function App() {
                 !isAuthenticated ? <SignIn /> : <Navigate to="/" replace />
               }
             />
+
+            {/* Forced first-login password change (requires a session, not the full panel) */}
+            <Route path="/change-password" element={<ChangePassword />} />
 
             {/* Protected Routes - Only accessible when authenticated */}
             <Route element={<ProtectedRoute />}>
@@ -310,6 +315,7 @@ export default function App() {
                 <Route path="/hero-section" element={<HeroSectionPage />} />
                 <Route path="/why-choose-us" element={<WhyChooseUsPage />} />
                 <Route path="/about-snapshot" element={<AboutSnapshotPage />} />
+                <Route path="/admin-users" element={<AdminUsersPage />} />
               </Route>
             </Route>
 

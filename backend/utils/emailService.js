@@ -493,6 +493,92 @@ class EmailService {
       throw new Error(`Failed to relay job proposal email: ${error.message}`);
     }
   }
+
+  /**
+   * Send a notification to admin(s) when a new consultation is booked.
+   */
+  async sendConsultationBookingAdminEmail(adminEmails, booking) {
+    const recipients = (Array.isArray(adminEmails) ? adminEmails : [adminEmails])
+      .filter(Boolean)
+      .join(", ");
+
+    if (!recipients) {
+      throw new Error("No admin email recipients provided");
+    }
+
+    const slot = booking?.slotId || {};
+
+    const formatDateTime = (value) => {
+      if (!value) return "N/A";
+      try {
+        return new Date(value).toLocaleString("en-IN", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "Asia/Kolkata",
+        });
+      } catch (e) {
+        return new Date(value).toLocaleString();
+      }
+    };
+
+    const statusLabel = (booking.paymentStatus || "free").toUpperCase();
+    const amountLabel =
+      booking.paymentStatus === "paid" && slot.price ? `₹${slot.price}` : "Free";
+
+    const row = (label, value) => `
+      <tr>
+        <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #334155; width: 190px;">${label}</td>
+        <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #0f172a;">${value || "—"}</td>
+      </tr>`;
+
+    const mailOptions = {
+      from: this.getFrom("transactional"),
+      to: recipients,
+      replyTo: booking.email || undefined,
+      subject: `New Consultation Booking – ${booking.fullName}`,
+      html: `
+      <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:24px;">
+        <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
+          <div style="background:#1f6696; padding:22px 28px;">
+            <h2 style="margin:0; color:#ffffff; font-size:20px;">New Consultation Booking</h2>
+            <p style="margin:6px 0 0; color:#dbeafe; font-size:13px;">A student has booked a 1-on-1 consultation session.</p>
+          </div>
+          <div style="padding:24px 28px;">
+            <table style="width:100%; border-collapse:collapse; font-size:14px;">
+              ${row("Name", booking.fullName)}
+              ${row("Email", booking.email)}
+              ${row("Phone", booking.phone)}
+              ${row("Designation", booking.designation)}
+              ${row("Department", booking.department)}
+              ${row("Institute", booking.institute)}
+              ${row("Slot Start", formatDateTime(slot.startTime))}
+              ${row("Slot End", formatDateTime(slot.endTime))}
+              ${row("Duration", slot.duration ? `${slot.duration} minutes` : "—")}
+              ${row("Payment Status", statusLabel)}
+              ${row("Amount", amountLabel)}
+              ${row("Payment ID", booking.paymentId)}
+              ${row("Query", booking.query)}
+            </table>
+            <p style="margin:22px 0 0; font-size:13px; color:#64748b;">
+              ${booking.fileUpload ? "A file was uploaded with this booking." : "No file was uploaded with this booking."}
+            </p>
+          </div>
+          <div style="background:#f8fafc; padding:16px 28px; border-top:1px solid #e5e7eb;">
+            <p style="margin:0; font-size:12px; color:#94a3b8;">Automated notification from the Data Knowledge booking system.</p>
+          </div>
+        </div>
+      </div>
+      `,
+    };
+
+    try {
+      const info = await this.getTransporter("transactional").sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Error sending consultation booking admin email:", error);
+      throw new Error(`Failed to send consultation booking admin email: ${error.message}`);
+    }
+  }
 }
 
 export default new EmailService();

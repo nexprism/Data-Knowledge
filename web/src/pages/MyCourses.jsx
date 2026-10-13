@@ -164,7 +164,7 @@ const MyCourses = () => {
                             const thumb = item.course?.thumbnail;
                             if (!thumb) return '/news_placeholder.png';
                             if (thumb.startsWith('http')) return thumb;
-                            const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+                            const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
                             const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
                             return `${baseUrl}${thumb.startsWith('/') ? '' : '/'}${thumb}`;
                         })()} 

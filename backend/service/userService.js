@@ -257,7 +257,9 @@ class UserService {
 
       const updatedUser = await this.userRepository.update(userId, {
         password: newHashedPassword,
-        passwordChangedAt: new Date()
+        passwordChangedAt: new Date(),
+        // A user-initiated password change satisfies any first-login requirement.
+        mustChangePassword: false
       });
 
       if (!updatedUser) {

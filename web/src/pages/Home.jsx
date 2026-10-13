@@ -11,10 +11,12 @@ import LogoMarquee from '../components/LogoMarquee'
 import GrowthSection from '../components/GrowthSection'
 import CourseSlider from '../components/CourseSlider'
 import TestimonialsSection from '../components/TestimonialsSection'
+import FloatingSocialButtons from '../components/FloatingSocialButtons'
 
 const Home = ({ isLoaded }) => {
   return (
     <div className="w-full">
+      <FloatingSocialButtons />
       <Hero isLoaded={isLoaded} />
       <HeroHighlights />
       <PlacementStoriesSection />

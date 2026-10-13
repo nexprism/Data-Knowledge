@@ -150,7 +150,7 @@ const ChevronRightIcon = ({ className = 'w-5 h-5' }) => (
 )
 
 // Single Testimonial Card Component
-const ReviewCard = ({ item, getImageSrc, onOpenVideo, onOpenScreenshot, isGrid = false }) => {
+const ReviewCard = ({ item, getImageSrc, onOpenVideo, onOpenScreenshot, isGrid = false, showScreenshot = false }) => {
   const avatar = getImageSrc(item.image)
   const studentName = item.name || item.userId?.fullName || 'Verified Student'
   const studentRole = item.role || 'Data Analytics Alum'
@@ -220,7 +220,7 @@ const ReviewCard = ({ item, getImageSrc, onOpenVideo, onOpenScreenshot, isGrid =
         </p>
 
         {/* Attached Review Screenshot Proof */}
-        {reviewImages.length > 0 && (
+        {showScreenshot && reviewImages.length > 0 && (
           <div className="mt-4 pt-3.5 border-t border-slate-100 md:flex md:items-start md:gap-4">
             {reviewImages.length === 1 ? (
               <button

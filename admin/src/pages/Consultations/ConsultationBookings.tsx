@@ -100,7 +100,11 @@ const ConsultationBookings = () => {
           </div>
           <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              <path d="M6 3h12" />
+              <path d="M6 8h12" />
+              <path d="m6 13 8.5 8" />
+              <path d="M6 13h3" />
+              <path d="M9 13c6.667 0 6.667-10 0-10" />
             </svg>
           </div>
         </div>

@@ -85,7 +85,7 @@ const JobProposals: React.FC<JobProposalsProps> = ({ proposals, isOpen, onClose,
     });
   };
 
-  const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://api.edrilla.com/';
+  const BASE_URL = (import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in/').replace(/\/+$/, '') + '/';
   
   return (
     <div className="fixed inset-0 bg-white/70 backdrop-blur-md z-50 flex items-center justify-center p-4">

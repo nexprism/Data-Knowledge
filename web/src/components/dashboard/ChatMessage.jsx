@@ -184,7 +184,7 @@ const ChatMessage = ({ msg, isSent, onReply }) => {
         if (rawUrl.startsWith('http') || rawUrl.startsWith('blob:')) {
             return rawUrl;
         }
-        const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+        const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
         const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
         return `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
     };

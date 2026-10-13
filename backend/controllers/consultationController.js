@@ -1,6 +1,8 @@
 import ConsultationSlot from '../models/ConsultationSlot.js';
 import ConsultationBooking from '../models/ConsultationBooking.js';
 import Setting from '../models/setting.js';
+import User from '../models/user.js';
+import emailService from '../utils/emailService.js';
 import axios from 'axios';
 import fs from 'fs';
 
@@ -272,6 +274,30 @@ export const bookConsultation = async (req, res) => {
         const populatedBooking = await ConsultationBooking.findById(booking._id)
             .populate('slotId')
             .populate('userId', 'fullName email phone');
+
+        // Notify admins by email (best-effort, does not block the response)
+        try {
+            const admins = await User.find({
+                role: { $in: ['admin', 'super_admin'] },
+                isActive: { $ne: false },
+            })
+                .select('email')
+                .lean();
+
+            const adminEmails = [...new Set(admins.map((a) => a.email).filter(Boolean))];
+
+            if (adminEmails.length > 0) {
+                emailService
+                    .sendConsultationBookingAdminEmail(adminEmails, populatedBooking)
+                    .catch((mailError) =>
+                        console.error('Failed to send consultation booking admin email:', mailError)
+                    );
+            } else {
+                console.warn('Consultation booking created, but no admin email recipients were found.');
+            }
+        } catch (notifyError) {
+            console.error('Failed to notify admins about consultation booking:', notifyError);
+        }
 
         return res.status(201).json({
             success: true,

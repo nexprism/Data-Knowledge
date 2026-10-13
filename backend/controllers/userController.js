@@ -346,6 +346,8 @@ export const getMyProfile = async (req, res) => {
           education: user.education, // ✅ Correctly added here
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
+          isActive: user.isActive !== false,
+          mustChangePassword: user.mustChangePassword === true,
           personality: personality ? {
             resultType: personality.resultType,
             scores: personality.scores,
@@ -952,6 +954,18 @@ export const login = async (req, res) => {
     const user = loginResult?.userObj;
     const userId = user._id.toString();
 
+    // SECURITY: deactivated admin accounts must not be able to obtain tokens.
+    // (The passport strategy also rejects isActive:false on every later request.)
+    if ((user.role === "admin" || user.role === "super_admin") && user.isActive === false) {
+      await createLoginLog(userId, deviceId || "unknown", deviceInfo, "failed");
+      return res.status(403).json({
+        message: "Your admin account has been deactivated. Please contact a super admin.",
+        data: {},
+        success: false,
+        err: { message: "Account deactivated" },
+      });
+    }
+
     // Record device for tracking — non-blocking
     if (deviceId && platform !== 'web') {
       try {
@@ -1165,6 +1179,16 @@ export const blockUser = async (req, res) => {
         message: "User not found",
         data: {},
         err: { message: "User with this ID does not exist" },
+      });
+    }
+
+    // SECURITY: super admin accounts must never be blocked/disabled here.
+    if (user.role === "super_admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Super admin accounts cannot be modified",
+        data: {},
+        err: { message: "Forbidden" },
       });
     }
 
@@ -1828,6 +1852,23 @@ export const banOrShadowBanUser = async (req, res) => {
       });
     }
 
+    // SECURITY: super admin accounts must never be banned/disabled.
+    const targetUser = await User.findById(userId).select("role");
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        err: {},
+      });
+    }
+    if (targetUser.role === "super_admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Super admin accounts cannot be modified",
+        err: {},
+      });
+    }
+
     const updatedUser = await userService.banOrShadowBanUser(
       userId,
       banType,
@@ -1877,6 +1918,23 @@ export const unbanUser = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "Admin privileges required",
+        err: {},
+      });
+    }
+
+    // SECURITY: super admin accounts must never be unban-managed here.
+    const targetUser = await User.findById(userId).select("role");
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        err: {},
+      });
+    }
+    if (targetUser.role === "super_admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Super admin accounts cannot be modified",
         err: {},
       });
     }
@@ -2601,6 +2659,17 @@ export const updateUserRole = async (req, res) => {
         message: 'User not found',
         data: {},
         err: {},
+      });
+    }
+
+    // SECURITY: never allow a super admin account (including the caller's own)
+    // to be role-changed through this endpoint.
+    if (user.role === 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Super admin accounts cannot be modified',
+        data: {},
+        err: { message: 'Forbidden' },
       });
     }
 

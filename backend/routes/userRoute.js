@@ -9,7 +9,7 @@ import accessTokenAutoRefresh from '../middlewares/accessTokenAutoRefresh.js';
 import { sendOtp, verifyOtp } from '../controllers/otpController.js';
 import passport from 'passport';
 import { upload } from '../middlewares/upload-middleware.js';
-import { isAdmin } from '../middlewares/isAdmin.js';
+import { isAdmin, isSuperAdmin } from '../middlewares/isAdmin.js';
 import { validateResetPassword } from '../middlewares/validation.js';
 import isUserBanned from '../middlewares/isUserBanned.js';
 import dotenv from "dotenv"
@@ -106,7 +106,9 @@ userRouter.put(
   '/:userId/role',
   accessTokenAutoRefresh,
   passport.authenticate("jwt", { session: false }),
-  isAdmin,
+  // SECURITY: role changes (including granting/revoking `admin`) are restricted
+  // to super admins so regular admins cannot escalate privileges.
+  isSuperAdmin,
   updateUserRole
 );
 

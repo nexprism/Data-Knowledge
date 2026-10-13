@@ -189,7 +189,7 @@ const ComparisonSection = ({ course, section }) => {
                   const img = course.coverImage;
                   if (!img) return comparisonImg;
                   if (img.startsWith('http')) return img;
-                  const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+                  const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
                   const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
                   return `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`;
               })()} 

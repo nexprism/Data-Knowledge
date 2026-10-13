@@ -129,7 +129,7 @@ const CourseDetail = () => {
         if (rawUrl.startsWith('http') || rawUrl.startsWith('blob:')) {
             apiImage = rawUrl;
         } else {
-            const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+            const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
             const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
             apiImage = `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
         }
@@ -151,7 +151,7 @@ const CourseDetail = () => {
               if (rawUrl.startsWith('http') || rawUrl.startsWith('blob:')) {
                   lessonImage = rawUrl;
               } else {
-                  const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+                  const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
                   const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
                   lessonImage = `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
               }

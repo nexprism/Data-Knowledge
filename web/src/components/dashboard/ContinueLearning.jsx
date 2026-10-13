@@ -15,7 +15,7 @@ const ContinueLearning = () => {
   // Find thumbnail from activeCourses
   const activeCourse = dashData?.activeCourses?.find(c => c.courseId === lastSession.courseId)
   const thumbnail = activeCourse?.thumbnail 
-    ? `${import.meta.env.VITE_IMAGE_URL || 'https://api.edrilla.com'}/${activeCourse.thumbnail}` 
+    ? `${import.meta.env.VITE_IMAGE_URL || 'https://api.dataknowledge.in'}/${activeCourse.thumbnail}` 
     : bannerImg
 
   const percentage = Math.round(lastSession.completionPercentage || 0)

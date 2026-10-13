@@ -18,7 +18,7 @@ import PageMeta from "../../components/common/PageMeta";
 import PopupAlert from "../../components/popUpAlert";
 import { Pencil, Trash2 } from "lucide-react";
 
-const IMAGE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://api.edrilla.com/";
+const IMAGE_BASE_URL = (import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in/").replace(/\/+$/, '') + '/';
 
 const resolveUrl = (url?: string): string => {
   if (!url) return "";

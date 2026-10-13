@@ -44,11 +44,10 @@ const courseSchema = new mongoose.Schema({
   },
   salePrice: {
     type: mongoose.Types.Decimal128,
-    default: 0,
     set: function (value) {
-      // Convert empty strings to 0
+      // Convert empty strings to null so a blank sale price never overrides the regular price
       if (value === '' || value === null || value === undefined) {
-        return 0;
+        return null;
       }
       return value;
     }
@@ -324,7 +323,7 @@ courseSchema.pre('save', function (next) {
     this.price = 0;
   }
   if (this.salePrice === '' || this.salePrice === null || this.salePrice === undefined) {
-    this.salePrice = 0;
+    this.salePrice = null;
   }
   if (this.discountPrice === '' || this.discountPrice === null || this.discountPrice === undefined) {
     this.discountPrice = null;
@@ -337,7 +336,7 @@ courseSchema.pre('save', function (next) {
 courseSchema.pre('validate', function (next) {
   // Clean decimal fields
   if (this.price === '') this.price = 0;
-  if (this.salePrice === '') this.salePrice = 0;
+  if (this.salePrice === '') this.salePrice = null;
   if (this.discountPrice === '') this.discountPrice = undefined;
 
   next();

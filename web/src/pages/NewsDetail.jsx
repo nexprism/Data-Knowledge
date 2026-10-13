@@ -72,7 +72,7 @@ const NewsDetail = () => {
     image: (() => {
         const url = articleData.imageUrl || articleData.coverImage || articleData.image;
         if (!url) return '/news_placeholder.png';
-        const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+        const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
         const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
         return encodeURI(url.startsWith('http') ? url : `${baseUrl}/uploads/news/${url}`);
     })(),

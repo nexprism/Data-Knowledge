@@ -1,8 +1,22 @@
+export type UserRole =
+  | "admin"
+  | "super_admin"
+  | "instructor"
+  | "student"
+  | "news_editor"
+  | string;
+
 export interface User {
-  id: string;
+  id?: string;
+  _id?: string;
   email: string;
-  role: 'USER' | 'ADMIN' | 'MODERATOR';
+  role: UserRole;
+  roles?: string[];
   name?: string;
+  fullName?: string;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  profilePicture?: string;
   createdAt?: string;
   updatedAt?: string;
 }

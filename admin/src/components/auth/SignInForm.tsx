@@ -41,6 +41,10 @@ export default function SignInForm() {
   // Redirect if already authenticated — respect role
   useEffect(() => {
     if (isAuthenticated) {
+      if (currentUser?.mustChangePassword) {
+        navigate("/change-password");
+        return;
+      }
       const role = currentUser?.role || localStorage.getItem("role");
       if (role === "news_editor") {
         navigate("/news");
@@ -113,7 +117,7 @@ export default function SignInForm() {
         // Login successful - persist role and navigate based on role
         const payloadUser = result.payload?.user;
         try {
-          const roleToStore = payloadUser?.role || payloadUser?.data?.role;
+          const roleToStore = payloadUser?.role;
           if (roleToStore) {
             localStorage.setItem("role", String(roleToStore));
           }
@@ -121,7 +125,9 @@ export default function SignInForm() {
           // ignore
         }
 
-        if (payloadUser?.role === "news_editor") {
+        if (payloadUser?.mustChangePassword) {
+          navigate("/change-password");
+        } else if (payloadUser?.role === "news_editor") {
           navigate("/news");
         } else {
           navigate("/");

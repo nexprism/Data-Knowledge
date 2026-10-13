@@ -27,7 +27,8 @@ const Navbar = ({ isLoaded }) => {
   const navLinks = [
     { key: 'home', name: t('home'), path: '/' },
     { key: 'ourCourses', name: t('ourCourses'), path: '/courses' },
-    { key: 'forum', name: t('forum'), path: '/forum' },
+    // { key: 'forum', name: t('forum'), path: '/forum' },
+    { key: 'contact', name: t('contact'), path: '/contact' },
     { key: 'aboutUs', name: t('aboutUs'), path: '/about-us' },
     // { key: 'gig', name: t('gig'), path: '/gig' },
     // { key: 'news', name: t('news'), path: '/news' },

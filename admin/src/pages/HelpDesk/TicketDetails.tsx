@@ -63,7 +63,7 @@ const TicketDetails: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => {
     type: "",
   });
   const ImageUrl =
-    import.meta.env.VITE_IMAGE_URL || "https://api.edrilla.com/uploads/";
+    ((import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in").replace(/\/+$/, '')) + "/uploads/";
 
   useEffect(() => {
     if (ticketId && !ticket) {

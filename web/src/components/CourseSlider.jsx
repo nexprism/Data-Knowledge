@@ -76,7 +76,7 @@ const SwimlaneRow = ({ category, courses, navigate }) => {
                     src={(() => {
                       const imgPath = course.thumbnail || course.horizontalCarouselImage || course.verticalCarouselImage;
                       if (!imgPath) return "/banner.png";
-                      const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+                      const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
                       const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
                       return `${baseUrl}${imgPath.startsWith('/') ? '' : '/'}${imgPath}`;
                     })()}
@@ -136,27 +136,20 @@ const CourseSlider = () => {
     dispatch(fetchCourses())
   }, [dispatch])
 
-  // Group courses by category
-  const categoriesMap = baseCourses.reduce((acc, course) => {
-    const cat = course.category?.name || course.category || course.tag || 'ALL COURSES'
-    if (!acc[cat]) acc[cat] = []
-    acc[cat].push(course)
-    return acc
-  }, {})
+  // Show all courses in a single row (not category-wise)
+  let allCourses = [...baseCourses]
 
   // Repeat backend records only to preserve the existing carousel interaction.
-  Object.keys(categoriesMap).forEach(key => {
-    if (categoriesMap[key].length < 6) {
-      categoriesMap[key] = [...categoriesMap[key], ...categoriesMap[key], ...categoriesMap[key]]
-    }
-  })
+  if (allCourses.length > 0 && allCourses.length < 6) {
+    allCourses = [...allCourses, ...allCourses, ...allCourses]
+  }
 
   return (
     <section className="relative w-full py-12 bg-slate-50 overflow-hidden select-none">
       <div className="flex flex-col gap-6 relative z-20">
-        {Object.entries(categoriesMap).map(([category, courses], idx) => (
-          <SwimlaneRow key={idx} category={category} courses={courses} navigate={navigate} />
-        ))}
+        {allCourses.length > 0 && (
+          <SwimlaneRow category="ALL COURSES" courses={allCourses} navigate={navigate} />
+        )}
       </div>
     </section>
   )

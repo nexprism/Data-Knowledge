@@ -11,7 +11,7 @@ interface EnrollStudentPopupProps {
   studentId?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_BASE_URL || "https://api.edrilla.com";
+const API_BASE_URL = (import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in").replace(/\/+$/, '');
 
 const EnrollStudentPopup: React.FC<EnrollStudentPopupProps> = ({ open, onClose, studentId }) => {
   const dispatch = useAppDispatch<any>();

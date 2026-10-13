@@ -99,7 +99,7 @@ const DashboardNews = () => {
     image: (() => {
         const url = n.imageUrl || n.coverImage || n.image;
         if (!url) return '/news_placeholder.png';
-        const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.edrilla.com';
+        const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
         const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
         const finalUrl = url.startsWith('http') ? url : `${baseUrl}/uploads/news/${url}`;
         return encodeURI(finalUrl);

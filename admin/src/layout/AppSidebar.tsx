@@ -16,7 +16,7 @@ import {
   UserCircleIcon,
   VideoIcon,
 } from "../icons";
-import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare } from "lucide-react";
+import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare, ShieldCheck } from "lucide-react";
 
 type NavSubItem = {
   name: string;
@@ -33,6 +33,7 @@ type NavItem = {
   path?: string;
   subItems?: NavSubItem[];
   keywords?: string[];
+  superAdminOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -185,9 +186,9 @@ const navItems: NavItem[] = [
   },
   {
     icon: <GridIcon />,
-    name: "About Data Knowledge",
+    name: "About Us Page",
     path: "/about-snapshot",
-    keywords: ["about", "us", "snapshot", "data", "knowledge", "company"],
+    keywords: ["about", "us", "snapshot", "data", "knowledge", "company", "page"],
   },
   {
     icon: <PieChartIcon />,
@@ -235,6 +236,13 @@ const navItems: NavItem[] = [
     name: "Live Classes",
     path: "/live-classes",
     keywords: ["zoom", "live", "meetings", "class"],
+  },
+  {
+    icon: <ShieldCheck className="w-5 h-5" />,
+    name: "Admin Management",
+    path: "/admin-users",
+    keywords: ["admins", "admin", "roles", "permissions", "rbac", "super", "access", "users"],
+    superAdminOnly: true,
   },
 ];
 
@@ -532,10 +540,17 @@ const AppSidebar: React.FC = () => {
 
   // Memoized search filtering for navItems
   const searchedNavItems = useMemo(() => {
-    const baseItems =
+    const isSuperAdmin = String(userRole || "").trim() === "super_admin";
+
+    const roleItems =
       userRole === "news_editor"
         ? navItems.filter((nav) => nav.name === "News")
         : navItems;
+
+    // Hide super-admin-only entries from everyone else.
+    const baseItems = roleItems.filter(
+      (nav) => !nav.superAdminOnly || isSuperAdmin
+    );
 
     const term = sidebarSearch.trim().toLowerCase();
     if (!term) return baseItems;

@@ -36,7 +36,7 @@ const Delimiter = getTool(_Delimiter);
 const Underline = getTool(_Underline);
 
 const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BASE_URL || "https://api.edrilla.com").replace(/\/$/, "");
+  (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in").replace(/\/$/, "");
 
 import ComparisonTool from "./ComparisonTool";
 import SimpleVideo from "./SimpleVideo";

@@ -1,7 +1,9 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import http from 'http';
 import { Server } from 'socket.io';
 import app from './app.js';
-import dotenv from 'dotenv';
 import { connectToDatabase } from './db/connect.js';
 import { ServerConfig } from './config/server.config.js';
 // import { initRedis } from './config/redisClient.js';
@@ -15,7 +17,6 @@ import CourseChatMessage from './models/CourseChatMessage.js';
 import mongoose from 'mongoose';
 import path from 'path';
 
-dotenv.config();
 import './cron/wordPressNewsCron.js';
 
 // Serve uploads directory so uploaded files are reachable
@@ -24,39 +25,49 @@ app.use('/uploads', (await import('express')).default.static(path.join(process.c
 // Create the HTTP server for Express and Socket.io
 const server = http.createServer(app);
 
+const isProduction = process.env.NODE_ENV === 'production';
+const socketAllowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
+  "http://127.0.0.1:3000",
+  "https://dataknowledge.in",
+  "https://www.dataknowledge.in",
+  "https://api.dataknowledge.in",
+  "https://admin.dataknowledge.in",
+  "https://classes.dataknowledge.in",
+  "https://data-knowledge.onrender.com",
+  "https://dataknowledge.vercel.app",
+  "https://dataknowledgeadmin.vercel.app",
+  "https://edrilla.com",
+  "https://www.edrilla.com",
+  "https://admin.edrilla.com",
+  "https://api.edrilla.com",
+  "http://edrila.nexprism.in",
+  "https://edrila.nexprism.in",
+  "https://lapaas.com",
+  "https://www.lapaas.com",
+  process.env.ADMIN_URL,
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : []),
+].filter(Boolean));
+
 // Configure Socket.io with CORS
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+      if (!isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
       if (/^https?:\/\/([a-zA-Z0-9-]+\.)*dataknowledge\.in(:\d+)?$/.test(origin)) return callback(null, true);
       if (/^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
       if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) return callback(null, true);
-      const allowed = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "https://dataknowledge.in",
-        "https://www.dataknowledge.in",
-        "https://api.dataknowledge.in",
-        "https://admin.dataknowledge.in",
-        "https://classes.dataknowledge.in",
-        "https://data-knowledge.onrender.com",
-        "https://dataknowledge.vercel.app",
-        "https://dataknowledgeadmin.vercel.app",
-        "https://edrilla.com",
-        "https://edrila.nexprism.in",
-        "http://edrila.nexprism.in",
-        "https://lapaas.com",
-        "https://www.lapaas.com",
-        process.env.ADMIN_URL,
-        process.env.CLIENT_URL,
-        process.env.FRONTEND_URL
-      ].filter(Boolean);
-      if (allowed.includes(origin)) return callback(null, true);
-      callback(null, true); // Allow connection
+      if (socketAllowedOrigins.has(origin)) return callback(null, true);
+      callback(new Error('Origin not allowed by CORS'), false);
     },
     methods: ['GET', 'POST'],
     credentials: true

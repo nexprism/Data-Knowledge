@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import axiosInstance from '../../services/axiosConfig';
-const baseUrl = import.meta.env.VITE_BASE_URL || "https://api.edrilla.com/";
+const baseUrl = (import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in/").replace(/\/+$/, '') + '/';
 
 interface FilterState {
     data: any;

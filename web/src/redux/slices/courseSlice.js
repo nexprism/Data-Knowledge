@@ -68,10 +68,10 @@ const courseSlice = createSlice({
           let price = course.price;
           
           if (salePrice && typeof salePrice === 'object' && salePrice.$numberDecimal) {
-            salePrice = salePrice.$numberDecimal;
+            salePrice = Number(salePrice.$numberDecimal);
           }
           if (price && typeof price === 'object' && price.$numberDecimal) {
-            price = price.$numberDecimal;
+            price = Number(price.$numberDecimal);
           }
           
           let description = course.description || '';
@@ -113,10 +113,10 @@ const courseSlice = createSlice({
           let price = course.price;
           
           if (salePrice && typeof salePrice === 'object' && salePrice.$numberDecimal) {
-            salePrice = salePrice.$numberDecimal;
+            salePrice = Number(salePrice.$numberDecimal);
           }
           if (price && typeof price === 'object' && price.$numberDecimal) {
-            price = price.$numberDecimal;
+            price = Number(price.$numberDecimal);
           }
           
           // Strip HTML from descriptions if they are strings

@@ -14,6 +14,7 @@ const Courses = () => {
   const { courses, loading, error } = useSelector((state) => state.courses)
   const { eventList, loading: eventsLoading } = useSelector((state) => state.events)
   const containerRef = useRef(null)
+  const gridRef = useRef(null)
   const { t } = useLanguage()
   const [activeFilter, setActiveFilter] = useState('ALL COURSES')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -22,6 +23,8 @@ const Courses = () => {
   const [selectedDuration, setSelectedDuration] = useState('All hours')
   const advancedRef = useRef(null)
   const [hasFetchedEvents, setHasFetchedEvents] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 6
 
   const displayCourses = courses || []
 
@@ -93,6 +96,29 @@ const Courses = () => {
     })
   }, [displayCourses, activeFilter, selectedDifficulty, selectedDuration])
 
+  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / ITEMS_PER_PAGE))
+  const safePage = Math.min(currentPage, totalPages)
+
+  const paginatedCourses = useMemo(() => {
+    const start = (safePage - 1) * ITEMS_PER_PAGE
+    return filteredCourses.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredCourses, safePage])
+
+  const handleCategoryChange = (filter) => {
+    setActiveFilter(filter)
+    setCurrentPage(1)
+  }
+
+  const handleDifficultyChange = (level) => {
+    setSelectedDifficulty(level)
+    setCurrentPage(1)
+  }
+
+  const handleDurationChange = (range) => {
+    setSelectedDuration(range)
+    setCurrentPage(1)
+  }
+
   useEffect(() => {
     dispatch(fetchCourses())
     dispatch(fetchEvents({ status: 'active' })).finally(() => setHasFetchedEvents(true))
@@ -135,6 +161,26 @@ const Courses = () => {
 
   const hasActiveEvents = eventList && eventList.length > 0
 
+  const changePage = (page) => {
+    const next = Math.min(Math.max(1, page), totalPages)
+    if (next === safePage) return
+    setCurrentPage(next)
+    if (gridRef.current) {
+      const top = gridRef.current.getBoundingClientRect().top + window.scrollY - 120
+      window.scrollTo({ top, behavior: 'smooth' })
+    }
+  }
+
+  const pageNumbers = (() => {
+    const pages = []
+    const maxButtons = 5
+    let start = Math.max(1, safePage - 2)
+    let end = Math.min(totalPages, start + maxButtons - 1)
+    start = Math.max(1, end - maxButtons + 1)
+    for (let i = start; i <= end; i++) pages.push(i)
+    return pages
+  })()
+
   return (
     <div ref={containerRef} className="min-h-screen bg-dark pb-24">
 
@@ -163,7 +209,7 @@ const Courses = () => {
               {categoryOptions.map((filter) => (
                 <button
                   key={filter}
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => handleCategoryChange(filter)}
                   className={`course-filter-reveal opacity-0 px-5 py-2.5 rounded-full font-inter text-xs font-bold tracking-wider transition-all duration-300 uppercase shadow-sm ${activeFilter === filter
                     ? 'bg-[#3498db] text-white border border-[#3498db] shadow-md shadow-[#3498db]/25'
                     : 'bg-white text-slate-700 border border-slate-200 hover:border-[#3498db]/50 hover:text-[#3498db]'
@@ -213,7 +259,7 @@ const Courses = () => {
                   {['All', 'Beginner', 'Intermediate', 'Advanced'].map((level) => (
                     <button
                       key={level}
-                      onClick={() => setSelectedDifficulty(level)}
+                      onClick={() => handleDifficultyChange(level)}
                       className={`px-5 py-2 rounded-full font-inter text-xs font-bold tracking-wider border transition-all duration-300 uppercase ${selectedDifficulty === level
                         ? 'bg-[#3498db] text-white border-[#3498db] shadow-sm'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-[#3498db]/40 hover:text-[#3498db]'
@@ -239,7 +285,7 @@ const Courses = () => {
                   {['All hours', '0-2 hours', '2-5 hours', '5-10 hours', '10-20 hours', '20+ hours'].map((range) => (
                     <div
                       key={range}
-                      onClick={() => setSelectedDuration(range)}
+                      onClick={() => handleDurationChange(range)}
                       className="flex items-center gap-3 cursor-pointer group/dur"
                     >
                       <div className={`w-4 h-4 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${selectedDuration === range ? 'border-[#3498db] bg-[#3498db]/10' : 'border-slate-300 group-hover/dur:border-[#3498db]'
@@ -290,7 +336,7 @@ const Courses = () => {
                   {categoryOptions.map((filter) => (
                     <button
                       key={filter}
-                      onClick={() => { setActiveFilter(filter); setIsFilterOpen(false); }}
+                      onClick={() => { handleCategoryChange(filter); setIsFilterOpen(false); }}
                       className={`w-full px-6 py-3.5 text-left font-inter text-xs font-bold border-b border-slate-100 last:border-0 transition-colors ${activeFilter === filter ? 'text-[#3498db] bg-[#3498db]/5' : 'text-slate-700 hover:text-[#3498db] hover:bg-slate-50'}`}
                     >
                       {filter}
@@ -303,11 +349,11 @@ const Courses = () => {
         </div>
 
         {/* 3. Asymmetrical Masonry Grid */}
-        <div className="course-grid max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-24 mb-12">
+        <div ref={gridRef} className="course-grid max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-24 mb-12">
           {loading && !displayCourses.length ? (
             <div className="col-span-full text-center py-20 text-[#3498db] font-inter font-bold">LOADING COURSES...</div>
           ) : filteredCourses.length > 0 ? (
-            filteredCourses.map((item) => (
+            paginatedCourses.map((item) => (
               <CourseCard
                 key={item._id || item.id}
                 item={{
@@ -325,6 +371,60 @@ const Courses = () => {
             <div className="col-span-full text-center py-20 text-slate-500 font-inter font-bold">{t('noCoursesAvailable') || 'No courses match your filter criteria.'}</div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="max-w-7xl mx-auto mb-12 flex items-center justify-center gap-2">
+            <button
+              onClick={() => changePage(safePage - 1)}
+              disabled={safePage === 1}
+              className={`px-4 py-2.5 rounded-full font-inter text-xs font-bold tracking-wider uppercase border transition-all duration-300 ${safePage === 1
+                ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                : 'border-slate-200 text-slate-700 hover:border-[#3498db] hover:text-[#3498db]'
+                }`}
+            >
+              Prev
+            </button>
+
+            {pageNumbers[0] > 1 && (
+              <>
+                <button onClick={() => changePage(1)} className="w-10 h-10 rounded-full font-inter text-xs font-bold border border-slate-200 text-slate-700 hover:border-[#3498db] hover:text-[#3498db] transition-all duration-300">1</button>
+                {pageNumbers[0] > 2 && <span className="px-1 text-slate-400">...</span>}
+              </>
+            )}
+
+            {pageNumbers.map((page) => (
+              <button
+                key={page}
+                onClick={() => changePage(page)}
+                className={`w-10 h-10 rounded-full font-inter text-xs font-bold border transition-all duration-300 ${safePage === page
+                  ? 'bg-[#3498db] text-white border-[#3498db] shadow-md shadow-[#3498db]/25'
+                  : 'border-slate-200 text-slate-700 hover:border-[#3498db] hover:text-[#3498db]'
+                  }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            {pageNumbers[pageNumbers.length - 1] < totalPages && (
+              <>
+                {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && <span className="px-1 text-slate-400">...</span>}
+                <button onClick={() => changePage(totalPages)} className="w-10 h-10 rounded-full font-inter text-xs font-bold border border-slate-200 text-slate-700 hover:border-[#3498db] hover:text-[#3498db] transition-all duration-300">{totalPages}</button>
+              </>
+            )}
+
+            <button
+              onClick={() => changePage(safePage + 1)}
+              disabled={safePage === totalPages}
+              className={`px-4 py-2.5 rounded-full font-inter text-xs font-bold tracking-wider uppercase border transition-all duration-300 ${safePage === totalPages
+                ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                : 'border-slate-200 text-slate-700 hover:border-[#3498db] hover:text-[#3498db]'
+                }`}
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         {/* 4. Upcoming Events Section */}
         <div className="events-section max-w-7xl mx-auto pt-20 border-t border-slate-200">

@@ -38,7 +38,7 @@ const Signup = () => {
   useEffect(() => {
     if (error) dispatch(clearAuthError())
     if (localError) setLocalError(null)
-  }, [name, email, password, confirm])
+  }, [name, email, phone, password, confirm])
 
   useEffect(() => {
     // Reset OTP state when email changes
@@ -50,6 +50,14 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim() || !email.trim() || !password.trim()) return
+    if (!phone.trim()) {
+      setLocalError('Phone number is required')
+      return
+    }
+    if (!/^\+?[0-9]{10,15}$/.test(phone.trim())) {
+      setLocalError('Please enter a valid phone number (10-15 digits)')
+      return
+    }
     if (!termsAgreed) {
       setLocalError('Please agree to the Terms of Service & Privacy Policy')
       return
@@ -287,10 +295,10 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Phone (Optional) */}
+              {/* Phone */}
               <div className="auth-field-group">
                 <label className="auth-input-label" htmlFor="signup-phone">
-                  Phone Number <span className="auth-optional-tag">(Optional)</span>
+                  Phone Number
                 </label>
                 <div className="auth-input-wrapper">
                   <svg className="auth-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -304,6 +312,7 @@ const Signup = () => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     autoComplete="tel"
+                    required
                   />
                 </div>
               </div>

@@ -37,6 +37,11 @@ const userSchema = new mongoose.Schema({
 
   // Admin-specific
   isActive: { type: Boolean, default: true },
+  // When true, the user must change their password before using admin features.
+  // Set when a super admin creates/resets an account with a temporary password.
+  mustChangePassword: { type: Boolean, default: false },
+  // Audit: which admin account created this user (admin provisioning only).
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
  documentation: [
   {

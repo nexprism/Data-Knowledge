@@ -22,7 +22,7 @@ const StackingBanners = () => {
       if (!path.startsWith('/') && !path.startsWith('uploads/')) {
         path = `uploads/${path}`
       }
-      const rawBase = import.meta.env.VITE_BASE_URL || 'https://api.edrilla.com'
+      const rawBase = import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in'
       const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '')
       return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`
     } catch {

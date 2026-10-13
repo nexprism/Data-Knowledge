@@ -12,16 +12,49 @@ dotenv.config();
 // Create HTTP server (required for Socket.io)
 const server = http.createServer(app);
 
+const isProduction = process.env.NODE_ENV === "production";
+const serverAllowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
+  "http://127.0.0.1:3000",
+  "https://dataknowledge.in",
+  "https://www.dataknowledge.in",
+  "https://api.dataknowledge.in",
+  "https://admin.dataknowledge.in",
+  "https://classes.dataknowledge.in",
+  "https://data-knowledge.onrender.com",
+  "https://dataknowledge.vercel.app",
+  "https://dataknowledgeadmin.vercel.app",
+  "https://edrilla.com",
+  "https://www.edrilla.com",
+  "https://admin.edrilla.com",
+  "https://api.edrilla.com",
+  "http://edrila.nexprism.in",
+  "https://edrila.nexprism.in",
+  "https://lapaas.com",
+  "https://www.lapaas.com",
+  process.env.ADMIN_URL,
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : []),
+].filter(Boolean));
+
 // Setup Socket.io server
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+      if (!isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
       if (/^https?:\/\/([a-zA-Z0-9-]+\.)*dataknowledge\.in(:\d+)?$/.test(origin)) return callback(null, true);
       if (/^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
       if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) return callback(null, true);
-      return callback(null, true);
+      if (serverAllowedOrigins.has(origin)) return callback(null, true);
+      callback(new Error('Origin not allowed by CORS'), false);
     },
     methods: ["GET", "POST"],
     credentials: true,
@@ -64,7 +97,7 @@ io.on("connection", (socket) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server + Socket.io running on port ${PORT}`);
 });

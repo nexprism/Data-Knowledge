@@ -49,7 +49,7 @@ interface FetchDeleteRequestsParams {
   sort?: Record<string, any>;
 }
 
-const API_BASE_URL = import.meta.env.VITE_BASE_URL || "https://api.edrilla.com";
+const API_BASE_URL = (import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in").replace(/\/+$/, '');
 
 // Fetch delete requests with pagination and filters
 export const fetchDeleteRequests = createAsyncThunk(
