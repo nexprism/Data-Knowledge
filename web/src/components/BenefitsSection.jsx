@@ -1,76 +1,127 @@
 import React, { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/all'
-import sanitizeDisplay from '../utils/textSanitize'
-import { useLanguage } from '../context/LanguageContext'
+import sanitizeDisplay, { extractEditorBlocks, sanitizeParagraph } from '../utils/textSanitize'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const 
-BenefitsSection = ({ course, section }) => {
+const BenefitsSection = ({ course, section }) => {
   const containerRef = useRef(null)
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // 90% lighter and faster grid animation (y: 4px, scale: 0.99, duration: 0.25s, stagger: 0.02s)
-      gsap.fromTo('.benefit-card',
-        { opacity: 0, y: 4, scale: 0.99 },
+      gsap.fromTo(
+        '.benefit-head-reveal',
+        { y: 20, opacity: 0 },
         {
-          opacity: 1, y: 0, scale: 1, duration: 0.25, ease: 'power3.out', stagger: 0.02,
-          scrollTrigger: {
-            trigger: '.benefit-grid',
-            start: 'top 96%',
-          }
+          y: 0,
+          opacity: 1,
+          duration: 0.7,
+          ease: 'power3.out',
+          scrollTrigger: { trigger: containerRef.current, start: 'top 85%' }
+        }
+      )
+
+      gsap.fromTo(
+        '.benefit-card-reveal',
+        { y: 25, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.6,
+          stagger: 0.08,
+          ease: 'power3.out',
+          scrollTrigger: { trigger: '.benefit-grid', start: 'top 85%' }
         }
       )
     }, containerRef)
+
     return () => ctx.revert()
   }, [])
 
+  const rawTitle = section?.title || "Key Benefits & Outcomes"
+  const displayTitle = sanitizeParagraph(rawTitle)
+  const descriptionParagraphs = extractEditorBlocks(section?.content)
+
+  const points = (section?.points && section.points.length > 0)
+    ? section.points.filter(p => Boolean(p && String(p).trim()))
+    : [
+        "Improve analytical and critical-thinking skills",
+        "Understand data patterns, distributions, and trends",
+        "Make informed, confident, data-driven decisions",
+        "Solve complex business challenges with structured methods"
+      ]
+
   return (
-    <section ref={containerRef} className="max-w-7xl mx-auto py-20">
-      <div className="grid grid-cols-1 min-[1301px]:grid-cols-[1fr_1.8fr] gap-12 min-[1301px]:gap-20 items-start mb-24 px-4 md:px-0">
-        <div className="space-y-8 min-[1301px]:sticky min-[1301px]:top-32 transition-all duration-500">
-          <h2 className="font-inter text-4xl md:text-5xl lg:text-6xl text-white font-extralight tracking-tight leading-[1.1]">
-            {sanitizeDisplay(section?.title || "What You Will Achieve").split(' ').map((word, i, arr) => (
-              <React.Fragment key={i}>
-                {i === arr.length - 1 ? (
-                  <span className="text-accent">{word}</span>
-                ) : (
-                  word + ' '
-                )}
-              </React.Fragment>
-            ))}
-          </h2>
-          <div className="h-[2px] bg-accent/40 w-24" />
+    <section ref={containerRef} className="max-w-7xl mx-auto py-12 md:py-20 px-4 sm:px-6 md:px-0">
+      
+      {/* SECTION HEADER */}
+      <div className="benefit-head-reveal text-center max-w-3xl mx-auto mb-12 md:mb-16 space-y-3.5">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 text-[#3498db] text-xs font-semibold tracking-wide uppercase">
+          <span className="w-2 h-2 rounded-full bg-[#3498db] animate-pulse" />
+          <span>Program Outcomes</span>
         </div>
 
-        {section?.content && (
-          <div className="min-[1301px]:border-l border-white/10 pl-0 min-[1301px]:pl-12 space-y-10 py-2">
-            {section.content.blocks?.map((block, i) => (
-              <p key={i} className={`font-montserrat leading-[1.8] tracking-wide ${i === 0 ? 'text-lg md:text-xl text-white/95 font-medium' : 'text-sm md:text-base text-white/70 font-light'}`}>
-                {sanitizeDisplay(block.data?.text || '').replace(/&nbsp;/g, ' ')}
-              </p>
+        <h2 className="font-inter text-3xl sm:text-4xl lg:text-[2.6rem] font-bold text-slate-900 tracking-tight leading-tight">
+          {displayTitle.split(' ').map((word, i, arr) => (
+            <React.Fragment key={i}>
+              {i >= Math.max(1, arr.length - 2) ? (
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">
+                  {word}{' '}
+                </span>
+              ) : (
+                word + ' '
+              )}
+            </React.Fragment>
+          ))}
+        </h2>
+
+        {descriptionParagraphs.length > 0 && (
+          <div className="space-y-2 text-slate-600 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto pt-1">
+            {descriptionParagraphs.map((para, i) => (
+              <p key={i}>{para}</p>
             ))}
           </div>
         )}
       </div>
 
-      <div className="benefit-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {section?.points?.map((feat, i) => (
-          <div key={i} className="benefit-card border border-white/5 bg-white/[0.01] p-8 md:p-10 backdrop-blur-xl relative group hover:border-accent/40 transition-all duration-700">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
-              <span className="font-jetbrains text-[40px] font-black text-accent">{String(i + 1).padStart(2, '0')}</span>
+      {/* BENEFITS CARDS GRID */}
+      <div className="benefit-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {points.map((feat, i) => (
+          <div
+            key={i}
+            className="benefit-card-reveal group bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-sm hover:shadow-xl hover:border-[#3498db]/40 transition-all duration-300 relative overflow-hidden flex flex-col justify-between"
+          >
+            {/* Ambient Corner Accent */}
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-bl-full pointer-events-none group-hover:bg-blue-100/50 transition-colors" />
+
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/80 text-[#3498db] flex items-center justify-center shadow-sm">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <span className="font-inter text-2xl font-extrabold text-slate-200 group-hover:text-[#3498db]/30 transition-colors">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+              </div>
+
+              <p className="font-inter text-slate-800 font-semibold text-sm sm:text-base leading-snug">
+                {sanitizeParagraph(feat)}
+              </p>
             </div>
-            <div className="flex items-center gap-6">
-              <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_#8B5CF6]" />
-              <span className="font-montserrat text-[12px] text-normal font-bold tracking-[0.2em] uppercase leading-relaxed">
-                {feat}
-              </span>
+
+            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-semibold text-[#3498db]">
+              <span>Verified Skill</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
           </div>
         ))}
       </div>
+
     </section>
   )
 }

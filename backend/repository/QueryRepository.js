@@ -16,13 +16,14 @@ export default class QueryRepository {
 
       const query = { isDeleted: false };
 
-      // Search by name, email, phone, message
+      // Search by name, email, phone, message, courseTitle
       if (search) {
         query.$or = [
           { name: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
           { phone: { $regex: search, $options: 'i' } },
-          { message: { $regex: search, $options: 'i' } }
+          { message: { $regex: search, $options: 'i' } },
+          { courseTitle: { $regex: search, $options: 'i' } }
         ];
       }
 
@@ -30,6 +31,7 @@ export default class QueryRepository {
       if (category) query.category = category;
 
       const data = await Query.find(query)
+        .populate('course', 'title slug thumbnail price salePrice')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -51,7 +53,7 @@ export default class QueryRepository {
 
   async findById(id) {
     try {
-      return await Query.findById(id);
+      return await Query.findById(id).populate('course', 'title slug thumbnail price salePrice');
     } catch (error) {
       console.error('QueryRepository.findById error:', error);
       throw error;

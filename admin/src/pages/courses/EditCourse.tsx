@@ -525,8 +525,14 @@ const EditCourse = () => {
         landingPageSections: (course.landingPageSections && course.landingPageSections.length > 0)
           ? course.landingPageSections.map((s: any, i: number) => ({
             ...s,
+            id: s.id || s._id || `sec-${i}`,
             order: s.order ?? i,
             sortOrder: s.sortOrder ?? i,
+            data: {
+              ...s.data,
+              description: parseEditorData(s.data?.description || (s.type === 'overview' ? course.overviewSection?.description : undefined)),
+              content: parseEditorData(s.data?.content || (s.type === 'comparison' ? course.comparisonSection?.content : s.type === 'benefits' ? course.benefitsSection?.content : s.type === 'solution' ? course.solutionSection?.content : undefined))
+            }
           }))
           : [
             { id: "1", type: "overview", order: 0, sortOrder: 0, data: { show: course.overviewSection?.show || false, title: course.overviewSection?.title || "", subtitle: course.overviewSection?.subtitle || "", description: parseEditorData(course.overviewSection?.description), images: course.overviewSection?.images || [] } },

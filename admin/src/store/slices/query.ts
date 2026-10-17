@@ -10,6 +10,9 @@ interface Query {
   message: string;
   category: string;
   status: string;
+  courseTitle?: string;
+  course?: any;
+  source?: string;
   isDeleted: boolean;
   createdAt?: string;
   updatedAt?: string;

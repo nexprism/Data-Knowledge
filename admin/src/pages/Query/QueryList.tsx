@@ -27,6 +27,9 @@ interface Query {
   message: string;
   category: string;
   status: string;
+  courseTitle?: string;
+  course?: any;
+  source?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -66,7 +69,8 @@ const QueryList: React.FC = () => {
       const matchesSearch = searchInput === "" || 
         query.name.toLowerCase().includes(searchInput.toLowerCase()) ||
         query.email.toLowerCase().includes(searchInput.toLowerCase()) ||
-        query.message.toLowerCase().includes(searchInput.toLowerCase());
+        query.message.toLowerCase().includes(searchInput.toLowerCase()) ||
+        (query.courseTitle && query.courseTitle.toLowerCase().includes(searchInput.toLowerCase()));
       
       const matchesStatus = statusFilter === "" || query.status === statusFilter;
       const matchesCategory = categoryFilter === "" || query.category === categoryFilter;
@@ -344,7 +348,14 @@ const QueryList: React.FC = () => {
                       {startIndex + idx + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {query.name}
+                      <div>{query.name}</div>
+                      {query.courseTitle && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-[#1a5276] border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                            📚 {query.courseTitle}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                       {query.email}
@@ -447,18 +458,48 @@ const QueryList: React.FC = () => {
         ✕
       </button>
 
-      <h2 className="text-lg font-semibold mb-4 text-gray-800">
-        Update Status
+      <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
+        Query Details & Status
       </h2>
 
+      {/* Query & Student Information */}
+      <div className="mb-4 p-3.5 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2 text-xs text-gray-600 dark:text-gray-300">
+        <div>
+          <span className="font-semibold text-gray-700 dark:text-gray-200">Student Name: </span>
+          <span className="font-medium text-gray-900 dark:text-white">{selectedQuery.name}</span>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <div>
+            <span className="font-semibold text-gray-700 dark:text-gray-200">Email: </span>
+            <a href={`mailto:${selectedQuery.email}`} className="text-blue-600 hover:underline">{selectedQuery.email}</a>
+          </div>
+          <div>
+            <span className="font-semibold text-gray-700 dark:text-gray-200">Phone: </span>
+            <a href={`tel:${selectedQuery.phone}`} className="text-blue-600 hover:underline">{selectedQuery.phone}</a>
+          </div>
+        </div>
+        {selectedQuery.courseTitle && (
+          <div>
+            <span className="font-semibold text-gray-700 dark:text-gray-200">Course Inquired: </span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{selectedQuery.courseTitle}</span>
+          </div>
+        )}
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+          <span className="font-semibold text-gray-700 dark:text-gray-200 block mb-1">Query / Message:</span>
+          <div className="p-2.5 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap max-h-36 overflow-y-auto font-normal">
+            {selectedQuery.message}
+          </div>
+        </div>
+      </div>
+
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Status
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Update Status
         </label>
         <select
           value={modalStatus}
           onChange={(e) => setModalStatus(e.target.value)}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
         >
           {allowedStatuses.map((status) => (
             <option key={status.value} value={status.value}>

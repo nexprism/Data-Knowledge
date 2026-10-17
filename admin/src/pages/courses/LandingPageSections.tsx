@@ -127,10 +127,11 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                     const sTemplate = sectionTemplates[section.type as keyof typeof sectionTemplates];
                     const Icon = sTemplate?.icon || Layout;
                     const sData = section.data;
+                    const secId = section.id || section._id || `sec-${index}`;
 
                     return (
                         <div
-                            key={section.id}
+                            key={secId}
                             draggable
                             onDragStart={(e) => onDragStart(e, index)}
                             onDragOver={(e) => e.preventDefault()}
@@ -186,7 +187,7 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                                             <input type="text" placeholder="Section Title (e.g., What is a Solopreneur?)" value={sData.title} onChange={(e) => updateSectionData(index, { ...sData, title: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 dark:bg-gray-800 dark:text-gray-200" />
                                             <input type="text" placeholder="Subtitle" value={sData.subtitle} onChange={(e) => updateSectionData(index, { ...sData, subtitle: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 dark:bg-gray-800 dark:text-gray-200" />
                                             <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-                                                <Editor key={`overview-editor-${section.id}`} holder={`overview-editor-${section.id}`} data={sData.description} onChange={(data: any) => updateSectionData(index, { ...sData, description: data })} uploadEndpoint="/courses/images" />
+                                                <Editor key={`overview-editor-${secId}`} holder={`overview-editor-${secId}`} data={sData.description} onChange={(data: any) => updateSectionData(index, { ...sData, description: data })} uploadEndpoint="/courses/images" />
                                             </div>
                                         </>
                                     )}
@@ -199,7 +200,7 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Section Title & Description</label>
                                                     <input type="text" placeholder="Section Title" value={sData.title} onChange={(e) => updateSectionData(index, { ...sData, title: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 dark:bg-gray-800 dark:text-gray-200" />
                                                     <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-                                                        <Editor key={`comparison-desc-${section.id}`} holder={`comparison-desc-${section.id}`} data={sData.description} onChange={(data: any) => updateSectionData(index, { ...sData, description: data })} uploadEndpoint="/courses/images" />
+                                                        <Editor key={`comparison-desc-${secId}`} holder={`comparison-desc-${secId}`} data={sData.description} onChange={(data: any) => updateSectionData(index, { ...sData, description: data })} uploadEndpoint="/courses/images" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -243,7 +244,7 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                                         <>
                                             <input type="text" placeholder="Section Title" value={sData.title} onChange={(e) => updateSectionData(index, { ...sData, title: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 dark:bg-gray-800 dark:text-gray-200" />
                                             <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-                                                <Editor key={`benefit-editor-${section.id}`} holder={`benefit-editor-${section.id}`} data={sData.content} onChange={(data: any) => updateSectionData(index, { ...sData, content: data })} uploadEndpoint="/courses/images" />
+                                                <Editor key={`benefit-editor-${secId}`} holder={`benefit-editor-${secId}`} data={sData.content} onChange={(data: any) => updateSectionData(index, { ...sData, content: data })} uploadEndpoint="/courses/images" />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Key Benefits Points</label>
@@ -267,7 +268,7 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                                             <input type="text" placeholder="Subtitle (e.g., Exact Frameworks that works)" value={sData.subtitle} onChange={(e) => updateSectionData(index, { ...sData, subtitle: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 dark:bg-gray-800 dark:text-gray-200" />
                                             <input type="text" placeholder="Media URL (Image or Video)" value={sData.media} onChange={(e) => updateSectionData(index, { ...sData, media: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 dark:bg-gray-800 dark:text-gray-200" />
                                             <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-                                                <Editor key={`framework-editor-${section.id}`} holder={`framework-editor-${section.id}`} data={sData.description} onChange={(data: any) => updateSectionData(index, { ...sData, description: data })} uploadEndpoint="/courses/images" />
+                                                <Editor key={`framework-editor-${secId}`} holder={`framework-editor-${secId}`} data={sData.description} onChange={(data: any) => updateSectionData(index, { ...sData, description: data })} uploadEndpoint="/courses/images" />
                                             </div>
                                         </>
                                     )}
@@ -278,7 +279,7 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                                             <input type="text" placeholder="Section Title (e.g., Solve Your Biggest Problems)" value={sData.title} onChange={(e) => updateSectionData(index, { ...sData, title: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 dark:bg-gray-800 dark:text-gray-200" />
                                             <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 px-4 pt-4">Main Content</label>
-                                                <Editor key={`solution-editor-${section.id}`} holder={`solution-editor-${section.id}`} data={sData.content} onChange={(data: any) => updateSectionData(index, { ...sData, content: data })} uploadEndpoint="/courses/images" />
+                                                <Editor key={`solution-editor-${secId}`} holder={`solution-editor-${secId}`} data={sData.content} onChange={(data: any) => updateSectionData(index, { ...sData, content: data })} uploadEndpoint="/courses/images" />
                                             </div>
                                             <div className="mb-8 p-4 border border-gray-200 dark:border-gray-800 rounded-xl bg-white/30 dark:bg-gray-800/30">
                                                 <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Phase 1: What we Solve (Challenges)</label>
@@ -291,7 +292,7 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                                                 />
                                                 <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 mb-4">
                                                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 px-3 pt-2 text-transform: uppercase">Challenge Description</label>
-                                                    <Editor key={`outcome-desc-editor-${section.id}`} holder={`outcome-desc-editor-${section.id}`} data={sData.outcomeDescription} onChange={(data: any) => updateSectionData(index, { ...sData, outcomeDescription: data })} uploadEndpoint="/courses/images" />
+                                                    <Editor key={`outcome-desc-editor-${secId}`} holder={`outcome-desc-editor-${secId}`} data={sData.outcomeDescription} onChange={(data: any) => updateSectionData(index, { ...sData, outcomeDescription: data })} uploadEndpoint="/courses/images" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     {(sData.outcomePoints || [""]).map((point: any, pIndex: number) => (
@@ -337,7 +338,7 @@ export default function LandingPageSections({ formData, setFormData }: any) {
                                                 />
                                                 <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 mb-4">
                                                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 px-3 pt-2 text-transform: uppercase">Solution Description</label>
-                                                    <Editor key={`solution-desc-editor-${section.id}`} holder={`solution-desc-editor-${section.id}`} data={sData.solutionDescription} onChange={(data: any) => updateSectionData(index, { ...sData, solutionDescription: data })} uploadEndpoint="/courses/images" />
+                                                    <Editor key={`solution-desc-editor-${secId}`} holder={`solution-desc-editor-${secId}`} data={sData.solutionDescription} onChange={(data: any) => updateSectionData(index, { ...sData, solutionDescription: data })} uploadEndpoint="/courses/images" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     {(sData.points || [""]).map((point: any, pIndex: number) => (

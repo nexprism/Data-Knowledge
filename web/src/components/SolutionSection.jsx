@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/all'
-import sanitizeDisplay from '../utils/textSanitize'
+import sanitizeDisplay, { extractEditorBlocks, sanitizeParagraph } from '../utils/textSanitize'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -10,131 +10,158 @@ const SolutionSection = ({ course, section }) => {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // 1. Reveal headers and descriptions (90% lighter)
-      gsap.utils.toArray('.sol-title').forEach((title) => {
-        gsap.fromTo(title,
-          { opacity: 0, y: 6 },
-          {
-            opacity: 1, y: 0,
-            duration: 0.35, ease: 'power3.out',
-            scrollTrigger: { trigger: title, start: 'top 95%' }
-          }
-        )
-      })
+      gsap.fromTo(
+        '.sol-head-reveal',
+        { y: 20, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.7,
+          ease: 'power3.out',
+          scrollTrigger: { trigger: ref.current, start: 'top 85%' }
+        }
+      )
 
-      gsap.utils.toArray('.sol-desc').forEach((desc) => {
-        gsap.fromTo(desc,
-          { opacity: 0, y: 4 },
+      gsap.utils.toArray('.sol-point-card').forEach((card) => {
+        gsap.fromTo(
+          card,
+          { opacity: 0, y: 15 },
           {
-            opacity: 1, y: 0,
-            duration: 0.3, ease: 'power3.out',
-            scrollTrigger: { trigger: desc, start: 'top 95%' }
-          }
-        )
-      })
-
-      // 2. Individual Point Grid Cards (challenges & outcomes)
-      // Iterating individually ensures each card animates only when it crosses its own trigger line.
-      gsap.utils.toArray('.sol-point').forEach((point, i) => {
-        gsap.fromTo(point,
-          { opacity: 0, x: -4, scale: 0.99 },
-          {
-            opacity: 1, x: 0, scale: 1,
-            duration: 0.25,
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
             ease: 'power3.out',
-            scrollTrigger: {
-              trigger: point,
-              start: 'top 95%'
-            }
+            scrollTrigger: { trigger: card, start: 'top 92%' }
           }
         )
       })
     }, ref)
+
     return () => ctx.revert()
   }, [])
 
-  // Process EditorJS content for the description text blocks
-  const descriptionBlocks = section?.content?.blocks?.map(block => 
-    sanitizeDisplay(block.data?.text || '').replace(/&nbsp;/g, ' ')
-  ) || [];
+  const descriptionBlocks = extractEditorBlocks(section?.content)
+  const outcomeDescriptionBlocks = extractEditorBlocks(section?.outcomeDescription)
+  const solutionDescriptionBlocks = extractEditorBlocks(section?.solutionDescription)
+
+  const sectionTitle = sanitizeParagraph(section?.title) || "Problems We Solve & Program Outcomes"
+
+  const outcomePoints = (section?.outcomePoints && section.outcomePoints.length > 0)
+    ? section.outcomePoints.filter(p => Boolean(p && String(p).trim()))
+    : []
+
+  const solutionPoints = (section?.points && section.points.length > 0)
+    ? section.points.filter(p => Boolean(p && String(p).trim()))
+    : []
+
+  // If section has nothing configured, don't render an empty section
+  if (!section?.title && outcomePoints.length === 0 && solutionPoints.length === 0 && descriptionBlocks.length === 0) {
+    return null
+  }
 
   return (
-    <section ref={ref} className="max-w-7xl mx-auto py-20">
-      <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-accent/40 to-transparent mb-16" />
-
-      <div className="grid grid-cols-1 min-[1301px]:grid-cols-[1fr_1.8fr] gap-12 min-[1301px]:gap-20 items-start mb-28 px-4 md:px-0">
-        <div className="space-y-8 min-[1301px]:sticky min-[1301px]:top-32 transition-all duration-500">
-          <h2 className="sol-title font-inter text-4xl md:text-5xl lg:text-6xl text-white font-extralight tracking-tight leading-[1.1]">
-            {sanitizeDisplay(section?.title || "The Solution").split(' ').map((word, i, arr) => (
-              <React.Fragment key={i}>
-                {i === arr.length - 1 ? (
-                  <span className="text-accent">{word}</span>
-                ) : (
-                  word + ' '
-                )}
-              </React.Fragment>
-            ))}
-          </h2>
-          <div className="h-[2px] bg-accent/40 w-24" />
+    <section ref={ref} className="max-w-7xl mx-auto py-12 md:py-20 px-4 sm:px-6 md:px-0">
+      
+      {/* SECTION HEADER */}
+      <div className="sol-head-reveal text-center max-w-3xl mx-auto mb-14 space-y-3.5">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 text-[#3498db] text-xs font-semibold tracking-wide uppercase">
+          <span className="w-2 h-2 rounded-full bg-[#3498db] animate-pulse" />
+          <span>Practical Solutions</span>
         </div>
 
-        <div className="min-[1301px]:border-l border-white/10 pl-0 min-[1301px]:pl-12 py-2">
-          <div className="space-y-4">
-            {descriptionBlocks.map((text, i) => (
-              <p key={i} className={`font-montserrat leading-[1.8] tracking-wide ${i === 0 ? 'text-lg md:text-xl text-white/95 font-medium' : 'text-sm md:text-base text-white/70 font-light'}`}>
-                {text}
-              </p>
+        <h2 className="font-inter text-3xl sm:text-4xl lg:text-[2.6rem] font-bold text-slate-900 tracking-tight leading-tight">
+          {sectionTitle.split(' ').map((word, i, arr) => (
+            <React.Fragment key={i}>
+              {i >= Math.max(1, arr.length - 2) ? (
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">
+                  {word}{' '}
+                </span>
+              ) : (
+                word + ' '
+              )}
+            </React.Fragment>
+          ))}
+        </h2>
+
+        {descriptionBlocks.length > 0 && (
+          <div className="space-y-2 text-slate-600 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto pt-1">
+            {descriptionBlocks.map((para, i) => (
+              <p key={i}>{para}</p>
             ))}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* What we Solve Section (Challenges - Red X) */}
-      {(section?.outcomeTitle || (section?.outcomePoints && section.outcomePoints.length > 0)) && (
-        <div className="space-y-16 mb-20">
-          {section?.outcomeTitle && (
-            <div className="text-center">
-              <h3 className="sol-title font-inter text-3xl md:text-5xl text-normal font-extralight tracking-tight">
-                {sanitizeDisplay(section.outcomeTitle)}
-              </h3>
-            </div>
-          )}
-          
+      {/* PHASE 1: CHALLENGES / WHAT WE SOLVE */}
+      {outcomePoints.length > 0 && (
+        <div className="mb-16 space-y-6">
+          <div className="text-center space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Phase 1: Challenges</span>
+            <h3 className="font-inter text-2xl sm:text-3xl font-bold text-slate-800">
+              {sanitizeParagraph(section?.outcomeTitle) || "Problems We Address"}
+            </h3>
+            {outcomeDescriptionBlocks.length > 0 && (
+              <p className="text-slate-500 text-sm max-w-xl mx-auto">
+                {outcomeDescriptionBlocks[0]}
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
-            {section?.outcomePoints?.map((p, i) => (
-              <div key={i} className="sol-point group flex items-center gap-5 px-6 py-5 bg-red-500/[0.2] border-l-2 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.02)] transition-all duration-500">
-                <div className="w-8 h-8 rounded-full border border-red-500/40 flex items-center justify-center shrink-0 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="4"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            {outcomePoints.map((point, i) => (
+              <div
+                key={i}
+                className="sol-point-card bg-rose-50/50 border border-rose-200/70 rounded-2xl p-5 flex items-center gap-4 shadow-sm"
+              >
+                <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
-                <span className="font-montserrat text-sm text-red-400 font-normal tracking-wide uppercase">{sanitizeDisplay(p)}</span>
+                <span className="text-sm font-medium text-slate-700 leading-snug">
+                  {sanitizeParagraph(point)}
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Solutions Section (Outcomes - Green Check) */}
-      <div className="space-y-16">
-        {section?.solutionTitle && (
-          <div className="text-center">
-            <h3 className="sol-title font-inter text-3xl md:text-5xl text-normal font-extralight tracking-tight">
-              {sanitizeDisplay(section.solutionTitle)}
+      {/* PHASE 2: SOLUTIONS / OUTCOMES */}
+      {solutionPoints.length > 0 && (
+        <div className="space-y-6">
+          <div className="text-center space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#3498db]">Phase 2: Solutions</span>
+            <h3 className="font-inter text-2xl sm:text-3xl font-bold text-slate-900">
+              {sanitizeParagraph(section?.solutionTitle) || "By Program's End, You'll Have"}
             </h3>
+            {solutionDescriptionBlocks.length > 0 && (
+              <p className="text-slate-500 text-sm max-w-xl mx-auto">
+                {solutionDescriptionBlocks[0]}
+              </p>
+            )}
           </div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
-          {section?.points?.map((p, i) => (
-            <div key={i} className="sol-point group flex items-center gap-5 px-6 py-5 bg-accent/[0.2] border-l-2 border-accent shadow-[0_0_30px_rgba(139, 92, 246,0.08)] transition-all duration-500">
-              <div className="w-8 h-8 rounded-full border border-accent/60 flex items-center justify-center shrink-0 bg-accent/20 shadow-[0_0_15px_rgba(139, 92, 246,0.5)]">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="4"><path d="M20 6L9 17l-5-5" /></svg>
-              </div>
-              <span className="font-montserrat text-sm text-accent font-normal tracking-wide uppercase">{sanitizeDisplay(p)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-accent/20 to-transparent mt-20" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
+            {solutionPoints.map((point, i) => (
+              <div
+                key={i}
+                className="sol-point-card bg-white border border-blue-200/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md hover:border-[#3498db] transition-all"
+              >
+                <div className="w-8 h-8 rounded-full bg-blue-50 text-[#3498db] flex items-center justify-center shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-slate-800 leading-snug">
+                  {sanitizeParagraph(point)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </section>
   )
 }

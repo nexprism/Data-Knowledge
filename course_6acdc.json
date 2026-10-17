@@ -1,0 +1,369 @@
+﻿{
+    "success":  true,
+    "message":  "✅ Course retrieved successfully with video playback info",
+    "data":  {
+                 "course":  {
+                                "_id":  "6acdc5b80574881c2c217018",
+                                "title":  "xyz",
+                                "subtitle":  "",
+                                "slug":  "xyz",
+                                "description":  "",
+                                "seoMetaDescription":  "",
+                                "seoContent":  "",
+                                "enrolledStudents":  [
+
+                                                     ],
+                                "enrolledStudentsCount":  0,
+                                "thumbnail":  "uploads/1791870392331-ChatGPT Image Sep 26, 2026, 12_27_11 PM.png",
+                                "demoVideo":  "",
+                                "level":  [
+                                              "intermediate"
+                                          ],
+                                "modules":  [
+
+                                            ],
+                                "price":  {
+                                              "$numberDecimal":  "2500"
+                                          },
+                                "salePrice":  null,
+                                "currency":  "INR",
+                                "duration":  null,
+                                "totalLessons":  0,
+                                "coInstructors":  [
+
+                                                  ],
+                                "isPublished":  true,
+                                "enrollmentType":  "open",
+                                "currentEnrollments":  0,
+                                "salesCount":  0,
+                                "revenue":  0,
+                                "tags":  [
+                                             "Web Development"
+                                         ],
+                                "prerequisites":  "None",
+                                "learningOutcomes":  [
+
+                                                     ],
+                                "completionCriteria":  {
+                                                           "type":  "all_lessons",
+                                                           "value":  100,
+                                                           "requiredLessons":  [
+
+                                                                               ]
+                                                       },
+                                "certificateTemplate":  "false",
+                                "isDownloadable":  false,
+                                "certificateImage":  "",
+                                "certificateTitle":  "Certificate of Completion",
+                                "certificateSubtitle":  "Awarded for Excellence",
+                                "certificateRecipientName":  "Student Name",
+                                "certificateIssuerName":  "",
+                                "certificateIssuerTitle":  "",
+                                "certificateOrganization":  "Lapaas LMS",
+                                "certificateDescription":  "",
+                                "courseForum":  false,
+                                "enableQA":  true,
+                                "enableReviews":  true,
+                                "isPrivate":  false,
+                                "enableWaitlist":  false,
+                                "languages":  [
+
+                                              ],
+                                "topic":  [
+
+                                          ],
+                                "difficulty":  "medium",
+                                "requirements":  [
+
+                                                 ],
+                                "targetAudience":  [
+
+                                                   ],
+                                "coursePosition":  null,
+                                "suitablePersonalityTypes":  [
+
+                                                             ],
+                                "averageRating":  0,
+                                "totalReviews":  0,
+                                "totalViews":  0,
+                                "isLive":  false,
+                                "popular":  false,
+                                "isFeatured":  false,
+                                "dripSettingDisabledFor":  [
+
+                                                           ],
+                                "contentSections":  [
+
+                                                    ],
+                                "brandColors":  {
+                                                    "primary":  "#000000",
+                                                    "secondary":  "#ffffff",
+                                                    "accent":  "#ff0000"
+                                                },
+                                "featuredIn":  [
+
+                                               ],
+                                "highlights":  [
+
+                                               ],
+                                "mentorName":  "",
+                                "mentorTitle":  "",
+                                "mentorDescription":  "",
+                                "mentorImage":  "",
+                                "mentorAchievements":  [
+
+                                                       ],
+                                "mentorSocialLinks":  {
+                                                          "linkedin":  "",
+                                                          "twitter":  "",
+                                                          "youtube":  "",
+                                                          "website":  ""
+                                                      },
+                                "landingPageSections":  [
+                                                            {
+                                                                "_id":  "6acdc5b80574881c2c217019",
+                                                                "type":  "overview",
+                                                                "data":  {
+                                                                             "show":  true,
+                                                                             "title":  "Data Knowledge Introduction",
+                                                                             "subtitle":  "Understand Data. Build Knowledge. Make Smarter Decisions.",
+                                                                             "description":  {
+                                                                                                 "time":  1792218869643,
+                                                                                                 "blocks":  " ",
+                                                                                                 "version":  "2.31.5"
+                                                                                             },
+                                                                             "images":  [
+
+                                                                                        ]
+                                                                         }
+                                                            },
+                                                            {
+                                                                "_id":  "6acdc5b80574881c2c21701a",
+                                                                "type":  "comparison",
+                                                                "data":  {
+                                                                             "show":  true,
+                                                                             "title":  "Traditional Learning vs Our Data Knowledge Program",
+                                                                             "leftTitle":  "Traditional Program",
+                                                                             "rightTitle":  "Our Program",
+                                                                             "content":  null,
+                                                                             "leftPoints":  [
+                                                                                                "Heavy focus on theoretical concepts",
+                                                                                                "Limited real-world applications",
+                                                                                                "Complex explanations for beginners",
+                                                                                                "Less emphasis on practical problem-solving",
+                                                                                                "Difficult to connect learning with business decisions"
+                                                                                            ],
+                                                                             "rightPoints":  [
+                                                                                                 "Practical, easy-to-understand learning",
+                                                                                                 "Real-world examples and case studies",
+                                                                                                 "Step-by-step guidance for beginners",
+                                                                                                 "Hands-on data interpretation exercises",
+                                                                                                 "Focus on actionable insights and decision-making"
+                                                                                             ],
+                                                                             "description":  {
+                                                                                                 "time":  1792218917853,
+                                                                                                 "blocks":  "",
+                                                                                                 "version":  "2.31.5"
+                                                                                             }
+                                                                         }
+                                                            },
+                                                            {
+                                                                "_id":  "6acdc5b80574881c2c21701b",
+                                                                "type":  "benefits",
+                                                                "data":  {
+                                                                             "show":  true,
+                                                                             "title":  "Benefits of Data Knowledge",
+                                                                             "content":  {
+                                                                                             "time":  1792219077551,
+                                                                                             "blocks":  "",
+                                                                                             "version":  "2.31.5"
+                                                                                         },
+                                                                             "points":  [
+                                                                                            "Improve analytical and critical-thinking skills",
+                                                                                            "Understand data patterns and trends",
+                                                                                            "Make informed, data-driven decisions",
+                                                                                            "Solve problems using meaningful insights"
+                                                                                        ]
+                                                                         }
+                                                            },
+                                                            {
+                                                                "_id":  "6acdc5b80574881c2c21701c",
+                                                                "type":  "framework",
+                                                                "data":  {
+                                                                             "show":  true,
+                                                                             "title":  "Master Data Knowledge Step by Step",
+                                                                             "subtitle":  "A Practical Framework for Understanding and Using Data",
+                                                                             "description":  {
+                                                                                                 "time":  1792219140617,
+                                                                                                 "blocks":  "",
+                                                                                                 "version":  "2.31.5"
+                                                                                             },
+                                                                             "media":  "Leave blank if you do not have a relevant image or video. Alternatively, add a suitable educational video or an image URL from your website."
+                                                                         }
+                                                            },
+                                                            {
+                                                                "_id":  "6acdc5b80574881c2c21701d",
+                                                                "type":  "solution",
+                                                                "data":  {
+                                                                             "show":  true,
+                                                                             "title":  "",
+                                                                             "content":  null,
+                                                                             "points":  [
+                                                                                            ""
+                                                                                        ]
+                                                                         }
+                                                            }
+                                                        ],
+                                "overviewSection":  {
+                                                        "show":  true,
+                                                        "title":  "Data Knowledge Introduction",
+                                                        "subtitle":  "Understand Data. Build Knowledge. Make Smarter Decisions.",
+                                                        "description":  {
+                                                                            "time":  1792218869643,
+                                                                            "blocks":  [
+                                                                                           {
+                                                                                               "id":  "bByRAdznVv",
+                                                                                               "type":  "paragraph",
+                                                                                               "data":  "@{text=Data knowledge is the ability to understand, interpret, organize, and use data to make informed decisions. In today\u0027s digital world, data plays a crucial role in business growth, problem-solving, and strategic planning.}"
+                                                                                           },
+                                                                                           {
+                                                                                               "id":  "R-Xofbol3E",
+                                                                                               "type":  "paragraph",
+                                                                                               "data":  "@{text=Our Data Knowledge program helps learners understand fundamental data concepts, explore meaningful patterns, and develop practical skills to transform raw information into valuable insights. Through structured learning and real-world examples, learners can build confidence in working with data and applying it to everyday business challenges.}"
+                                                                                           }
+                                                                                       ],
+                                                                            "version":  "2.31.5"
+                                                                        },
+                                                        "images":  [
+
+                                                                   ]
+                                                    },
+                                "comparisonSection":  {
+                                                          "show":  true,
+                                                          "title":  "Traditional Learning vs Our Data Knowledge Program",
+                                                          "leftTitle":  "Traditional Program",
+                                                          "rightTitle":  "Our Program",
+                                                          "content":  null,
+                                                          "leftPoints":  [
+                                                                             "Heavy focus on theoretical concepts",
+                                                                             "Limited real-world applications",
+                                                                             "Complex explanations for beginners",
+                                                                             "Less emphasis on practical problem-solving",
+                                                                             "Difficult to connect learning with business decisions"
+                                                                         ],
+                                                          "rightPoints":  [
+                                                                              "Practical, easy-to-understand learning",
+                                                                              "Real-world examples and case studies",
+                                                                              "Step-by-step guidance for beginners",
+                                                                              "Hands-on data interpretation exercises",
+                                                                              "Focus on actionable insights and decision-making"
+                                                                          ]
+                                                      },
+                                "benefitsSection":  {
+                                                        "show":  true,
+                                                        "title":  "Benefits of Data Knowledge",
+                                                        "content":  {
+                                                                        "time":  1792219077551,
+                                                                        "blocks":  [
+                                                                                       {
+                                                                                           "id":  "7fxZu4ddlz",
+                                                                                           "type":  "paragraph",
+                                                                                           "data":  "@{text=Develop the confidence and skills needed to understand data, identify meaningful patterns, and make better-informed decisions.}"
+                                                                                       }
+                                                                                   ],
+                                                                        "version":  "2.31.5"
+                                                                    },
+                                                        "points":  [
+                                                                       "Improve analytical and critical-thinking skills",
+                                                                       "Understand data patterns and trends",
+                                                                       "Make informed, data-driven decisions",
+                                                                       "Solve problems using meaningful insights"
+                                                                   ]
+                                                    },
+                                "frameworkSection":  {
+                                                         "show":  true,
+                                                         "title":  "Master Data Knowledge Step by Step",
+                                                         "subtitle":  "A Practical Framework for Understanding and Using Data",
+                                                         "description":  {
+                                                                             "time":  1792219140617,
+                                                                             "blocks":  [
+                                                                                            {
+                                                                                                "id":  "ZeXwNjtUCM",
+                                                                                                "type":  "paragraph",
+                                                                                                "data":  "@{text=Our Data Knowledge Framework follows a structured approach that helps learners progress from basic data concepts to practical analysis and informed decision-making.}"
+                                                                                            }
+                                                                                        ],
+                                                                             "version":  "2.31.5"
+                                                                         },
+                                                         "media":  "Leave blank if you do not have a relevant image or video. Alternatively, add a suitable educational video or an image URL from your website."
+                                                     },
+                                "solutionSection":  {
+                                                        "show":  true,
+                                                        "title":  "",
+                                                        "content":  null,
+                                                        "points":  [
+                                                                       ""
+                                                                   ]
+                                                    },
+                                "isDeleted":  false,
+                                "deletedAt":  null,
+                                "downloadableFiles":  [
+
+                                                      ],
+                                "faq":  [
+
+                                        ],
+                                "reviews":  [
+
+                                            ],
+                                "createdAt":  "2026-10-13T05:46:32.478Z",
+                                "updatedAt":  "2026-10-17T06:39:31.185Z",
+                                "discountPrice":  null,
+                                "__v":  0,
+                                "maxStudents":  null,
+                                "category":  {
+                                                 "_id":  "6ac54a5d2bb198e79420be69",
+                                                 "name":  "Technology \u0026 AI",
+                                                 "slug":  "technology-ai"
+                                             },
+                                "faqs":  [
+
+                                         ],
+                                "pricingPlanDiscounts":  [
+
+                                                         ],
+                                "plans":  [
+
+                                          ],
+                                "courseDripRules":  [
+
+                                                    ],
+                                "totalModules":  0,
+                                "totalVideoLessons":  0,
+                                "totalTextLessons":  0,
+                                "totalVideoDuration":  0,
+                                "videosByPlatform":  {
+
+                                                     },
+                                "totalDripRules":  0,
+                                "estimatedTotalDuration":  0,
+                                "videoProcessingInfo":  {
+                                                            "totalVideoLessons":  0,
+                                                            "totalVdoCipherVideos":  0,
+                                                            "successfulOTPs":  0,
+                                                            "failedOTPs":  0,
+                                                            "platformBreakdown":  {
+
+                                                                                  },
+                                                            "vdoCipherVideoIds":  [
+
+                                                                                  ],
+                                                            "processedAt":  "2026-10-17T06:57:27.233Z"
+                                                        },
+                                "isEnrolled":  false
+                            }
+             },
+    "err":  {
+
+            }
+}

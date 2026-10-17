@@ -169,35 +169,106 @@ const CourseDetail = () => {
   }) || []
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-dark pt-36 xl:pb-24 px-4 md:px-12 lg:px-20 overflow-x-clip cursor-default">
+    <div ref={containerRef} className="min-h-screen bg-slate-50 pt-32 sm:pt-40 xl:pb-24 px-4 sm:px-6 md:px-12 lg:px-20 overflow-x-clip cursor-default">
 
       {/* Dynamic Sections from API */}
-      {course.landingPageSections?.filter(s => s.data?.show === true).map((section, idx) => {
+      {(() => {
+        let activeSections = [];
+
+        if (Array.isArray(course.landingPageSections) && course.landingPageSections.length > 0) {
+          // Sort sections by order
+          const sorted = [...course.landingPageSections].sort(
+            (a, b) => (a.order ?? a.sortOrder ?? 0) - (b.order ?? b.sortOrder ?? 0)
+          );
+          activeSections = sorted.filter(s => s.data?.show !== false);
+        }
+
+        // If no active landingPageSections found, check legacy top-level sections
+        if (activeSections.length === 0) {
+          if (course.overviewSection?.show) {
+            activeSections.push({ type: 'overview', data: course.overviewSection, _id: 'overview-legacy' });
+          }
+          if (course.comparisonSection?.show) {
+            activeSections.push({ type: 'comparison', data: course.comparisonSection, _id: 'comparison-legacy' });
+          }
+          if (course.benefitsSection?.show) {
+            activeSections.push({ type: 'benefits', data: course.benefitsSection, _id: 'benefits-legacy' });
+          }
+          if (course.frameworkSection?.show) {
+            activeSections.push({ type: 'framework', data: course.frameworkSection, _id: 'framework-legacy' });
+          }
+          if (course.solutionSection?.show) {
+            activeSections.push({ type: 'solution', data: course.solutionSection, _id: 'solution-legacy' });
+          }
+        }
+
+        // Always ensure an overview section is rendered as Hero
+        const hasOverview = activeSections.some(s => s.type === 'overview');
+        if (!hasOverview) {
+          activeSections.unshift({
+            type: 'overview',
+            data: course.overviewSection || { show: true, title: course.title, subtitle: course.subtitle, description: course.description },
+            _id: 'default-overview'
+          });
+        }
+
+        return activeSections.map((section, idx) => {
           switch (section.type) {
-            case 'overview':
-              return <CourseHeroDetail key={section._id || idx} course={course} section={section.data} />
-            case 'comparison':
-              return <ComparisonSection key={section._id || idx} course={course} section={section.data} />
-            case 'benefits':
-              return <BenefitsSection key={section._id || idx} course={course} section={section.data} />
-            case 'framework':
-              return <FrameworkSection key={section._id || idx} course={course} section={section.data} />
-            case 'solution':
-              return <SolutionSection key={section._id || idx} course={course} section={section.data} />
+            case 'overview': {
+              const mergedData = {
+                ...course.overviewSection,
+                ...section.data,
+                description: (section.data?.description?.blocks?.length ? section.data.description : (course.overviewSection?.description || section.data?.description))
+              };
+              return <CourseHeroDetail key={section._id || idx} course={course} section={mergedData} />
+            }
+            case 'comparison': {
+              const mergedData = {
+                ...course.comparisonSection,
+                ...section.data
+              };
+              return <ComparisonSection key={section._id || idx} course={course} section={mergedData} />
+            }
+            case 'benefits': {
+              const mergedData = {
+                ...course.benefitsSection,
+                ...section.data
+              };
+              return <BenefitsSection key={section._id || idx} course={course} section={mergedData} />
+            }
+            case 'framework': {
+              const mergedData = {
+                ...course.frameworkSection,
+                ...section.data
+              };
+              return <FrameworkSection key={section._id || idx} course={course} section={mergedData} />
+            }
+            case 'solution': {
+              const mergedData = {
+                ...course.solutionSection,
+                ...section.data
+              };
+              return <SolutionSection key={section._id || idx} course={course} section={mergedData} />
+            }
             default:
               return null
           }
-      })}
+        });
+      })()}
 
       {/* Show curriculum only when the course has modules in the database. */}
       {dynamicCurriculum.length > 0 && (
         <section id="curriculum-section" className="section-reveal max-w-7xl mx-auto py-16 scroll-mt-32">
           <div className="flex flex-col gap-6">
-            <div className="mb-4 text-center md:text-left">
-              <h2 className="font-inter text-4xl md:text-6xl text-normal font-extralight mb-4 tracking-tighter">
-                The <span className="text-accent">Blueprint</span>
+            <div className="mb-4 text-center md:text-left space-y-2">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 text-[#3498db] text-xs font-semibold tracking-wide uppercase">
+                <span className="w-2 h-2 rounded-full bg-[#3498db] animate-pulse" />
+                <span>Complete Curriculum</span>
+              </div>
+              <h2 className="font-inter text-3xl sm:text-4xl lg:text-5xl text-slate-900 font-extrabold tracking-tight">
+                Course <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">Modules & Lessons</span>
               </h2>
-              <div className="h-[1px] bg-accent/20 w-32 md:w-48 mx-auto md:mx-0" />
+              <div className="h-[2px] bg-[#3498db]/30 w-24 md:w-36 mx-auto md:mx-0" />
             </div>
 
             <div className="space-y-4">
@@ -207,33 +278,36 @@ const CourseDetail = () => {
                   <div key={module.id} className="relative">
                     {/* MODULE HEADER (CHAPTER) */}
                     <div 
-                      className={`mb-4 md:mb-6 p-4 md:p-5 rounded-2xl cursor-pointer group/header transition-all duration-700 ${
+                      className={`mb-4 md:mb-6 p-5 sm:p-6 rounded-3xl cursor-pointer group/header transition-all duration-300 ${
                         !isExpanded 
-                          ? 'bg-accent/[0.09] border border-accent/70 hover:bg-accent/[0.05] hover:border-accent/20' 
-                          : 'bg-transparent border border-transparent'
+                          ? 'bg-white border border-slate-200/90 shadow-sm hover:border-[#3498db]/40 hover:shadow-md' 
+                          : 'bg-white border-2 border-blue-200 shadow-md'
                       }`}
                       onClick={() => toggleModule(mIndex)}
                     >
-                      <div className={`${isExpanded ? 'space-y-4' : 'space-y-2'}`}>
-                        <div className="flex items-center gap-6">
-                          <span className="font-jetbrains text-accent font-black tracking-[0.4em] uppercase text-[10px]">Chapter {String(mIndex + 1).padStart(2, '0')}</span>
-                          <div className="h-[1px] flex-1 bg-white/10" />
-                          <button className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover/header:border-accent transition-colors bg-dark/50">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-4">
+                          <span className="font-inter text-[#3498db] font-bold text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60">
+                            Chapter {String(mIndex + 1).padStart(2, '0')}
+                          </span>
+                          <div className="h-[1px] flex-1 bg-slate-200" />
+                          <button 
+                            type="button"
+                            className="w-8 h-8 rounded-full border border-blue-200 flex items-center justify-center bg-blue-50 text-[#3498db] group-hover/header:bg-[#3498db] group-hover/header:text-white transition-all"
+                          >
                             <svg 
-                              width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                              className={`transition-transform duration-700 ${isExpanded ? 'rotate-[225deg] stroke-accent' : ''}`}
+                              width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                              className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
                             >
-                              <path d="M12 5v14M5 12h14" />
+                              <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </button>
                         </div>
-                        <h3 className={`font-inter italic text-normal font-extralight leading-[1] transition-all duration-500 ${
-                          isExpanded ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'
-                        }`}>
+                        <h3 className="font-inter text-slate-900 font-bold text-xl sm:text-2xl leading-tight">
                           {module.title}
                         </h3>
-                        {isExpanded && (
-                          <p className="font-montserrat text-white/60 text-sm md:text-sm max-w-2xl leading-relaxed animate-in fade-in slide-in-from-top-2 duration-700">
+                        {isExpanded && module.description && (
+                          <p className="text-slate-600 text-sm leading-relaxed max-w-3xl pt-1">
                             {module.description}
                           </p>
                         )}
@@ -242,41 +316,39 @@ const CourseDetail = () => {
 
                     {/* LESSONS STACK */}
                     {isExpanded && (
-                      <div className="flex flex-col gap-10 md:gap-20">
+                      <div className="flex flex-col gap-6 pl-0 sm:pl-4 mb-8">
                         {module.lessons.map((lesson, lIndex) => {
                           const displayImage = lesson.apiImage || module.apiImage;
                           return (
                             <div
                               key={lesson.id}
-                              className={`stack-card group relative sticky grid grid-cols-1 ${displayImage ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-8 md:gap-12 items-center border border-white/10 bg-dark p-8 md:p-12 backdrop-blur-3xl overflow-hidden rounded-2xl shadow-2xl`}
-                              style={{ top: `${140 + lIndex * 40}px`, zIndex: lIndex + 1 }}
+                              className={`group relative grid grid-cols-1 ${displayImage ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-6 md:gap-8 items-center border border-slate-200/90 bg-white p-6 sm:p-8 rounded-3xl shadow-sm hover:shadow-md hover:border-[#3498db]/30 transition-all`}
                             >
-                              {/* Full-Width Soft Glow - No Line */}
-                              <div className="absolute -top-24 left-0 right-0 h-16 bg-accent/[0.6] blur-[40px] pointer-events-none" />
-                              
-                              <div className="relative z-10 space-y-8 md:space-y-12">
-                                <div className="flex items-center gap-4">
-                                  <span className="font-jetbrains text-xl md:text-2xl font-black text-accent">
+                              <div className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                  <span className="font-inter text-lg sm:text-xl font-extrabold text-[#3498db]">
                                     {String(lIndex + 1).padStart(2, '0')}.
                                   </span>
-                                  <span className="font-jetbrains text-[9px] text-white/40 tracking-[0.3em] uppercase border border-white/10 px-3 py-1">
+                                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider bg-slate-100 border border-slate-200 px-3 py-0.5 rounded-full">
                                     {lesson.type}
                                   </span>
                                 </div>
-                                <h4 className="font-inter text-3xl md:text-4xl text-normal font-extralight leading-none tracking-tight">
+                                <h4 className="font-inter text-xl sm:text-2xl font-bold text-slate-900 leading-snug tracking-tight">
                                   {lesson.title}
                                 </h4>
-                                <p className="font-montserrat text-description/70 text-sm md:text-base lg:text-lg leading-relaxed max-w-3xl break-words">
-                                  {lesson.description}
-                                </p>
+                                {lesson.description && (
+                                  <p className="text-slate-600 text-sm sm:text-base leading-relaxed break-words">
+                                    {lesson.description}
+                                  </p>
+                                )}
                               </div>
                               
                               {displayImage && (
-                                <div className="relative z-10 overflow-hidden border border-white/10 rounded-lg aspect-video bg-white/5">
+                                <div className="relative overflow-hidden border border-slate-200 rounded-2xl aspect-video bg-slate-50 shadow-sm">
                                   <img 
                                     src={displayImage} 
                                     alt={lesson.title} 
-                                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" 
                                   />
                                 </div>
                               )}

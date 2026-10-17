@@ -17,6 +17,9 @@ const querySchema = new mongoose.Schema(
       enum: ['new', 'in_progress', 'resolved', 'closed'],
       default: 'new'
     },
+    course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', default: null },
+    courseTitle: { type: String, trim: true, default: '' },
+    source: { type: String, trim: true, default: 'Course Detail Callback' },
     // assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
     isDeleted: { type: Boolean, default: false }
   },
