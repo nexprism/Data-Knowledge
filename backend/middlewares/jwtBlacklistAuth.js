@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { isAccessTokenBlacklisted } from "../utils/tokens/generateTokens.js";
+import { clearTokensCookies } from "../utils/tokens/setTokensCookies.js";
 
 const jwtBlacklistAuth = async (req, res, next) => {
   try {
@@ -13,9 +14,7 @@ const jwtBlacklistAuth = async (req, res, next) => {
     // Check blacklist (await for Redis-based check)
     const blacklisted = await isAccessTokenBlacklisted(token, req.user);
     if (blacklisted) {
-      res.clearCookie("accessToken");
-      res.clearCookie("refreshToken");
-      res.clearCookie("is_auth");
+      clearTokensCookies(res);
       res.setHeader("X-Session-Expired", "true");
       return res.status(401).json({
         message: "Session expired. Please log in again.",
@@ -28,9 +27,7 @@ const jwtBlacklistAuth = async (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
-    res.clearCookie("is_auth");
+    clearTokensCookies(res);
     res.setHeader("X-Session-Expired", "true");
     return res.status(401).json({ message: "Invalid or expired token" });
   }

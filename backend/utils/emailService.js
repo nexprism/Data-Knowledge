@@ -11,61 +11,50 @@ dotenv.config();
  */
 class EmailService {
   constructor() {
-    // Log environment variables for debugging (avoid logging passwords in production)
-    //console.log("SMTP Configuration:", {
-    //   host: process.env.SMTP_HOST,
-    //   port: process.env.SMTP_PORT,
-    //   secure: process.env.SMTP_SECURE,
-    //   TransactionalEmail: process.env.TransactionalEmail,
-    //   FounderEmail: process.env.FounderEmail,
-    //   SupportEmail: process.env.SupportEmail,
-    // });
+    this.transporters = {};
+  }
 
-    // Prepare transporters for each sender
-    this.transporters = {
-      transactional: nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: process.env.SMTP_SECURE === "true",
-        auth: {
-          user: process.env.TransactionalEmail,
-          pass: process.env.TransactionalEmailPass,
-        },
-      }),
-      founder: nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: process.env.SMTP_SECURE === "true",
-        auth: {
-          user: process.env.FounderEmail,
-          pass: process.env.FounderEmailPass,
-        },
-      }),
-      support: nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: process.env.SMTP_SECURE === "true",
-        auth: {
-          user: process.env.SupportEmail,
-          pass: process.env.SupportEmailPass,
-        },
-      }),
-    };
+  _createTransporter(user, pass) {
+    const host = process.env.SMTP_HOST || process.env.MAIL_HOST || "smtp.hostinger.com";
+    const port = Number(process.env.SMTP_PORT || process.env.MAIL_PORT || 465);
+    const secure = process.env.SMTP_SECURE !== undefined
+      ? process.env.SMTP_SECURE === "true"
+      : port === 465;
+
+    const username = user || process.env.SMTP_USER || process.env.MAIL_USERNAME || process.env.EMAIL_FROM || "noreply@dataknowledge.in";
+    const password = pass || process.env.SMTP_PASS || process.env.MAIL_PASSWORD || "";
+
+    return nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: {
+        user: username,
+        pass: password,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
   }
 
   /**
    * Helper to get the correct "from" field for each type of email.
    */
   getFrom(type = "transactional") {
+    const defaultEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.TransactionalEmail || "noreply@dataknowledge.in";
     switch (type) {
       case "transactional":
-        return `"Data Knowledge" <${process.env.TransactionalEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
+        return `"Data Knowledge" <${process.env.TransactionalEmail || defaultEmail}>`;
       case "founder":
-        return `"Data Knowledge" <${process.env.FounderEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
+        return `"Data Knowledge" <${process.env.FounderEmail || defaultEmail}>`;
       case "support":
-        return `"Data Knowledge Support" <${process.env.SupportEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
+        return `"Data Knowledge Support" <${process.env.SupportEmail || defaultEmail}>`;
       default:
-        return `"Data Knowledge" <${process.env.TransactionalEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
+        return `"Data Knowledge" <${defaultEmail}>`;
     }
   }
 
@@ -73,10 +62,24 @@ class EmailService {
    * Helper to get the correct transporter for each type of email.
    */
   getTransporter(type = "transactional") {
-    if (type === "transactional") return this.transporters.transactional;
-    if (type === "founder") return this.transporters.founder;
-    if (type === "support") return this.transporters.support;
-    return this.transporters.transactional;
+    if (!this.transporters[type]) {
+      let user, pass;
+      if (type === "transactional") {
+        user = process.env.TransactionalEmail || process.env.SMTP_USER || process.env.MAIL_USERNAME;
+        pass = process.env.TransactionalEmailPass || process.env.SMTP_PASS || process.env.MAIL_PASSWORD;
+      } else if (type === "founder") {
+        user = process.env.FounderEmail || process.env.TransactionalEmail || process.env.SMTP_USER;
+        pass = process.env.FounderEmailPass || process.env.TransactionalEmailPass || process.env.SMTP_PASS;
+      } else if (type === "support") {
+        user = process.env.SupportEmail || process.env.TransactionalEmail || process.env.SMTP_USER;
+        pass = process.env.SupportEmailPass || process.env.TransactionalEmailPass || process.env.SMTP_PASS;
+      } else {
+        user = process.env.TransactionalEmail || process.env.SMTP_USER;
+        pass = process.env.TransactionalEmailPass || process.env.SMTP_PASS;
+      }
+      this.transporters[type] = this._createTransporter(user, pass);
+    }
+    return this.transporters[type];
   }
 
   /**

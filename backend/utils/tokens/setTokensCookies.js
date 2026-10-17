@@ -38,4 +38,29 @@ const setTokensCookies = (res, accessToken, refreshToken, accessTokenMaxAge, ref
   });
 };
 
-export { setTokensCookies };
+const clearTokensCookies = (res) => {
+  const isSecure =
+    res.req?.secure ||
+    res.req?.protocol === "https" ||
+    res.req?.headers?.["x-forwarded-proto"] === "https" ||
+    process.env.NODE_ENV === "production";
+  const sameSiteOption = isSecure ? "none" : "lax";
+
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: sameSiteOption,
+  });
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: sameSiteOption,
+  });
+  res.clearCookie("is_auth", {
+    httpOnly: false,
+    secure: isSecure,
+    sameSite: sameSiteOption,
+  });
+};
+
+export { setTokensCookies, clearTokensCookies };

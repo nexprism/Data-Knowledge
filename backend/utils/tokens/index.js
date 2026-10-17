@@ -2,4 +2,4 @@ export { generateTokens, generateTokenForResetPassword, isAccessTokenBlacklisted
 export { isTokenExpired } from "./isTokenExpired.js";
 export { verifyRefreshToken, verifyResetToken } from "./verifyToken.js";
 export { refreshAccessToken } from "./refreshAccessToken.js";
-export { setTokensCookies } from "./setTokensCookies.js";
+export { setTokensCookies, clearTokensCookies } from "./setTokensCookies.js";

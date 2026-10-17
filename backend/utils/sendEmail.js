@@ -1,30 +1,21 @@
-import nodemailer from 'nodemailer';
+import emailService from './emailService.js';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: Number(process.env.MAIL_PORT),
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USERNAME,
-    pass: process.env.MAIL_PASSWORD,
-  },
-});
-
-const sendEmail = async (to, text, subject) => {
+const sendEmail = async (to, textOrHtml, subject) => {
   try {
+    const transporter = emailService.getTransporter('transactional');
+    const from = emailService.getFrom('transactional');
+    const isHtml = typeof textOrHtml === 'string' && /<[a-z][\s\S]*>/i.test(textOrHtml);
     await transporter.sendMail({
-      from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
+      from,
       to,
-      subject,
-      text,
+      subject: subject || 'Notification',
+      ...(isHtml ? { html: textOrHtml } : { text: textOrHtml }),
     });
-    //console.log(`✅ Email sent to ${to}`);
   } catch (error) {
-    console.error('❌ Email send failed:', error);  // This shows the actual issue
-    throw new Error(error.message);  // <-- CHANGE THIS
+    console.error('❌ Email send failed:', error);
+    throw new Error(error.message);
   }
 };
 
-
-
 export default sendEmail;
+

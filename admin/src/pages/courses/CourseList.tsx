@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { fetchCourses, fetchCourseEnrollments, deleteCourse } from "../../store/slices/course";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -68,6 +69,7 @@ interface Course {
 const VITE_IMAGE_URL = import.meta.env.VITE_BASE_URL;
 
 const CourseList: React.FC = () => {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { loading, error, data } = useAppSelector((state) => state.course);
   const [removingEnrollmentId, setRemovingEnrollmentId] = useState<string | null>(null);
@@ -313,7 +315,7 @@ const CourseList: React.FC = () => {
               <Users className="w-4 h-4" />
             </button>
             <button
-              onClick={() => window.location.href = `/courses/edit/${course._id}`}
+              onClick={() => navigate(`/courses/edit/${course._id}`)}
               className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
               title="Edit Course"
             >
@@ -381,7 +383,7 @@ const CourseList: React.FC = () => {
             
             <button
               className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#1b6294] to-[#16517a] hover:from-[#16517a] hover:to-[#103a58] text-white rounded-xl transition-all duration-200 shadow-md shadow-[#1b6294]/25 hover:shadow-lg hover:shadow-[#1b6294]/35 font-medium active:scale-95 cursor-pointer"
-              onClick={() => window.location.href = "/courses/add"}
+              onClick={() => navigate("/courses/add")}
             >
               <Plus className="w-5 h-5" />
               Add Course
@@ -560,7 +562,7 @@ const CourseList: React.FC = () => {
                         <tr
                           key={course._id}
                           className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                          onClick={() => window.location.href = `/courses/edit/${course._id}`}
+                          onClick={() => navigate(`/courses/edit/${course._id}`)}
                         >
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                             {(pagination.page - 1) * pagination.limit + idx + 1}
@@ -622,7 +624,7 @@ const CourseList: React.FC = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.location.href = `/courses/edit/${course._id}`;
+                                  navigate(`/courses/edit/${course._id}`);
                                 }}
                                 className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
                                 title="Edit Course"
