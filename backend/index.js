@@ -19,8 +19,10 @@ import path from 'path';
 
 import './cron/wordPressNewsCron.js';
 
+import express from 'express';
+
 // Serve uploads directory so uploaded files are reachable
-app.use('/uploads', (await import('express')).default.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Create the HTTP server for Express and Socket.io
 const server = http.createServer(app);

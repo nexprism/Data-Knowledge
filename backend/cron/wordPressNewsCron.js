@@ -27,7 +27,7 @@ dotenv.config();
 // });
 
 // Manual run for immediate testing (ESM compatible)
-const isDirectRun = import.meta.url === pathToFileURL(process.argv[1]).href;
+const isDirectRun = Boolean(process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href);
 if (isDirectRun) {
     (async () => {
         try {
