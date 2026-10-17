@@ -14,12 +14,17 @@ import { isAdmin } from '../middlewares/isAdmin.js';
 
 const couponRouter = express.Router();
 
-// Get all coupons (admin only) - must come before /:id route
+// Get all coupons - guests see active coupons, admins see all (including expired)
 couponRouter.get(
   '/',
-  accessTokenAutoRefresh,
-  passport.authenticate('jwt', { session: false }),
-  isAdmin,
+  (req, res, next) => {
+    const token = req.cookies?.accessToken || (req.headers?.authorization && req.headers.authorization.startsWith('Bearer ') && req.headers.authorization.slice(7));
+    if (!token) return next();
+    passport.authenticate('jwt', { session: false }, (err, user) => {
+      if (user) req.user = user;
+      next();
+    })(req, res, next);
+  },
   getAllCoupons
 );
 

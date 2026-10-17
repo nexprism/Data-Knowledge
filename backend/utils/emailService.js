@@ -59,13 +59,13 @@ class EmailService {
   getFrom(type = "transactional") {
     switch (type) {
       case "transactional":
-        return `"Edrilla" <${process.env.TransactionalEmail || "noreply@edrilla.com"}>`;
+        return `"Data Knowledge" <${process.env.TransactionalEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
       case "founder":
-        return `"Sahil (Edrilla)" <${process.env.FounderEmail || "sahil@edrilla.com"}>`;
+        return `"Data Knowledge" <${process.env.FounderEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
       case "support":
-        return `"Edrilla Support" <${process.env.SupportEmail || "support@edrilla.com"}>`;
+        return `"Data Knowledge Support" <${process.env.SupportEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
       default:
-        return `"Edrilla" <${process.env.TransactionalEmail || "noreply@edrilla.com"}>`;
+        return `"Data Knowledge" <${process.env.TransactionalEmail || process.env.EMAIL_FROM || "noreply@dataknowledge.in"}>`;
     }
   }
 

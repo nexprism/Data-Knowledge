@@ -128,9 +128,15 @@ class CouponService {
       // 🔹 Build query conditions
       const queryConditions = {};
 
-      // Exclude expired coupons unless explicitly requested
+      // If code is supplied directly as query param (?code=...)
+      if (query.code) {
+        parsedFilters.code = query.code.trim().toUpperCase();
+      }
+
+      // Exclude expired/inactive coupons unless explicitly requested by admin
       if (includeExpired !== "true") {
         queryConditions.endDate = { $gte: new Date() };
+        queryConditions.isActive = true;
       }
 
       // Apply filters (exact matches)

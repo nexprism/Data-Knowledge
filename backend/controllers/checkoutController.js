@@ -1633,17 +1633,19 @@ export const checkOrder = async (req, res) => {
     ) {
       return res.status(400).json({ message: "Provide either courseId/coursePlanId or courseBundleId, not both" });
     }
-    if (courseId && coursePlanId) {
-      // Check if plan belongs to course
-      const CoursePlan = (await import('../models/CoursePlan.js')).default;
-      const plan = await CoursePlan.findById(coursePlanId);
-      if (!plan) {
-        return res.status(404).json({ message: "Course plan not found" });
+
+    let validPlan = null;
+    if (coursePlanId) {
+      if (mongoose.Types.ObjectId.isValid(coursePlanId)) {
+        const CoursePlan = (await import('../models/CoursePlan.js')).default;
+        validPlan = await CoursePlan.findById(coursePlanId);
+        if (validPlan && courseId && validPlan.courseId.toString() !== courseId.toString()) {
+          return res.status(400).json({ message: "Course plan does not belong to the specified course", is_valid: false });
+        }
       }
-      if (plan.courseId.toString() !== courseId.toString()) {
-        return res.status(400).json({ message: "Course plan does not belong to the specified course" });
+      if (!validPlan && !courseId && !courseBundleId) {
+        return res.status(404).json({ message: "Course plan not found", is_valid: false });
       }
-      // If valid, proceed and ignore courseId for item creation (use plan.courseId)
     }
 
     let guestUser = await User.findOne({ email: guestEmail });
@@ -1695,29 +1697,28 @@ export const checkOrder = async (req, res) => {
     const razorpay = await getRazorpayInstance();
     let amount = 0;
 
-    if (coursePlanId) {
-      const CoursePlan = (await import('../models/CoursePlan.js')).default;
-      const plan = await CoursePlan.findById(coursePlanId);
-      if (!plan) return res.status(404).json({ message: "Course plan not found", is_valid: false });
-      // PRICING: CoursePlan.salePrice defaults to 0 in the schema and `0 !== undefined`,
-      // so the old check priced plans without an explicit sale price at ₹0. A sale
-      // price is only valid as a POSITIVE override — otherwise fall back to the
-      // regular price (mirrors the course pricing below and the cart checkout).
-      {
-        const sale = plan.salePrice != null ? Number(plan.salePrice) : 0;
-        amount = sale > 0 ? sale : Number(plan.price || 0);
-        if (!Number.isFinite(amount) || amount < 0) amount = 0;
-      }
+    if (validPlan) {
+      const sale = validPlan.salePrice != null ? Number(validPlan.salePrice) : 0;
+      amount = sale > 0 ? sale : Number(validPlan.price || 0);
+      if (!Number.isFinite(amount) || amount < 0) amount = 0;
     } else if (courseId) {
+      if (!mongoose.Types.ObjectId.isValid(courseId)) {
+        return res.status(400).json({ message: "Invalid course ID", is_valid: false });
+      }
       const course = await Course.findById(courseId);
       if (!course) return res.status(404).json({ message: "Course not found", is_valid: false });
       amount = course.salePrice && parseFloat(course.salePrice) > 0
         ? parseFloat(course.salePrice)
         : parseFloat(course.price || 0);
     } else if (courseBundleId) {
+      if (!mongoose.Types.ObjectId.isValid(courseBundleId)) {
+        return res.status(400).json({ message: "Invalid course bundle ID", is_valid: false });
+      }
       const bundle = await CourseBundle.findById(courseBundleId).populate("courses");
       if (!bundle) return res.status(404).json({ message: "Bundle not found", is_valid: false });
       amount = parseFloat(bundle.price || 0);
+    } else {
+      return res.status(400).json({ message: "Valid course, plan, or bundle is required", is_valid: false });
     }
 
     // Ensure amount is rounded to 2 decimals before further calculations
@@ -1754,13 +1755,14 @@ export const checkOrder = async (req, res) => {
       const order = await razorpay.orders.create(orderOptions);
 
       const razorpayKeySetting = await Setting.findOne({ key: "RAZORPAY_KEY_ID" });
+      const razorpayKey = razorpayKeySetting?.value || process.env.RAZORPAY_KEY_ID || "rzp_live_ToVrNLJ5jinYRy";
 
       // Fix: return amount in rupees (not paise)
       return res.status(200).json({
         success: true,
         is_valid: true,
         razorpay: {
-          key: razorpayKeySetting?.value,
+          key: razorpayKey,
           order: order,
           amount: amount, // amount in rupees
           currency: currency,
@@ -2372,17 +2374,18 @@ export const buyNow = async (req, res) => {
     ) {
       return res.status(400).json({ message: "Provide either courseId/coursePlanId or courseBundleId, not both" });
     }
-    if (courseId && coursePlanId) {
-      // Check if plan belongs to course
-      const CoursePlan = (await import('../models/CoursePlan.js')).default;
-      const plan = await CoursePlan.findById(coursePlanId);
-      if (!plan) {
+    let validPlan = null;
+    if (coursePlanId) {
+      if (mongoose.Types.ObjectId.isValid(coursePlanId)) {
+        const CoursePlan = (await import('../models/CoursePlan.js')).default;
+        validPlan = await CoursePlan.findById(coursePlanId);
+        if (validPlan && courseId && validPlan.courseId.toString() !== courseId.toString()) {
+          return res.status(400).json({ message: "Course plan does not belong to the specified course" });
+        }
+      }
+      if (!validPlan && !courseId && !courseBundleId) {
         return res.status(404).json({ message: "Course plan not found" });
       }
-      if (plan.courseId.toString() !== courseId.toString()) {
-        return res.status(400).json({ message: "Course plan does not belong to the specified course" });
-      }
-      // If valid, proceed and ignore courseId for item creation (use plan.courseId)
     }
 
     // if (!deviceId && !fcmToken) {
@@ -2448,26 +2451,23 @@ export const buyNow = async (req, res) => {
     let subTotal = 0;
     let courseIdsToEnroll = new Set();
 
-    if (coursePlanId) {
-      const CoursePlan = (await import('../models/CoursePlan.js')).default;
-      const plan = await CoursePlan.findById(coursePlanId);
-      if (!plan) return res.status(404).json({ message: "Course plan not found" });
-      // PRICING: same hardened sale-vs-regular resolution as checkOrder and the
-      // cart checkout — salePrice (schema default 0) only applies when it is a
-      // positive override; otherwise charge the regular plan price.
-      const planSale = plan.salePrice != null ? Number(plan.salePrice) : 0;
-      let planPrice = planSale > 0 ? planSale : Number(plan.price || 0);
+    if (validPlan) {
+      const planSale = validPlan.salePrice != null ? Number(validPlan.salePrice) : 0;
+      let planPrice = planSale > 0 ? planSale : Number(validPlan.price || 0);
       if (!Number.isFinite(planPrice) || planPrice < 0) planPrice = 0;
       subTotal += planPrice;
       items.push({
-        courseId: plan.courseId,
-        coursePlanId: plan._id,
+        courseId: validPlan.courseId,
+        coursePlanId: validPlan._id,
         type: "coursePlan",
         pricePaid: planPrice,
-        currency: plan.currency || "INR",
+        currency: validPlan.currency || "INR",
       });
-      courseIdsToEnroll.add(plan.courseId.toString());
+      courseIdsToEnroll.add(validPlan.courseId.toString());
     } else if (courseId) {
+      if (!mongoose.Types.ObjectId.isValid(courseId)) {
+        return res.status(400).json({ message: "Invalid course ID" });
+      }
       const course = await Course.findById(courseId);
       if (!course) return res.status(404).json({ message: "Course not found" });
       const price = course.salePrice && parseFloat(course.salePrice) > 0
@@ -2482,6 +2482,9 @@ export const buyNow = async (req, res) => {
       });
       courseIdsToEnroll.add(course._id.toString());
     } else if (courseBundleId) {
+      if (!mongoose.Types.ObjectId.isValid(courseBundleId)) {
+        return res.status(400).json({ message: "Invalid course bundle ID" });
+      }
       const bundle = await CourseBundle.findById(courseBundleId).populate("courses");
       if (!bundle) return res.status(404).json({ message: "Bundle not found" });
       const price = parseFloat(bundle.price || 0);
@@ -2493,6 +2496,8 @@ export const buyNow = async (req, res) => {
         currency: bundle.currency || "INR",
       });
       bundle.courses.forEach((course) => courseIdsToEnroll.add(course._id.toString()));
+    } else {
+      return res.status(400).json({ message: "Valid course, plan, or bundle is required" });
     }
 
     // Step 3: Apply coupon — validate and compute the discount only. The usage
@@ -2534,8 +2539,8 @@ export const buyNow = async (req, res) => {
     if (paymentProvider === "razorpay" && paymentId && grandTotal > 0) {
       const keySetting = await Setting.findOne({ key: "RAZORPAY_KEY_ID" });
       const secretSetting = await Setting.findOne({ key: "RAZORPAY_KEY_SECRET" });
-      const apiKey = keySetting?.value;
-      const apiSecret = secretSetting?.value;
+      const apiKey = keySetting?.value || process.env.RAZORPAY_KEY_ID || "rzp_live_ToVrNLJ5jinYRy";
+      const apiSecret = secretSetting?.value || process.env.RAZORPAY_KEY_SECRET || "cu6t9o5MNQyz6l7H4QYVQyqL";
       if (!apiKey || !apiSecret) {
         return res.status(500).json({ message: "Razorpay credentials not found in settings" });
       }

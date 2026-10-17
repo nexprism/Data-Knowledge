@@ -94,7 +94,8 @@ const configSlice = createSlice({
       .addCase(validateCoupon.fulfilled, (state, action) => {
         state.couponLoading = false;
         if (action.payload?.success) {
-          state.couponData = action.payload.data;
+          const d = action.payload.data;
+          state.couponData = d?.coupon || (Array.isArray(d?.coupons) ? d.coupons[0] : d);
         } else {
           state.couponError = action.payload?.message || 'Invalid Coupon Protocol';
           state.couponData = null;

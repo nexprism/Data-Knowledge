@@ -122,13 +122,19 @@ const Checkout = () => {
       }
 
       try {
+         const isHexObjectId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str);
+         const validPlanId = isHexObjectId(selectedPlan?._id) ? selectedPlan._id : (isHexObjectId(selectedPlan?.id) ? selectedPlan.id : undefined);
+
          const payload = {
             courseId: course._id || course.id || '',
             guestEmail: formData.email.trim(),
             guestName: formData.fullName.trim(),
             couponCode: formData.coupon || '',
-            is_verify: Boolean(isVerified),
-            coursePlanId: selectedPlan.id || selectedPlan._id || ''
+            is_verify: Boolean(isVerified)
+         }
+
+         if (validPlanId) {
+            payload.coursePlanId = validPlanId
          }
 
          if (accParam) payload.acc = accParam
@@ -141,19 +147,19 @@ const Checkout = () => {
          const chkData = await chkRes.json()
 
          if (!chkRes.ok) {
-            alert(chkData?.message || 'Order validation failed')
+            alert(chkData?.message || chkData?.err?.email || 'Order validation failed')
             setPaying(false)
             return
          }
 
          if (!chkData?.success || !chkData?.is_valid) {
-            alert(chkData?.data?.message || 'Order cannot be placed')
+            alert(chkData?.data?.message || chkData?.message || 'Order cannot be placed')
             setPaying(false)
             return
          }
 
          const razor = chkData?.razorpay || {}
-         const rKey = razor.key || settings?.RAZORPAY_KEY_ID || settings?.settings?.RAZORPAY_KEY_ID
+         const rKey = razor.key || settings?.RAZORPAY_KEY_ID || settings?.settings?.RAZORPAY_KEY_ID || 'rzp_live_ToVrNLJ5jinYRy'
          const order = razor.order || {}
          const rAmount = (order.amount != null) ? order.amount : Math.round(total * 100)
 
@@ -174,10 +180,13 @@ const Checkout = () => {
                      guestEmail: formData.email.trim(),
                      guestName: formData.fullName.trim(),
                      paymentProvider: 'razorpay',
-                     coursePlanId: selectedPlan.id || selectedPlan._id || '',
                      couponCode: formData.coupon || '',
                      company: formData.company,
                      gst: formData.gst
+                  }
+
+                  if (validPlanId) {
+                     buyPayload.coursePlanId = validPlanId
                   }
 
                   if (accParam) buyPayload.acc = accParam
