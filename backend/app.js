@@ -181,5 +181,28 @@ app.use((req, res, next) => {
 // API Routes
 app.use("/", routes);
 
+// Global error handler — preserves CORS headers and returns JSON instead of crashing with HTML 500
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    if (
+      (!isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) ||
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*dataknowledge\.in(:\d+)?$/.test(origin) ||
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) ||
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin) ||
+      ALLOWED_ORIGINS.has(origin)
+    ) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+  }
+
+  console.error("❌ Unhandled server error:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+  });
+});
+
 export default app;
 
