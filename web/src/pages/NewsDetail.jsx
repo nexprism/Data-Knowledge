@@ -210,13 +210,13 @@ const NewsDetail = () => {
         {/* 5. Back Button */}
         <div className="detail-reveal opacity-0 mt-20 flex justify-center">
             <Link 
-                to="/news"
+                to="/blogs"
                 className="flex items-center gap-4 px-8 py-4 bg-accent/10 border border-accent/20 hover:bg-accent hover:text-dark transition-all group"
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:-translate-x-1 transition-transform">
                     <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
-                <span className="font-jetbrains text-[9px] font-bold tracking-[0.3em] uppercase">{t('backToNews')}</span>
+                <span className="font-jetbrains text-[9px] font-bold tracking-[0.3em] uppercase">{t('backToBlogs') || t('backToNews') || 'BACK TO BLOGS'}</span>
             </Link>
         </div>
 

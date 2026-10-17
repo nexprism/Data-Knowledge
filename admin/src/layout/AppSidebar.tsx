@@ -73,12 +73,12 @@ const navItems: NavItem[] = [
   //   path: "/jobs",
   //   keywords: ["hiring", "careers", "vacancies", "referral"],
   // },
-  // {
-  //   icon: <PageIcon />,
-  //   name: "News",
-  //   path: "/news",
-  //   keywords: ["articles", "press", "blog"],
-  // },
+  {
+    icon: <PageIcon />,
+    name: "Blogs",
+    path: "/blogs",
+    keywords: ["blogs", "blog", "articles", "press", "news"],
+  },
   {
     icon: <PageIcon />,
     name: "Forums",

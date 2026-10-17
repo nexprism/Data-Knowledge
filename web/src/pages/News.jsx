@@ -191,14 +191,14 @@ const News = () => {
                 <span className="block">{t('latestTitle') || 'Data Knowledge'}</span>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-0 mt-2">
                   <div className="relative">
-                    <span className="whitespace-nowrap block text-[#3498db]">{t('dispatchesTitle') || 'Articles & News'}</span>
+                    <span className="whitespace-nowrap block text-[#3498db]">{t('dispatchesTitle') || 'Articles & Blogs'}</span>
                   </div>
                   
                   {/* Search: Repositioned to bottom-right baseline */}
                   <div className="w-full md:w-[420px] group relative md:mb-2">
                     <input 
                       type="text" 
-                      placeholder={t('searchNewsPlaceholder') || 'Search articles...'}
+                      placeholder={t('searchNewsPlaceholder') || 'Search blogs...'}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="w-full bg-white border border-slate-200 rounded-full py-3 px-6 pr-12 font-inter text-xs text-slate-900 focus:outline-none focus:border-[#3498db] shadow-sm transition-all duration-300 placeholder:text-slate-400 not-"

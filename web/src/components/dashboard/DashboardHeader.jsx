@@ -60,7 +60,7 @@ const DashboardHeader = () => {
     { key: 'myCourses', name: (t('myCourses') || 'MY COURSES').toUpperCase(), path: '/dashboard/my-courses' },
     { key: 'allCourses', name: (t('allCourses') || 'ALL COURSES').toUpperCase(), path: '/dashboard/courses' },
     // { key: 'forum', name: (t('forum') || 'FORUM').toUpperCase(), path: '/dashboard/forum' },
-    // { key: 'news', name: (t('news') || 'NEWS').toUpperCase(), path: '/dashboard/news' },
+    { key: 'blogs', name: (t('blogs') || 'BLOGS').toUpperCase(), path: '/dashboard/blogs' },
     // { key: 'jobPostings', name: (t('jobPostings') || 'JOB POSTINGS').toUpperCase(), path: '/dashboard/job-posts' },
   ]
 

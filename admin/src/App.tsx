@@ -261,11 +261,15 @@ export default function App() {
                 <Route path="/banner/add" element={<AddBanner />} />
                 <Route path="/banner/edit/:id" element={<EditBanner />} />
 
-                {/* News */}
+                {/* Blogs / News */}
                 <Route path="/news" element={<NewsList />} />
                 <Route path="/news/add" element={<AddNews />} />
                 <Route path="/news/view/:id" element={<ViewNews />} />
                 <Route path="/news/edit/:id" element={<EditNews />} />
+                <Route path="/blogs" element={<NewsList />} />
+                <Route path="/blogs/add" element={<AddNews />} />
+                <Route path="/blogs/view/:id" element={<ViewNews />} />
+                <Route path="/blogs/edit/:id" element={<EditNews />} />
 
                 {/* sales analytics */}
                 <Route path="/sales/user" element={<User />} />

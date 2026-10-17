@@ -154,7 +154,7 @@ const DashboardNews = () => {
                Dispatch Hub
              </span>
              <h1 className="font-inter text-[clamp(3rem,8vw,6.5rem)] leading-[0.75] font-extralight uppercase select-none">
-                {t('news')}
+                {t('blogs') || t('news') || 'Blogs'}
              </h1>
           </div>
 

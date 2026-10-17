@@ -100,11 +100,11 @@ const SEARCH_ITEMS: SearchItem[] = [
   },
   {
     id: "news",
-    title: "News & Articles",
+    title: "Blogs",
     category: "Content & Media",
-    path: "/news",
+    path: "/blogs",
     description: "Industry updates, company announcements and blog articles",
-    keywords: ["news", "articles", "blog", "press", "announcements"],
+    keywords: ["blogs", "blog", "articles", "news", "press", "announcements"],
     icon: <FileText className="w-4 h-4 text-indigo-500" />,
   },
 

@@ -274,6 +274,8 @@ const AppContent = () => {
             <Route path="/gig" element={<Gigs />} />
             <Route path="/news" element={<News />} />
             <Route path="/news/:id" element={<NewsDetail />} />
+            <Route path="/blogs" element={<News />} />
+            <Route path="/blogs/:id" element={<NewsDetail />} />
             <Route path="/course-detail/:id" element={<CourseDetail />} />
             <Route path="/personality-test" element={<PersonalityTest />} />
             <Route path="/contact" element={<Contact />} />
@@ -302,6 +304,7 @@ const AppContent = () => {
               <Route path="personality-test" element={<DashboardPersonality />} />
               <Route path="forum" element={<DashboardForum />} />
               <Route path="news" element={<DashboardNews />} />
+              <Route path="blogs" element={<DashboardNews />} />
               <Route path="support" element={<DashboardSupport />} />
               <Route path="messages" element={<DashboardMessages />} />
               <Route path="course/:id" element={<DashboardCoursePlayer />} />

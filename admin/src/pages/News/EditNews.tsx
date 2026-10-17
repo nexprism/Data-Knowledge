@@ -418,7 +418,7 @@ export default function EditNews() {
   };
 
   const cancel = () => {
-    navigate("/news");
+    navigate("/blogs");
   };
 
   if (isLoadingNews || (loading && !currentNews)) {
@@ -426,7 +426,7 @@ export default function EditNews() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400 text-lg">Loading news data...</p>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">Loading blog data...</p>
         </div>
       </div>
     );
@@ -444,11 +444,11 @@ export default function EditNews() {
 
   return (
     <>
-      <PageMeta title="Edit News | LMS Admin" description="Edit news article" />
-      <PageBreadcrumb pageTitle="Edit News" />
+      <PageMeta title="Edit Blog | LMS Admin" description="Edit blog article" />
+      <PageBreadcrumb pageTitle="Edit Blog" />
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Edit News Article</h2>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Edit Blog Article</h2>
           <button onClick={cancel} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">
             <X className="w-6 h-6" />
           </button>

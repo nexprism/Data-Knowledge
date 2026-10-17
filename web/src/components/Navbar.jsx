@@ -28,11 +28,10 @@ const Navbar = ({ isLoaded }) => {
     { key: 'home', name: t('home'), path: '/' },
     { key: 'ourCourses', name: t('ourCourses'), path: '/courses' },
     // { key: 'forum', name: t('forum'), path: '/forum' },
-    { key: 'contact', name: t('contact'), path: '/contact' },
-    { key: 'aboutUs', name: t('aboutUs'), path: '/about-us' },
-    // { key: 'gig', name: t('gig'), path: '/gig' },
-    // { key: 'news', name: t('news'), path: '/news' },
+    { key: 'blogs', name: t('blogs') || 'Blogs', path: '/blogs' },
     { key: 'testimonials', name: 'Testimonials', path: '/testimonials' },
+    { key: 'aboutUs', name: t('aboutUs'), path: '/about-us' },
+    { key: 'contact', name: t('contact'), path: '/contact' },
   ]
 
   const socialLinks = [

@@ -275,16 +275,16 @@ export default function ViewNews() {
             <FileText className="w-10 h-10 text-red-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            News Not Found
+            Blog Not Found
           </h2>
           <p className="text-red-600 dark:text-red-400 mb-6">
-            {error || "The news you're looking for doesn't exist."}
+            {error || "The blog you're looking for doesn't exist."}
           </p>
           <button
-            onClick={() => navigate("/news")}
+            onClick={() => navigate("/blogs")}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            Back to All News
+            Back to All Blogs
           </button>
         </div>
       </div>

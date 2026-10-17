@@ -153,25 +153,25 @@ export default function NewsList() {
 
   return (
     <>
-      <PageMeta title="All News | LMS Admin" description="Browse and manage all news" />
-      <PageBreadcrumb pageTitle="All News" />
+      <PageMeta title="All Blogs | LMS Admin" description="Browse and manage all blogs" />
+      <PageBreadcrumb pageTitle="All Blogs" />
       <div className="bg-gray-50 min-h-screen dark:bg-gray-900">
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">All News</h1>
-              <p className="text-gray-600 dark:text-gray-400">Browse and manage all news articles</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">All Blogs</h1>
+              <p className="text-gray-600 dark:text-gray-400">Browse and manage all blog articles</p>
             </div>
 
-            {/* Add News button */}
+            {/* Add Blog button */}
             <div className="mt-4 sm:mt-0 flex gap-2">
               <button
-                onClick={() => navigate("/news/add")}
+                onClick={() => navigate("/blogs/add")}
                 className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-[#1b6294] to-[#16517a] hover:from-[#16517a] hover:to-[#103a58] text-white font-medium rounded-xl shadow-md shadow-[#1b6294]/20 hover:shadow-lg transition-all active:scale-95 cursor-pointer"
-                title="Add News"
+                title="Add Blog"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add News
+                Add Blog
               </button>
             </div>
           </div>
@@ -262,14 +262,14 @@ export default function NewsList() {
                             <Search className="w-8 h-8 text-gray-400" />
                           </div>
                           <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                            {searchTerm ? "No news found matching your search." : "No news yet."}
+                            {searchTerm ? "No blogs found matching your search." : "No blogs yet."}
                           </p>
                           {!searchTerm && (
                             <button
-                              onClick={() => navigate("/news/add")}
+                              onClick={() => navigate("/blogs/add")}
                               className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                             >
-                              Create Your First News
+                              Create Your First Blog
                             </button>
                           )}
                         </div>

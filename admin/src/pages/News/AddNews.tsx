@@ -319,16 +319,16 @@ export default function AddNews() {
   };
 
   const cancel = () => {
-    window.location.href = "/news";
+    window.location.href = "/blogs";
   };
 
   return (
     <>
-      <PageMeta title="Add News | LMS Admin" description="Add new news article" />
-      <PageBreadcrumb pageTitle="Add News" />
+      <PageMeta title="Add Blog | LMS Admin" description="Add new blog article" />
+      <PageBreadcrumb pageTitle="Add Blog" />
       <div className="p-6 max-w-7xl mx-auto relative">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Add New News Article</h2>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Add New Blog Article</h2>
           <button onClick={cancel} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">
             <X className="w-6 h-6" />
           </button>
