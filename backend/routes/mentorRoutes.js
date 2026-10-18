@@ -27,6 +27,15 @@ router.post(
   createMentor
 );
 
+router.post(
+  '/mentors',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  mentorUpload,
+  createMentor
+);
+
 router.get(
   '/admin/mentors',
   accessTokenAutoRefresh,
@@ -44,8 +53,43 @@ router.patch(
   updateMentor
 );
 
+router.put(
+  '/admin/mentors/:id',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  mentorUpload,
+  updateMentor
+);
+
+router.patch(
+  '/mentors/:id',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  mentorUpload,
+  updateMentor
+);
+
+router.put(
+  '/mentors/:id',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  mentorUpload,
+  updateMentor
+);
+
 router.delete(
   '/admin/mentors/:id',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  deleteMentor
+);
+
+router.delete(
+  '/mentors/:id',
   accessTokenAutoRefresh,
   passport.authenticate('jwt', { session: false }),
   isAdmin,

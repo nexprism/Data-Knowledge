@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import axios from 'axios';
 import axiosInstance from '../../services/axiosConfig';
-const baseUrl = (import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in/").replace(/\/+$/, '') + '/';
 
 interface FilterState {
     data: any;
@@ -65,8 +63,8 @@ export const fetchFilter = createAsyncThunk<
             queryParams.append('sort', JSON.stringify(sort));
         }
 
-        const response = await axios.get(
-            `${baseUrl}/filter/?${queryParams.toString()}`
+        const response = await axiosInstance.get(
+            `/filter/?${queryParams.toString()}`
         );
 
         console.log('Response from fetchFilter:', response.data);
@@ -93,7 +91,7 @@ export const fetchSubcategoriesByCategory = createAsyncThunk<
 >('filter/fetchSubcategoriesByCategory', async (categoryId, { rejectWithValue }) => {
     try {
         const response = await axiosInstance.get(
-            `${baseUrl}/filter/subcategories/by-category/${categoryId}`
+            `/filter/subcategories/by-category/${categoryId}`
         );
         return response.data?.data || [];
     } catch (error: any) {
@@ -110,7 +108,7 @@ export const updateFilter = createAsyncThunk(
     ) => {
         try {
             const response = await axiosInstance.put(
-                `${baseUrl}/filter/${id}`,
+                `/filter/${id}`,
                 data,
                 {
                     headers: {
@@ -134,7 +132,7 @@ export const deleteFilter = createAsyncThunk(
     ) => {
         try {
             const response = await axiosInstance.delete(
-                `${baseUrl}/filter/${id}`,
+                `/filter/${id}`,
                 {
                     headers: {
                         'Content-Type': 'application/json',

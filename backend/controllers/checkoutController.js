@@ -1755,7 +1755,7 @@ export const checkOrder = async (req, res) => {
       const order = await razorpay.orders.create(orderOptions);
 
       const razorpayKeySetting = await Setting.findOne({ key: "RAZORPAY_KEY_ID" });
-      const razorpayKey = razorpayKeySetting?.value || process.env.RAZORPAY_KEY_ID || "rzp_live_ToVrNLJ5jinYRy";
+      const razorpayKey = razorpayKeySetting?.value || process.env.RAZORPAY_KEY_ID || "";
 
       // Fix: return amount in rupees (not paise)
       return res.status(200).json({
@@ -2539,8 +2539,8 @@ export const buyNow = async (req, res) => {
     if (paymentProvider === "razorpay" && paymentId && grandTotal > 0) {
       const keySetting = await Setting.findOne({ key: "RAZORPAY_KEY_ID" });
       const secretSetting = await Setting.findOne({ key: "RAZORPAY_KEY_SECRET" });
-      const apiKey = keySetting?.value || process.env.RAZORPAY_KEY_ID || "rzp_live_ToVrNLJ5jinYRy";
-      const apiSecret = secretSetting?.value || process.env.RAZORPAY_KEY_SECRET || "cu6t9o5MNQyz6l7H4QYVQyqL";
+      const apiKey = keySetting?.value || process.env.RAZORPAY_KEY_ID || "";
+      const apiSecret = secretSetting?.value || process.env.RAZORPAY_KEY_SECRET || "";
       if (!apiKey || !apiSecret) {
         return res.status(500).json({ message: "Razorpay credentials not found in settings" });
       }

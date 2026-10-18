@@ -39,6 +39,9 @@ const userRefreshTokenSchema = new mongoose.Schema({
   timestamps: true // Adds createdAt and updatedAt automatically
 });
 
+// Auto-purge expired tokens if expiresAt is set
+userRefreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, sparse: true });
+
 // Model
 const UserRefreshToken = mongoose.model("UserRefreshToken", userRefreshTokenSchema);
 

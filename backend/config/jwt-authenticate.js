@@ -17,15 +17,13 @@ if (!ServerConfig.JWT_ACCESS_SECRET) {
   );
 }
 
-// Web clients send the JWT as a secure httpOnly `accessToken` cookie; mobile/app
-// clients send it as an Authorization: Bearer header. Read the cookie FIRST so a
-// stale/sentinel Authorization header from a migrated web client is ignored.
+// Extract access token — prioritize Authorization header, fall back to cookie
 const cookieExtractor = (req) =>
   req && req.cookies && req.cookies.accessToken ? req.cookies.accessToken : null;
 
 const tokenExtractor = ExtractJwt.fromExtractors([
-  cookieExtractor,
   ExtractJwt.fromAuthHeaderAsBearerToken(),
+  cookieExtractor,
 ]);
 
 const opts = {

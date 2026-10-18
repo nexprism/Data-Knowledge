@@ -1,4 +1,27 @@
 import Mentor from '../models/Mentor.js';
+import mongoose from 'mongoose';
+
+const safeJsonParse = (val, fallback = []) => {
+  if (val === undefined || val === null || val === '') return fallback;
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return fallback;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      if (trimmed.includes('\n')) {
+        return trimmed.split('\n').map(s => s.trim()).filter(Boolean);
+      }
+      if (trimmed.includes(',')) {
+        return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      return [trimmed];
+    }
+  }
+  return fallback;
+};
 
 export const createMentor = async (req, res) => {
   try {
@@ -9,16 +32,16 @@ export const createMentor = async (req, res) => {
     const mentor = new Mentor({
       name,
       role,
-      exCompanies: exCompanies ? (typeof exCompanies === 'string' ? JSON.parse(exCompanies) : exCompanies) : [],
+      exCompanies: safeJsonParse(exCompanies),
       experienceBadge,
       image,
-      stats: stats ? (typeof stats === 'string' ? JSON.parse(stats) : stats) : [],
-      bio: bio ? (typeof bio === 'string' ? JSON.parse(bio) : bio) : [],
-      skills: skills ? (typeof skills === 'string' ? JSON.parse(skills) : skills) : [],
+      stats: safeJsonParse(stats),
+      bio: safeJsonParse(bio),
+      skills: safeJsonParse(skills),
       accentGradient,
       glowColor,
       borderColor,
-      status
+      status: status || 'active'
     });
 
     await mentor.save();
@@ -43,6 +66,9 @@ export const getMentors = async (req, res) => {
 
 export const getMentorById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid mentor ID format' });
+    }
     const mentor = await Mentor.findById(req.params.id);
     if (!mentor) {
       return res.status(404).json({ success: false, message: 'Mentor not found' });
@@ -56,20 +82,24 @@ export const getMentorById = async (req, res) => {
 export const updateMentor = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid mentor ID format' });
+    }
+
     const { name, role, exCompanies, experienceBadge, stats, bio, skills, accentGradient, glowColor, borderColor, status } = req.body;
 
     const updateData = {};
-    if (name) updateData.name = name;
-    if (role) updateData.role = role;
-    if (exCompanies) updateData.exCompanies = typeof exCompanies === 'string' ? JSON.parse(exCompanies) : exCompanies;
-    if (experienceBadge) updateData.experienceBadge = experienceBadge;
-    if (stats) updateData.stats = typeof stats === 'string' ? JSON.parse(stats) : stats;
-    if (bio) updateData.bio = typeof bio === 'string' ? JSON.parse(bio) : bio;
-    if (skills) updateData.skills = typeof skills === 'string' ? JSON.parse(skills) : skills;
+    if (name !== undefined) updateData.name = name;
+    if (role !== undefined) updateData.role = role;
+    if (exCompanies !== undefined) updateData.exCompanies = safeJsonParse(exCompanies);
+    if (experienceBadge !== undefined) updateData.experienceBadge = experienceBadge;
+    if (stats !== undefined) updateData.stats = safeJsonParse(stats);
+    if (bio !== undefined) updateData.bio = safeJsonParse(bio);
+    if (skills !== undefined) updateData.skills = safeJsonParse(skills);
     if (accentGradient !== undefined) updateData.accentGradient = accentGradient;
     if (glowColor !== undefined) updateData.glowColor = glowColor;
     if (borderColor !== undefined) updateData.borderColor = borderColor;
-    if (status) updateData.status = status;
+    if (status !== undefined) updateData.status = status;
 
     if (req.files?.image?.[0]) {
       updateData.image = req.files.image[0].path.replace(/\\/g, '/');

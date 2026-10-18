@@ -53,37 +53,9 @@ const ProtectedRoute = () => {
                     navigate("/signin", { replace: true });
                 }
             } else {
-                // Server rejected the token.
-                // For cookie-based sessions: /me may legitimately fail if the endpoint
-                // doesn't support cookie auth. Fall back to the stored user+role instead
-                // of immediately logging the user out right after login.
-                if (isCookieSession) {
-                    const savedUser = localStorage.getItem("user");
-                    const savedRole = localStorage.getItem("role");
-                    if (savedUser && savedRole && ALLOWED_ROLES.includes(savedRole.trim())) {
-                        // /me failed but the login just completed and stored valid credentials.
-                        // Restore Redux state so the render-level isAuthenticated guard passes.
-                        try {
-                            const parsedUser = JSON.parse(savedUser);
-                            dispatch(
-                                setCredentials({
-                                    user: parsedUser,
-                                    token: "cookie-session",
-                                })
-                            );
-                        } catch {
-                            dispatch(clearCredentials());
-                            navigate("/signin", { replace: true });
-                        }
-                    } else {
-                        dispatch(clearCredentials());
-                        navigate("/signin", { replace: true });
-                    }
-                } else {
-                    // JWT-based session with a real token that was rejected by the server
-                    dispatch(clearCredentials());
-                    navigate("/signin", { replace: true });
-                }
+                // Server rejected the session or token is invalid — enforce server verification
+                dispatch(clearCredentials());
+                navigate("/signin", { replace: true });
             }
 
             setServerVerified(true);

@@ -107,6 +107,7 @@ courseRouter.get(
 
 // Specific public routes must be registered before the parameterized ID route.
 courseRouter.get('/slug/:slug', optionalAuthenticate, getCourseBySlug);
+courseRouter.get('/landing/:slug', getCourseLandingPage);
 courseRouter.get('/category/:categoryId', getCoursesByCategory);
 
 // Get a course by ID (public with optional auth for enrollment check)
@@ -160,9 +161,6 @@ courseRouter.post(
 );
 
 // ========== DYNAMIC CONTENT SECTION ROUTES ==========
-
-// Get course landing page by slug (public)
-courseRouter.get('/landing/:slug', getCourseLandingPage);
 
 // Get all content sections for a course
 courseRouter.get(

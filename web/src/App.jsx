@@ -34,6 +34,7 @@ import DashboardQuiz from './pages/DashboardQuiz'
 import DashboardAssignment from './pages/DashboardAssignment'
 import DashboardReading from './pages/DashboardReading'
 import SessionExpiredPopup from './components/SessionExpiredPopup'
+import ProtectedRoute from './components/ProtectedRoute'
 import DashboardLiveClasses from './pages/DashboardLiveClasses'
 import Contact from './pages/Contact'
 import AboutUs from './pages/AboutUs'
@@ -294,31 +295,31 @@ const AppContent = () => {
             <Route path="/checkout" element={<Checkout />} />
 
             {/* Nested Tactical Dashboard (v2.1 Routing) */}
-            <Route path="/dashboard">
-              <Route index element={<Dashboard />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="purchases" element={<Purchases />} />
-              <Route path="my-courses" element={<MyCourses />} />
-              <Route path="live-classes" element={<DashboardLiveClasses />} />
-              <Route path="courses" element={<DashboardCourses />} />
-              <Route path="personality-test" element={<DashboardPersonality />} />
-              <Route path="forum" element={<DashboardForum />} />
-              <Route path="news" element={<DashboardNews />} />
-              <Route path="blogs" element={<DashboardNews />} />
-              <Route path="support" element={<DashboardSupport />} />
-              <Route path="messages" element={<DashboardMessages />} />
-              <Route path="course/:id" element={<DashboardCoursePlayer />} />
-              <Route path="quiz/:courseId/:id" element={<DashboardQuiz />} />
-              <Route path="quiz/:id" element={<DashboardQuiz />} />
-              <Route path="assignment/:courseId/:id" element={<DashboardAssignment />} />
-              <Route path="reading/:courseId/:id" element={<DashboardReading />} />
-              <Route path="job-posts" element={<DashboardJobPosts />} />
-              <Route path="job/:id" element={<JobDetail />} />
-              <Route path="my-forum" element={<MyForum />} />
-              <Route path="my-submissions" element={<MySubmissions />} />
-              <Route path="notifications" element={<Notifications />} />
-
-
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard">
+                <Route index element={<Dashboard />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="purchases" element={<Purchases />} />
+                <Route path="my-courses" element={<MyCourses />} />
+                <Route path="live-classes" element={<DashboardLiveClasses />} />
+                <Route path="courses" element={<DashboardCourses />} />
+                <Route path="personality-test" element={<DashboardPersonality />} />
+                <Route path="forum" element={<DashboardForum />} />
+                <Route path="news" element={<DashboardNews />} />
+                <Route path="blogs" element={<DashboardNews />} />
+                <Route path="support" element={<DashboardSupport />} />
+                <Route path="messages" element={<DashboardMessages />} />
+                <Route path="course/:id" element={<DashboardCoursePlayer />} />
+                <Route path="quiz/:courseId/:id" element={<DashboardQuiz />} />
+                <Route path="quiz/:id" element={<DashboardQuiz />} />
+                <Route path="assignment/:courseId/:id" element={<DashboardAssignment />} />
+                <Route path="reading/:courseId/:id" element={<DashboardReading />} />
+                <Route path="job-posts" element={<DashboardJobPosts />} />
+                <Route path="job/:id" element={<JobDetail />} />
+                <Route path="my-forum" element={<MyForum />} />
+                <Route path="my-submissions" element={<MySubmissions />} />
+                <Route path="notifications" element={<Notifications />} />
+              </Route>
             </Route>
 
             {/* Tactical Redirects for Legacy Paths */}

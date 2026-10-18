@@ -31,19 +31,11 @@ const initialState: MentorState = {
 
 export const addMentor = createAsyncThunk<
     void,
-    { mentor: FormData; token: string },
+    { mentor: FormData; token?: string },
     { rejectValue: string }
->('mentor/addMentor', async ({ mentor, token }, { rejectWithValue }) => {
+>('mentor/addMentor', async ({ mentor }, { rejectWithValue }) => {
     try {
-        await axiosInstance.post(
-            '/admin/mentors',
-            mentor,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
-        );
+        await axiosInstance.post('/admin/mentors', mentor);
     } catch (err: any) {
         return rejectWithValue(err.response?.data?.message || 'Failed to add mentor');
     }
@@ -51,19 +43,14 @@ export const addMentor = createAsyncThunk<
 
 export const fetchMentors = createAsyncThunk<
     Mentor[],
-    { token: string; status?: string },
+    { token?: string; status?: string } | undefined,
     { rejectValue: string }
->('mentor/fetchMentors', async ({ token, status }, { rejectWithValue }) => {
+>('mentor/fetchMentors', async (args, { rejectWithValue }) => {
     try {
         const params: Record<string, string> = {};
-        if (status) params.status = status;
+        if (args?.status) params.status = args.status;
 
-        const response = await axiosInstance.get('/admin/mentors', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-            params,
-        });
+        const response = await axiosInstance.get('/admin/mentors', { params });
         return response.data?.data || [];
     } catch (err: any) {
         return rejectWithValue(err.response?.data?.message || 'Failed to fetch mentors');
@@ -72,19 +59,11 @@ export const fetchMentors = createAsyncThunk<
 
 export const updateMentor = createAsyncThunk<
     void,
-    { mentorId: string; data: FormData; token: string },
+    { mentorId: string; data: FormData; token?: string },
     { rejectValue: string }
->('mentor/updateMentor', async ({ mentorId, data, token }, { rejectWithValue }) => {
+>('mentor/updateMentor', async ({ mentorId, data }, { rejectWithValue }) => {
     try {
-        await axiosInstance.patch(
-            `/admin/mentors/${mentorId}`,
-            data,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
-        );
+        await axiosInstance.put(`/admin/mentors/${mentorId}`, data);
     } catch (err: any) {
         return rejectWithValue(err.response?.data?.message || 'Failed to update mentor');
     }
@@ -92,15 +71,11 @@ export const updateMentor = createAsyncThunk<
 
 export const deleteMentor = createAsyncThunk<
     void,
-    { mentorId: string; token: string },
+    { mentorId: string; token?: string },
     { rejectValue: string }
->('mentor/deleteMentor', async ({ mentorId, token }, { rejectWithValue }) => {
+>('mentor/deleteMentor', async ({ mentorId }, { rejectWithValue }) => {
     try {
-        await axiosInstance.delete(`/admin/mentors/${mentorId}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        await axiosInstance.delete(`/admin/mentors/${mentorId}`);
     } catch (err: any) {
         return rejectWithValue(err.response?.data?.message || 'Failed to delete mentor');
     }

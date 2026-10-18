@@ -134,11 +134,11 @@ const MentorsPage: React.FC = () => {
         setFormData({
             name: mentor.name || '',
             role: mentor.role || '',
-            exCompanies: mentor.exCompanies ? mentor.exCompanies.join(', ') : '',
+            exCompanies: Array.isArray(mentor.exCompanies) ? mentor.exCompanies.join(', ') : (typeof mentor.exCompanies === 'string' ? mentor.exCompanies : ''),
             experienceBadge: mentor.experienceBadge || '',
-            stats: mentor.stats ? JSON.stringify(mentor.stats) : '',
-            bio: mentor.bio ? mentor.bio.join('\n\n') : '',
-            skills: mentor.skills ? mentor.skills.join(', ') : '',
+            stats: mentor.stats ? (typeof mentor.stats === 'string' ? mentor.stats : JSON.stringify(mentor.stats, null, 2)) : '',
+            bio: Array.isArray(mentor.bio) ? mentor.bio.join('\n\n') : (typeof mentor.bio === 'string' ? mentor.bio : ''),
+            skills: Array.isArray(mentor.skills) ? mentor.skills.join(', ') : (typeof mentor.skills === 'string' ? mentor.skills : ''),
             accentGradient: mentor.accentGradient || '',
             glowColor: mentor.glowColor || '',
             borderColor: mentor.borderColor || '',
@@ -153,15 +153,15 @@ const MentorsPage: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         if (!id) return;
-        const token = localStorage.getItem('token') || '';
         setLoading(true);
         try {
-            await dispatch(deleteMentor({ mentorId: id, token })).unwrap();
+            await dispatch(deleteMentor({ mentorId: id })).unwrap();
             await fetchMentorsData(statusFilter);
             setDeleteConfirm({ show: false, id: null });
             setPopup({ isVisible: true, message: 'Mentor deleted successfully!', type: 'success' });
         } catch (err: any) {
-            setPopup({ isVisible: true, message: err.message || 'Failed to delete mentor', type: 'error' });
+            const errorMsg = typeof err === 'string' ? err : (err?.message || 'Failed to delete mentor');
+            setPopup({ isVisible: true, message: errorMsg, type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -170,7 +170,6 @@ const MentorsPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setPopup({ isVisible: false, message: '', type: 'success' });
-        const token = localStorage.getItem('token') || '';
         setLoading(true);
 
         const formDataToSend = new FormData();
@@ -189,8 +188,8 @@ const MentorsPage: React.FC = () => {
         formDataToSend.append('bio', JSON.stringify(bioArr));
 
         try {
-            if (formData.stats) {
-                const parsed = JSON.parse(formData.stats);
+            if (formData.stats && formData.stats.trim()) {
+                const parsed = JSON.parse(formData.stats.trim());
                 formDataToSend.append('stats', JSON.stringify(parsed));
             }
         } catch (e) {
@@ -208,17 +207,18 @@ const MentorsPage: React.FC = () => {
 
         try {
             if (isEditMode && editId) {
-                await dispatch(updateMentor({ mentorId: editId, data: formDataToSend, token })).unwrap();
+                await dispatch(updateMentor({ mentorId: editId, data: formDataToSend })).unwrap();
                 setPopup({ isVisible: true, message: 'Mentor updated successfully!', type: 'success' });
             } else {
-                await dispatch(addMentor({ mentor: formDataToSend, token })).unwrap();
+                await dispatch(addMentor({ mentor: formDataToSend })).unwrap();
                 setPopup({ isVisible: true, message: 'Mentor added successfully!', type: 'success' });
             }
             await fetchMentorsData(statusFilter);
             resetForm();
             setShowAddForm(false);
         } catch (err: any) {
-            setPopup({ isVisible: true, message: err.message || 'Failed to save mentor', type: 'error' });
+            const errorMsg = typeof err === 'string' ? err : (err?.message || 'Failed to save mentor');
+            setPopup({ isVisible: true, message: errorMsg, type: 'error' });
         } finally {
             setLoading(false);
         }

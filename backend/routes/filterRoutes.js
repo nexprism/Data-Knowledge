@@ -46,10 +46,9 @@ router.delete(
 
 // ✅ Public routes (no token needed)
 router.get('/', getAllFilters);
-router.get('/:id', getFilterById);
-
 router.get('/options/category/:categoryId', getFilterOptionsByCategory);
 router.get('/subcategories/by-category/:categoryId', getSubCategoriesByCategory);
+router.get('/:id', getFilterById);
 
 
 

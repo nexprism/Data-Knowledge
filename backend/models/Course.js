@@ -343,11 +343,11 @@ courseSchema.pre('validate', function (next) {
 });
 
 courseSchema.virtual('enrollstudent_course_details', {
-  ref: 'Enrollment',
+  ref: 'CourseEnrollment',
   localField: '_id',
   foreignField: 'courseId',
   justOne: false,
-  match: { isActive: true },
+  match: { status: 'active' },
 });
 
 // ➕ Enable virtuals in output

@@ -178,8 +178,10 @@ const accessTokenAutoRefresh = async (req, res, next) => {
       res.setHeader("x-access-token", newAccessToken);
       res.setHeader("x-refresh-token", newRefreshToken);
 
-      // Set the new access token in the Authorization header
+      // Set the new access token in both Authorization header and req.cookies for passport
       req.headers["authorization"] = `Bearer ${newAccessToken}`;
+      if (!req.cookies) req.cookies = {};
+      req.cookies.accessToken = newAccessToken;
 
       // Device approval guard: prevent token refresh for unapproved devices
       try {

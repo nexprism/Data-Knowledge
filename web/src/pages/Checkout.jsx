@@ -159,7 +159,7 @@ const Checkout = () => {
          }
 
          const razor = chkData?.razorpay || {}
-         const rKey = razor.key || settings?.RAZORPAY_KEY_ID || settings?.settings?.RAZORPAY_KEY_ID || 'rzp_live_ToVrNLJ5jinYRy'
+         const rKey = razor.key || settings?.RAZORPAY_KEY_ID || settings?.settings?.RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID || ''
          const order = razor.order || {}
          const rAmount = (order.amount != null) ? order.amount : Math.round(total * 100)
 
