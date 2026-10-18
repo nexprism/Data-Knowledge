@@ -1,68 +1,27 @@
-import nodemailer from 'nodemailer';
+import emailService from './utils/emailService.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-async function testTransactional() {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.TransactionalEmail,
-      pass: process.env.TransactionalEmailPass,
-    },
-  });
-
-  try {
-    const info = await transporter.verify();
-    console.log("Transactional Email (noreply@edrilla.com): SUCCESS");
-  } catch (error) {
-    console.error("Transactional Email (noreply@edrilla.com): FAILED -", error.message);
-  }
-}
-
-async function testFounder() {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.FounderEmail,
-      pass: process.env.FounderEmailPass,
-    },
-  });
-
-  try {
-    const info = await transporter.verify();
-    console.log("Founder Email (sahil@edrilla.com): SUCCESS");
-  } catch (error) {
-    console.error("Founder Email (sahil@edrilla.com): FAILED -", error.message);
-  }
-}
-
-async function testSupport() {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SupportEmail,
-      pass: process.env.SupportEmailPass,
-    },
-  });
-
-  try {
-    const info = await transporter.verify();
-    console.log("Support Email (support@edrilla.com): SUCCESS");
-  } catch (error) {
-    console.error("Support Email (support@edrilla.com): FAILED -", error.message);
-  }
-}
-
 async function run() {
-  await testTransactional();
-  await testFounder();
-  await testSupport();
+  console.log("Testing SMTP transporters for Data Knowledge...");
+  try {
+    const t = emailService.getTransporter("transactional");
+    await t.verify();
+    console.log("✅ Primary SMTP Port 465 (Transactional): VERIFIED");
+  } catch (err) {
+    console.warn("⚠️ Primary Port 465 failed:", err.message);
+  }
+
+  try {
+    const creds = emailService._getCredentials("transactional");
+    const fallback = emailService._createTransporter(creds.user, creds.pass, 587, false);
+    await fallback.verify();
+    console.log("✅ Fallback SMTP Port 587 (Transactional): VERIFIED");
+  } catch (err) {
+    console.warn("⚠️ Fallback Port 587 failed:", err.message);
+  }
+
+  console.log("\nAll SMTP checks finished.");
 }
 
 run();

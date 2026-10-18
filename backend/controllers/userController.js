@@ -1376,10 +1376,15 @@ export const forgotPassword = async (req, res) => {
         resetToken,
         user.fullName || "User"
       );
-      //console.log("✅ Password reset email sent successfully");
+      console.log(`✅ Password reset email sent successfully to ${email}`);
     } catch (emailError) {
       console.error("❌ Email sending failed:", emailError);
-      // Continue with success response to avoid revealing issues
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send password reset email. Please try again later.",
+        data: {},
+        err: { message: emailError.message },
+      });
     }
 
     return res.status(200).json({
@@ -2301,10 +2306,17 @@ export const sendOtpviaemail = async (req, res) => {
     // Send OTP email
     try {
       await emailService.sendOtpEmail(email, otp);
-      //console.log("✅ OTP email sent successfully");
+      console.log(`✅ OTP email sent successfully to ${email}`);
     } catch (emailError) {
       console.error("❌ Email sending failed:", emailError);
-      // Continue with success to avoid revealing issues
+      return res.status(500).json({
+        success: false,
+        is_exist: user ? true : false,
+        is_verify: user ? user.is_verify : false,
+        message: "Failed to send verification code. Please check your email address or try again later.",
+        data: {},
+        err: { message: emailError.message },
+      });
     }
 
     // SECURITY NOTE: is_exist / is_verify are a user-enumeration oracle (they
