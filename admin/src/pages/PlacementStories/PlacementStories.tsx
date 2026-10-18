@@ -11,6 +11,7 @@ import {
 } from '../../store/slices/placementStory';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import PageMeta from '../../components/common/PageMeta';
+import { IMAGE_BASE_URL } from '../../utils/apiConfig';
 import {
   Plus,
   Search,
@@ -67,7 +68,7 @@ const PlacementStoriesPage: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [externalImageUrl, setExternalImageUrl] = useState<string>('');
 
-  const VITE_IMAGE_URL = (import.meta.env.VITE_IMAGE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+  const VITE_IMAGE_URL = IMAGE_BASE_URL;
 
   useEffect(() => {
     dispatch(fetchPlacementStories());

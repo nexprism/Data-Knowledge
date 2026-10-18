@@ -11,6 +11,7 @@ import {
 } from "../../store/slices/provenResult";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
+import { IMAGE_BASE_URL } from "../../utils/apiConfig";
 import {
   Trophy,
   Award,
@@ -102,7 +103,7 @@ const ProvenResults: React.FC = () => {
       item.image
         ? item.image.startsWith("http")
           ? item.image
-          : `http://localhost:5000/uploads/${item.image}`
+          : `${IMAGE_BASE_URL}/uploads/${item.image}`
         : ""
     );
     setIsModalOpen(true);
@@ -185,7 +186,7 @@ const ProvenResults: React.FC = () => {
   const getImageSrc = (img?: string) => {
     if (!img) return "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=688&auto=format&fit=crop";
     if (img.startsWith("http")) return img;
-    return `http://localhost:5000/uploads/${img}`;
+    return `${IMAGE_BASE_URL}/uploads/${img}`;
   };
 
   return (

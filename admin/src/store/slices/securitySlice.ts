@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { API_BASE_URL } from '../../utils/apiConfig';
 
-const API_URL = `${import.meta.env.VITE_BASE_URL || 'http://localhost:5000'}/security/incidents`;
+const API_URL = `${API_BASE_URL}/security/incidents`;
 
 export const fetchIncidents = createAsyncThunk(
   'security/fetchIncidents',

@@ -8,6 +8,7 @@ import {
 } from "../../store/slices/heroSection";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
+import { API_BASE_URL, IMAGE_BASE_URL } from "../../utils/apiConfig";
 import {
   Sparkles,
   Save,
@@ -29,8 +30,8 @@ const HeroSection: React.FC = () => {
     (state) => state.heroSection
   );
 
-  const VITE_IMAGE = import.meta.env.VITE_IMAGE_URL || "http://localhost:5000/uploads";
-  const VITE_BASE_URL = (import.meta.env.VITE_BASE_URL || "http://localhost:5000").replace(/\/+$/, "");
+  const VITE_IMAGE = `${IMAGE_BASE_URL}/uploads`;
+  const VITE_BASE_URL = API_BASE_URL;
 
   // Form State
   const [headlinePrefix, setHeadlinePrefix] = useState("");

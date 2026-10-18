@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "../../store";
 import { fetchAdminBookings, ConsultationBooking } from "../../store/slices/consultationSlice";
-
-const API_BASE_URL = (import.meta.env.VITE_BASE_URL || "http://localhost:5000").replace(/\/+$/, "");
+import { API_BASE_URL } from "../../utils/apiConfig";
 
 const ConsultationBookings = () => {
   const dispatch = useDispatch<AppDispatch>();

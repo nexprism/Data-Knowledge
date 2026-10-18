@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAboutSnapshot } from '../redux/slices/aboutSnapshotSlice';
+import { getApiBaseUrl } from '../utils/apiConfig.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,7 +15,7 @@ const AboutSnapshot = () => {
    const imageRef = useRef(null);
    const textRef = useRef(null);
 
-   const VITE_BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+   const VITE_BASE_URL = getApiBaseUrl();
 
    useEffect(() => {
       dispatch(fetchAboutSnapshot());

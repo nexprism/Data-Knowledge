@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/all'
 
+import { getApiBaseUrl } from '../utils/apiConfig.js'
+
 gsap.registerPlugin(ScrollTrigger)
 
 const staticTestimonials = [
@@ -54,8 +56,7 @@ const TestimonialsScroll = ({ reviews = [] }) => {
         if (r.image.startsWith('http')) {
           avatar = r.image;
         } else {
-          const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'http://localhost:5000';
-          const baseUrl = rawBase.replace(/\/+$/, '');
+          const baseUrl = getApiBaseUrl();
           const cleanPath = r.image.replace(/\\/g, '/').replace(/^\/+/, '');
           avatar = `${baseUrl}/${cleanPath}`;
         }

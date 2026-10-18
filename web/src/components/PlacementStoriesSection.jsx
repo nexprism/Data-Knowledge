@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchPlacementStories } from '../redux/slices/placementStorySlice'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -17,11 +18,7 @@ const PlacementStoriesSection = () => {
   // In-page Video Player State (runs video without redirecting!)
   const [activeStory, setActiveStory] = useState(null)
 
-  const VITE_IMAGE_URL = (
-    import.meta.env.VITE_IMAGE_URL ||
-    import.meta.env.VITE_BASE_URL ||
-    'http://localhost:5000'
-  ).replace(/\/+$/, '')
+  const VITE_IMAGE_URL = getApiBaseUrl()
 
   useEffect(() => {
     dispatch(fetchPlacementStories())

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 const Testimonials = () => {
-  const baseUrl = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')
+  const baseUrl = getApiBaseUrl()
   const [testimonials, setTestimonials] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

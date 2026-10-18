@@ -5,9 +5,10 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAboutSnapshot, DEFAULT_ABOUT_US } from '../redux/slices/aboutSnapshotSlice';
 
+import { getApiBaseUrl } from '../utils/apiConfig.js';
 gsap.registerPlugin(ScrollTrigger);
 
-const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+const BASE_URL = getApiBaseUrl();
 
 const resolveImage = (src, fallback) => {
   const value = src || fallback;

@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../store';
 import { fetchTestimonials, addTestimonial, resetTestimonialState, deleteTestimonial, updateTestimonial } from '../store/slices/testimonial';
 import { fetchCourses } from '../store/slices/course';
+import { API_BASE_URL } from '../utils/apiConfig';
 import { Star, Plus, X, MessageCircle, User, Briefcase, Loader2, AlertCircle, CheckCircle, Search, Trash2, Edit, BookOpen, Image as ImageIcon, Video, Upload, Film, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface TestimonialData {
@@ -165,7 +166,7 @@ const TestimonialsPage: React.FC = () => {
         title: string;
     } | null>(null);
 
-    const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+    const BASE_URL = API_BASE_URL;
     const getMediaUrl = (path: string) => {
         if (!path) return '';
         if (path.startsWith('http')) return path;

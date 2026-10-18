@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchProvenResults } from '../redux/slices/provenResultSlice'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 const ProvenResultsSection = () => {
   const dispatch = useDispatch()
@@ -94,7 +95,7 @@ const ProvenResultsSection = () => {
   const getImageSrc = (img) => {
     if (!img) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=688&auto=format&fit=crop'
     if (img.startsWith('http')) return img
-    const baseUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:5000'
+    const baseUrl = getApiBaseUrl()
     return `${baseUrl}/uploads/${img}`
   }
 

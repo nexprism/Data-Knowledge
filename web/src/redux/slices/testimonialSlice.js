@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getApiBaseUrl } from '../../utils/apiConfig.js';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5000';
+const BASE_URL = getApiBaseUrl();
 
 // Fetch all approved testimonials for public display
 export const fetchTestimonials = createAsyncThunk(

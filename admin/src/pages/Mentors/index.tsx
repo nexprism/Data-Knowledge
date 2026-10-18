@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { fetchMentors, addMentor, resetMentorState, deleteMentor, updateMentor, Mentor } from '../../store/slices/mentor';
+import { API_BASE_URL } from '../../utils/apiConfig';
 import { Star, Plus, X, User, Briefcase, Loader2, AlertCircle, CheckCircle, Search, Trash2, Edit, Image as ImageIcon } from 'lucide-react';
 
 // Confirmation Dialog Component
@@ -75,7 +76,7 @@ const MentorsPage: React.FC = () => {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-    const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+    const BASE_URL = API_BASE_URL;
     const getMediaUrl = (path: string) => {
         if (!path) return '';
         if (path.startsWith('http')) return path;

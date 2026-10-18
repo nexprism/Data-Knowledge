@@ -1,4 +1,6 @@
-const rawBase = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+import { getApiBaseUrl } from './apiConfig.js';
+
+const rawBase = getApiBaseUrl();
 const BASE = rawBase.includes('/api/v1') ? rawBase : `${rawBase}`;
 
 export async function authorizedFetch(path, opts = {}) {

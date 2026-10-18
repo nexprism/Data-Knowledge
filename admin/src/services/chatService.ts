@@ -1,6 +1,7 @@
 import { io, Socket } from "socket.io-client";
+import { API_BASE_URL } from "../utils/apiConfig";
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_BASE_URL || "http://localhost:5000";
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_BASE_URL;
 
 class ChatService {
   private socket: Socket | null = null;

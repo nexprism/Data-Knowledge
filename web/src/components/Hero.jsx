@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { fetchHeroSection } from '../redux/slices/heroSlice'
 import { useLanguage } from '../context/LanguageContext'
 import ConsultationModal from './consultation/ConsultationModal'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 const Hero = ({ isLoaded }) => {
    const dispatch = useDispatch()
@@ -15,7 +16,7 @@ const Hero = ({ isLoaded }) => {
    const imageRef = useRef(null)
    const { t } = useLanguage()
 
-   const VITE_BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')
+   const VITE_BASE_URL = getApiBaseUrl()
 
    useEffect(() => {
       dispatch(fetchHeroSection())

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import axios from 'axios'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -12,7 +13,7 @@ const MentorsSection = () => {
   const [mentors, setMentors] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const API_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
+  const API_URL = getApiBaseUrl()
 
   useEffect(() => {
     const fetchMentors = async () => {

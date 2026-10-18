@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Settings, BookOpen, Send, X, Plus, Trash2, Upload, FileText, Link as LinkIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import axiosInstance from '../../services/axiosConfig';
+import { API_BASE_URL } from '../../utils/apiConfig';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -107,7 +108,7 @@ const AITool: React.FC = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
-      const baseUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:5000';
+      const baseUrl = API_BASE_URL;
       // Remove trailing slash if present, then add /ai/chat
       const apiUrl = `${baseUrl.replace(/\/$/, '')}/ai/chat`;
       const response = await fetch(

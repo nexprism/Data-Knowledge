@@ -1,7 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
-
-// API base URL
-const API_BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+import { API_BASE_URL } from '../utils/apiConfig';
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

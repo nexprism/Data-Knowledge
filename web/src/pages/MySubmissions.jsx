@@ -6,6 +6,7 @@ import { fetchMyAssignmentArchive } from '../redux/slices/assignmentSlice'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import DashboardLoading from '../components/dashboard/DashboardLoading'
 import { useLanguage } from '../context/LanguageContext'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 const MySubmissions = () => {
    const containerRef = useRef(null)
@@ -100,7 +101,7 @@ const MySubmissions = () => {
    if (selectedSub) {
       const courseName = selectedSub.courseId?.title || selectedSub.assignmentId?.courseName || 'Unknown Course';
       const lessonName = selectedSub.lessonId?.title || selectedSub.assignmentId?.lessonName || 'Assignment';
-      const apiBase = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
+      const apiBase = getApiBaseUrl();
       const submissionFileUrl = selectedSub.submissionFile
          ? `${apiBase}/${selectedSub.submissionFile.replace(/^\/+/, '')}`
          : null;

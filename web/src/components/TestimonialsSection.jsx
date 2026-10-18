@@ -6,6 +6,7 @@ import {
   submitTestimonial,
   resetSubmitStatus,
 } from '../redux/slices/testimonialSlice'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 const StarIcon = ({ filled = true, className = 'w-4 h-4' }) => (
   <svg
@@ -474,7 +475,7 @@ const TestimonialsSection = () => {
   const getImageSrc = (img) => {
     if (!img) return null
     if (img.startsWith('http')) return img
-    const baseUrl = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')
+    const baseUrl = getApiBaseUrl()
     const cleanImg = img.replace(/\\/g, '/').replace(/^\/+/, '')
     return `${baseUrl}/${cleanImg}`
   }
@@ -482,7 +483,7 @@ const TestimonialsSection = () => {
   const getVideoSrc = (vid) => {
     if (!vid) return null
     if (vid.startsWith('http')) return vid
-    const baseUrl = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')
+    const baseUrl = getApiBaseUrl()
     const cleanVid = vid.replace(/\\/g, '/').replace(/^\/+/, '')
     return `${baseUrl}/${cleanVid}`
   }

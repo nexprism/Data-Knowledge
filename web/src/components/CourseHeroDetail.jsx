@@ -4,6 +4,7 @@ import { gsap } from 'gsap'
 import sanitizeDisplay, { extractEditorBlocks, sanitizeParagraph } from '../utils/textSanitize'
 import { useLanguage } from '../context/LanguageContext'
 import authorizedFetch from '../utils/apiClient'
+import { getApiBaseUrl } from '../utils/apiConfig.js'
 
 const CourseHeroDetail = ({ course = {}, section = {} }) => {
   const heroRef = useRef(null)
@@ -129,7 +130,7 @@ const CourseHeroDetail = ({ course = {}, section = {} }) => {
   const imageSrc = rawImage
     ? rawImage.startsWith('http') || rawImage.startsWith('/')
       ? rawImage
-      : `${(import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')}/${rawImage.replace(/^\/+/, '')}`
+      : `${getApiBaseUrl()}/${rawImage.replace(/^\/+/, '')}`
     : null
 
   return (
