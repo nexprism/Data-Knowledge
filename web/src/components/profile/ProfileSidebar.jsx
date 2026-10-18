@@ -2,6 +2,7 @@ import React, { useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { updateUserProfile } from '../../redux/slices/profileSlice'
 import { useLanguage } from '../../context/LanguageContext'
+import { getImageBaseUrl } from '../../utils/apiConfig'
 
 const ProfileSidebar = ({ compact = false }) => {
   const dispatch = useDispatch()
@@ -47,7 +48,7 @@ const ProfileSidebar = ({ compact = false }) => {
             {/* Avatar Protocol */}
             {user?.profilePicture ? (
                <img 
-                  src={user.profilePicture.startsWith('http') ? user.profilePicture : `${(import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/uploads/${user.profilePicture.replace(/^\/?(uploads\/)?/, '')}`} 
+                  src={user.profilePicture.startsWith('http') ? user.profilePicture : `${getImageBaseUrl()}/uploads/${user.profilePicture.replace(/^\/?(uploads\/)?/, '')}`}
                   alt={user.fullName} 
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                />

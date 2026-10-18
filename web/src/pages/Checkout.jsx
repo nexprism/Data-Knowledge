@@ -6,6 +6,7 @@ import { buyNow } from '../redux/slices/enrollmentSlice'
 import bannerImg from '../assets/images/banner.png'
 import CheckoutBreakdown from '../components/CheckoutBreakdown'
 import { useLanguage } from '../context/LanguageContext'
+import { getApiBaseUrl } from '../utils/apiConfig'
 
 const Checkout = () => {
    const navigate = useNavigate()
@@ -26,8 +27,7 @@ const Checkout = () => {
    const { settings, coupons, couponData, couponError, couponLoading } = useSelector(state => state.config)
    const authUser = useSelector(state => state.auth?.user)
 
-   const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in'
-   const BASE_API = rawBase.replace(/\/api\/v1\/?$/, '')
+   const BASE_API = getApiBaseUrl().replace(/\/api\/v1\/?$/, '')
 
    const [formData, setFormData] = useState(() => {
       let savedUser = null

@@ -5,6 +5,7 @@ import { fetchCourseDetail } from '../redux/slices/courseSlice';
 import sanitizeDisplay from '../utils/textSanitize';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import authorizedFetch from '../utils/apiClient';
+import { getImageBaseUrl } from '../utils/apiConfig';
 
 const formatFileSize = (bytes) => {
     if (!bytes || bytes === 0) return '0 B';
@@ -17,8 +18,7 @@ const formatFileSize = (bytes) => {
 const getFileUrl = (file) => {
     if (!file) return '#';
     if (file.startsWith('http')) return file;
-    const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-    const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+    const baseUrl = getImageBaseUrl();
     return `${baseUrl}${file.startsWith('/') ? '' : '/'}${file}`;
 };
 

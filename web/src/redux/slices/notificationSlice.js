@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authorizedFetch } from '../../utils/apiClient';
+import { getApiBaseUrl } from '../../utils/apiConfig';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in';
+const BASE_URL = getApiBaseUrl();
 
 export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',

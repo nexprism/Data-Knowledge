@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const TrackerContext = createContext(null);
 
-const rawBase = import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in';
+const rawBase = getApiBaseUrl();
 const BASE = rawBase.includes('/api/v1') ? rawBase : `${rawBase}`;
 
 export const useTracker = () => {

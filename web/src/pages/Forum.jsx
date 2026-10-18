@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchThreads, createThread, fetchForumTags, likeThread, postReply } from '../redux/slices/forumSlice'
 import CreateTopicModal from '../components/dashboard/CreateTopicModal'
 import { useLanguage } from '../context/LanguageContext'
+import { getImageBaseUrl } from '../utils/apiConfig'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -233,8 +234,7 @@ const QuestionCard = ({ question }) => {
                     const pic = question.profilePicture;
                     if (!pic) return '/news_placeholder.png';
                     if (pic.startsWith('http')) return pic;
-                    const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-                    const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+                    const baseUrl = getImageBaseUrl();
                     return `${baseUrl}/uploads/profiles/${pic}`;
                 })()} 
                 alt={question.author}
@@ -283,7 +283,7 @@ const QuestionCard = ({ question }) => {
                   return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(path);
                 }).map((att, idx) => {
                   const path = typeof att === 'string' ? att : (att.type || '');
-                  const fullUrl = path.startsWith('http') ? path : `${(import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/${path.startsWith('uploads/') ? path : `uploads/forum/${path}`}`;
+                  const fullUrl = path.startsWith('http') ? path : `${getImageBaseUrl()}/${path.startsWith('uploads/') ? path : `uploads/forum/${path}`}`;
                   
                   return (
                     <div key={idx} className="attachment-item relative aspect-video bg-slate-100 border border-slate-200 rounded-xl overflow-hidden group/img shadow-sm">
@@ -374,8 +374,7 @@ const QuestionCard = ({ question }) => {
                             const pic = reply.profilePicture;
                             if (!pic) return '/news_placeholder.png';
                             if (pic.startsWith('http')) return pic;
-                            const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-                            const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+                            const baseUrl = getImageBaseUrl();
                             return `${baseUrl}/uploads/profiles/${pic}`;
                         })()} 
                         alt={reply.author}
@@ -418,8 +417,7 @@ const QuestionCard = ({ question }) => {
                                   const pic = nested.profilePicture;
                                   if (!pic) return '/news_placeholder.png';
                                   if (pic.startsWith('http')) return pic;
-                                  const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-                                  const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+                                  const baseUrl = getImageBaseUrl();
                                   return `${baseUrl}/uploads/profiles/${pic}`;
                               })()} 
                               alt={nested.author}

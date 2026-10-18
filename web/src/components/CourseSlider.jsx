@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchCourses } from '../redux/slices/courseSlice'
 import sanitizeDisplay from '../utils/textSanitize'
 import { useLanguage } from '../context/LanguageContext'
+import { getImageBaseUrl } from '../utils/apiConfig'
 
 const SwimlaneRow = ({ category, courses, navigate }) => {
   const rowRef = useRef(null)
@@ -76,8 +77,7 @@ const SwimlaneRow = ({ category, courses, navigate }) => {
                     src={(() => {
                       const imgPath = course.thumbnail || course.horizontalCarouselImage || course.verticalCarouselImage;
                       if (!imgPath) return "/banner.png";
-                      const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-                      const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+                      const baseUrl = getImageBaseUrl();
                       return `${baseUrl}${imgPath.startsWith('/') ? '' : '/'}${imgPath}`;
                     })()}
                     alt={sanitizeDisplay(course.title)}

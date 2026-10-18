@@ -5,6 +5,7 @@ import { gsap } from 'gsap'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMyEnrollments } from '../redux/slices/enrollmentSlice'
 import { useLanguage } from '../context/LanguageContext'
+import { getImageBaseUrl } from '../utils/apiConfig'
 
 import DashboardLoading from '../components/dashboard/DashboardLoading'
 import socketService from '../services/socketService'
@@ -164,8 +165,7 @@ const MyCourses = () => {
                             const thumb = item.course?.thumbnail;
                             if (!thumb) return '/news_placeholder.png';
                             if (thumb.startsWith('http')) return thumb;
-                            const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-                            const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+                            const baseUrl = getImageBaseUrl();
                             return `${baseUrl}${thumb.startsWith('/') ? '' : '/'}${thumb}`;
                         })()} 
                         alt={item.course?.title} 

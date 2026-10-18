@@ -5,6 +5,7 @@ import { gsap } from 'gsap'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMyEnrollments } from '../redux/slices/enrollmentSlice'
 import { useLanguage } from '../context/LanguageContext'
+import { getApiBaseUrl } from '../utils/apiConfig'
 
 const Purchases = () => {
   const dispatch = useDispatch()
@@ -16,8 +17,7 @@ const Purchases = () => {
   useEffect(() => {
     dispatch(fetchMyEnrollments())
   }, [dispatch])
-  
-  const baseUrl = (import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '');
+  const baseUrl = getApiBaseUrl();
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = enrollments.slice(indexOfFirstItem, indexOfLastItem)

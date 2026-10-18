@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { pinMessage, deleteMessage } from '../../redux/slices/chat';
+import { getImageBaseUrl } from '../../utils/apiConfig';
 
 const CustomAudioPlayer = ({ src }) => {
     const audioRef = useRef(null);
@@ -184,8 +185,7 @@ const ChatMessage = ({ msg, isSent, onReply }) => {
         if (rawUrl.startsWith('http') || rawUrl.startsWith('blob:')) {
             return rawUrl;
         }
-        const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-        const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+        const baseUrl = getImageBaseUrl();
         return `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
     };
 

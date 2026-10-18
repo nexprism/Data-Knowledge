@@ -1,8 +1,9 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import authorizedFetch from '../../utils/apiClient';
+import { getApiBaseUrl } from '../../utils/apiConfig';
 // socketService will be dynamically imported in thunks to avoid early evaluation
 
-const API_BASE = import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in';
+const API_BASE = getApiBaseUrl();
 
 export const connectSocket = createAsyncThunk('chat/connectSocket', async (_, { rejectWithValue, dispatch, getState }) => {
   try {

@@ -1,11 +1,8 @@
 // Dynamically import socket.io-client inside connect() to avoid importing
-// engine.io-client at module-evaluation time (prevents browser/Node mismatch errors).
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const getBaseUrl = () => {
-  const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
-  let url = env.VITE_SOCKET_URL || env.VITE_API_BASE || env.VITE_BASE_URL || 'https://api.dataknowledge.in';
-  // Ensure we don't have double slashes if the env var ends with one
-  return url.replace(/\/$/, '');
+  return getApiBaseUrl();
 };
 
 class SocketService {

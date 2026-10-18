@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { updateUserProfile, deleteDocument } from '../../redux/slices/profileSlice'
 import ConfirmModal from './ConfirmModal'
+import { getImageBaseUrl } from '../../utils/apiConfig'
 
 const ProfileSkills = () => {
   const dispatch = useDispatch()
@@ -112,7 +113,7 @@ const ProfileSkills = () => {
                      <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         {doc.Doc && (
                            <a 
-                              href={doc.Doc?.startsWith('http') ? doc.Doc : `${(import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in').replace(/\/+$/, '')}/uploads/${doc.Doc?.replace(/^\/?(uploads\/)?/, '')}`} 
+                              href={doc.Doc?.startsWith('http') ? doc.Doc : `${getImageBaseUrl()}/uploads/${doc.Doc?.replace(/^\/?(uploads\/)?/, '')}`}
                               target="_blank" 
                               rel="noreferrer"
                               className="text-accent hover:text-white transition-colors"

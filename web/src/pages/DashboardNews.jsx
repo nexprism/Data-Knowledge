@@ -6,6 +6,7 @@ import { fetchNews } from '../redux/slices/newsSlice'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import DashboardLoading from '../components/dashboard/DashboardLoading'
 import { useLanguage } from '../context/LanguageContext'
+import { getImageBaseUrl } from '../utils/apiConfig'
 
 const NewsCard = ({ article, variant = 'standard' }) => {
   const cardRef = useRef(null)
@@ -99,8 +100,7 @@ const DashboardNews = () => {
     image: (() => {
         const url = n.imageUrl || n.coverImage || n.image;
         if (!url) return '/news_placeholder.png';
-        const rawBase = import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-        const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+        const baseUrl = getImageBaseUrl();
         const finalUrl = url.startsWith('http') ? url : `${baseUrl}/uploads/news/${url}`;
         return encodeURI(finalUrl);
     })()

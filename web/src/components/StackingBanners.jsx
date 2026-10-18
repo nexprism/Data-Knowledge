@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import RollingText from './RollingText'
 import authorizedFetch from '../utils/apiClient'
 import { useLanguage } from '../context/LanguageContext'
+import { getImageBaseUrl } from '../utils/apiConfig'
 
 const StackingBanners = () => {
   const scrollContainerRef = useRef(null)
@@ -22,8 +23,7 @@ const StackingBanners = () => {
       if (!path.startsWith('/') && !path.startsWith('uploads/')) {
         path = `uploads/${path}`
       }
-      const rawBase = import.meta.env.VITE_BASE_URL || 'https://api.dataknowledge.in'
-      const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '')
+      const baseUrl = getImageBaseUrl()
       return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`
     } catch {
       return null

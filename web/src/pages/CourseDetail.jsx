@@ -13,6 +13,7 @@ import BenefitsSection from '../components/BenefitsSection'
 import FrameworkSection from '../components/FrameworkSection'
 import SolutionSection from '../components/SolutionSection'
 import sanitizeDisplay from '../utils/textSanitize'
+import { getImageBaseUrl } from '../utils/apiConfig'
 import phase1Img from '../assets/images/blueprint/phase_01.png'
 import phase2Img from '../assets/images/blueprint/phase_02.png'
 import phase3Img from '../assets/images/blueprint/phase_03.png'
@@ -129,8 +130,7 @@ const CourseDetail = () => {
         if (rawUrl.startsWith('http') || rawUrl.startsWith('blob:')) {
             apiImage = rawUrl;
         } else {
-            const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-            const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+            const baseUrl = getImageBaseUrl();
             apiImage = `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
         }
     }
@@ -151,8 +151,7 @@ const CourseDetail = () => {
               if (rawUrl.startsWith('http') || rawUrl.startsWith('blob:')) {
                   lessonImage = rawUrl;
               } else {
-                  const rawBase = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || import.meta.env.VITE_API_BASE || 'https://api.dataknowledge.in';
-                  const baseUrl = rawBase.replace(/\/api\/v1\/?$/, '');
+                  const baseUrl = getImageBaseUrl();
                   lessonImage = `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
               }
           }
