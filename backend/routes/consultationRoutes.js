@@ -7,6 +7,7 @@ import optionalAuthenticate from '../middlewares/optionalAuthenticate.js';
 import {
     createSlots,
     getAdminSlots,
+    updateSlot,
     deleteSlot,
     getAdminBookings,
     getAvailableSlots,
@@ -19,6 +20,7 @@ const router = express.Router();
 // --- Admin Routes ---
 router.post('/slots', accessTokenAutoRefresh, passport.authenticate('jwt', { session: false }), isAdmin, createSlots);
 router.get('/admin/slots', accessTokenAutoRefresh, passport.authenticate('jwt', { session: false }), isAdmin, getAdminSlots);
+router.put('/slots/:id', accessTokenAutoRefresh, passport.authenticate('jwt', { session: false }), isAdmin, updateSlot);
 router.delete('/slots/:id', accessTokenAutoRefresh, passport.authenticate('jwt', { session: false }), isAdmin, deleteSlot);
 router.get('/bookings', accessTokenAutoRefresh, passport.authenticate('jwt', { session: false }), isAdmin, getAdminBookings);
 

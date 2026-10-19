@@ -76,6 +76,8 @@ import whyChooseUsRouter from "./whyChooseUsRoutes.js";
 import aboutSnapshotRouter from "./aboutSnapshotRoutes.js";
 import adminUserRouter from "./adminUserRoutes.js";
 import mentorRouter from "./mentorRoutes.js";
+import contactRouter from "./contactRoutes.js";
+import { submitContactRequest } from "../controllers/contactController.js";
 import { Route } from "express";
 
 router.get("/", (req, res) => {
@@ -155,6 +157,8 @@ router.use("/why-choose-us", whyChooseUsRouter);
 router.use("/about-snapshot", aboutSnapshotRouter);
 router.use("/admin-users", adminUserRouter);
 router.use("/", mentorRouter);
+router.use("/contact", contactRouter);
+router.post("/lapaas-ticket", submitContactRequest);
 
 // Frontend Activity Logger endpoints
 router.post("/activity-logs", (req, res) => res.status(200).json({ success: true }));

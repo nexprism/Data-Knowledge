@@ -84,6 +84,7 @@ import HeroSectionPage from "./pages/HeroSection/HeroSection";
 import WhyChooseUsPage from "./pages/WhyChooseUs/WhyChooseUs";
 import AboutSnapshotPage from "./pages/AboutSnapshot/AboutSnapshot";
 import MentorsPage from "./pages/Mentors";
+import ContactManagement from "./pages/Contact/ContactManagement";
 
 // Lazy load pages
 const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
@@ -320,6 +321,8 @@ export default function App() {
                 <Route path="/why-choose-us" element={<WhyChooseUsPage />} />
                 <Route path="/about-snapshot" element={<AboutSnapshotPage />} />
                 <Route path="/admin-users" element={<AdminUsersPage />} />
+                <Route path="/contact-management" element={<ContactManagement />} />
+                <Route path="/contact" element={<Navigate to="/contact-management" replace />} />
               </Route>
             </Route>
 

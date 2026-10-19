@@ -134,50 +134,71 @@ class CourseService {
   }
 
   //updateCoursePlans
-  async updateCoursePlans(courseId, plans) {
+  async updateCoursePlans(courseId, plans = []) {
     try {
       if (!mongoose.Types.ObjectId.isValid(courseId)) {
         throw new Error("Invalid course ID format");
       }
+      const courseObjId = new mongoose.Types.ObjectId(courseId);
+      const incomingIds = [];
+
       // Validate each plan and update or create
       for (const plan of plans) {
-        if (!plan.name || !plan.price || !plan.duration || !plan.durationType) {
-          throw new Error("Invalid course plan data");
+        if (!plan.name || plan.price === undefined || plan.price === null || plan.duration === undefined || plan.duration === null || !plan.durationType) {
+          throw new Error("Invalid course plan data: name, price, duration, and durationType are required");
         }
         if (!["Month", "Year", "Day"].includes(plan.durationType)) {
           throw new Error("Invalid duration type in course plan");
         }
-        if (isNaN(plan.price) || plan.price < 0) {
+        const parsedPrice = Number(plan.price);
+        const parsedDuration = Number(plan.duration);
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
           throw new Error("Invalid price in course plan");
         }
-        if (isNaN(plan.duration) || plan.duration <= 0) {
+        if (isNaN(parsedDuration) || parsedDuration <= 0) {
           throw new Error("Invalid duration in course plan");
         }
         const coursePlanData = {
-          courseId,
-          name: plan.name,
-          price: Number(plan.price),
+          courseId: courseObjId,
+          name: String(plan.name).trim(),
+          price: parsedPrice,
           description: plan.description || '',
           durationType: plan.durationType,
-          duration: Number(plan.duration),
+          duration: parsedDuration,
           salePrice: plan.salePrice ? Number(plan.salePrice) : 0,
           status: plan.status || 'active'
         };
-        if (plan._id) {
+
+        if (plan._id && mongoose.Types.ObjectId.isValid(plan._id)) {
           // Update existing plan
-          await CoursePlan.findOneAndUpdate(
-            { _id: plan._id, courseId },
+          const updated = await CoursePlan.findOneAndUpdate(
+            { _id: new mongoose.Types.ObjectId(plan._id), courseId: courseObjId },
             { $set: coursePlanData },
             { new: true, runValidators: true }
           );
+          if (updated) {
+            incomingIds.push(updated._id);
+          } else {
+            const created = await CoursePlan.create(coursePlanData);
+            incomingIds.push(created._id);
+          }
         } else {
           // Create new plan
-          await CoursePlan.create(coursePlanData);
+          const created = await CoursePlan.create(coursePlanData);
+          incomingIds.push(created._id);
         }
       }
+
+      // Delete plans belonging to this course that are NOT in incomingIds
+      await CoursePlan.deleteMany({
+        courseId: courseObjId,
+        _id: { $nin: incomingIds }
+      });
+
+      return await CoursePlan.find({ courseId: courseObjId }).lean();
     } catch (error) {
       console.error("Error updating course plans:", error);
-      throw new Error("Failed to update course plans");
+      throw new Error("Failed to update course plans: " + (error.message || ""));
     }
   }
 

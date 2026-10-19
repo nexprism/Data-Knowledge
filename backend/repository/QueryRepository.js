@@ -62,7 +62,7 @@ export default class QueryRepository {
 
   async update(id, data) {
     try {
-      return await Query.findByIdAndUpdate(id, data, { new: true });
+      return await Query.findByIdAndUpdate(id, data, { new: true }).populate('course', 'title slug thumbnail price salePrice');
     } catch (error) {
       console.error('QueryRepository.update error:', error);
       throw error;

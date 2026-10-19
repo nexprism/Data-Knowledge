@@ -61,8 +61,8 @@ const SuccessPopup = ({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-100">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[99999]">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 my-auto transform transition-all duration-300 scale-100">
         <div className="text-center">
           <div
             className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${type === "success" ? "bg-green-100" : "bg-red-100"
@@ -635,6 +635,8 @@ const EditCourse = () => {
             _id: p._id,
           }))
         );
+      } else {
+        setPlans([]);
       }
     }
   }, [courseData]);
@@ -711,19 +713,34 @@ const EditCourse = () => {
 
   // Add or update plan
   const handleAddOrUpdatePlan = () => {
-    if (!planForm.name.trim() || !planForm.price.trim() || !planForm.durationType || !planForm.duration.trim()) {
+    const nameStr = String(planForm.name || "").trim();
+    const priceStr = String(planForm.price ?? "").trim();
+    const durationStr = String(planForm.duration ?? "").trim();
+    if (!nameStr || !priceStr || !planForm.durationType || !durationStr) {
       setPlanFormError("Name, price, duration type, and duration are required");
       return;
     }
+
+    const cleanPlan = {
+      ...planForm,
+      name: nameStr,
+      price: priceStr,
+      duration: durationStr,
+      description: String(planForm.description || "").trim(),
+      salePrice: String(planForm.salePrice ?? "").trim(),
+      status: planForm.status || "active",
+      durationType: planForm.durationType || "Month",
+    };
+
     if (editingPlanIdx !== null) {
-      // Update existing plan
+      // Update existing plan while preserving its original _id if it had one
       setPlans((prev) =>
-        prev.map((p, idx) => (idx === editingPlanIdx ? { ...planForm } : p))
+        prev.map((p, idx) => (idx === editingPlanIdx ? { ...cleanPlan, _id: p._id || cleanPlan._id } : p))
       );
       setEditingPlanIdx(null);
     } else {
       // Add new plan
-      setPlans([...plans, { ...planForm }]);
+      setPlans((prev) => [...prev, cleanPlan]);
     }
     setPlanForm({ name: "", price: "", description: "", durationType: "Month", duration: "", salePrice: "", status: "active", _id: undefined });
     setPlanFormError("");
@@ -742,6 +759,8 @@ const EditCourse = () => {
     if (editingPlanIdx === idx) {
       setPlanForm({ name: "", price: "", description: "", durationType: "Month", duration: "", salePrice: "", status: "active", _id: undefined });
       setEditingPlanIdx(null);
+    } else if (editingPlanIdx !== null && editingPlanIdx > idx) {
+      setEditingPlanIdx(editingPlanIdx - 1);
     }
   };
 
@@ -891,21 +910,24 @@ const EditCourse = () => {
     if (coverImageFile) submitFormData.set("coverImage", coverImageFile);
 
     // --- FLATTEN PLANS IN PAYLOAD WITHOUT QUOTES ---
+    submitFormData.set("hasPlansPayload", "true");
+    submitFormData.set("plansPayload", JSON.stringify(plans));
+
     plans.forEach((plan, idx) => {
       Object.entries(plan).forEach(([key, value]) => {
-        if (key !== "_id") {
-          submitFormData.append(`plans[${idx}][${key}]`, value);
+        if (key !== "_id" && value !== undefined && value !== null) {
+          submitFormData.append(`plans[${idx}][${key}]`, String(value));
         }
-        // Optionally, send _id for existing plans if backend supports updating by _id
+        // Send _id for existing plans if available
         if (key === "_id" && value) {
-          submitFormData.append(`plans[${idx}][_id]`, value);
+          submitFormData.append(`plans[${idx}][_id]`, String(value));
         }
       });
     });
     // --- END FLATTEN PLANS ---
 
     try {
-      await dispatch(
+      const res = await dispatch(
         updateCourse({ id: courseId, data: submitFormData })
       ).unwrap();
       setPopup({
@@ -915,6 +937,22 @@ const EditCourse = () => {
           : "Course updated successfully!",
         type: "success",
       });
+
+      if (res?.data?.course?.plans && Array.isArray(res.data.course.plans)) {
+        setPlans(
+          res.data.course.plans.map((p: any) => ({
+            name: p.name || "",
+            price: String(p.price ?? ""),
+            description: p.description || "",
+            durationType: p.durationType || "Month",
+            duration: String(p.duration ?? ""),
+            salePrice: String(p.salePrice ?? ""),
+            status: p.status || "active",
+            _id: p._id,
+          }))
+        );
+      }
+
       // Refetch course data after update to get latest price/salePrice
       const token = localStorage.getItem("token") || "";
       dispatch(fetchCourseById({ courseId, token }));
@@ -1532,53 +1570,79 @@ const EditCourse = () => {
                           <option value="inactive">Inactive</option>
                         </select>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleAddOrUpdatePlan}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                      >
-                        {editingPlanIdx !== null ? "Update Plan" : "Add Plan"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAddOrUpdatePlan}
+                          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium transition cursor-pointer"
+                        >
+                          {editingPlanIdx !== null ? "Update Plan" : "Add Plan"}
+                        </button>
+                        {editingPlanIdx !== null && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEdit}
+                            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm font-medium transition cursor-pointer"
+                          >
+                            Cancel Edit
+                          </button>
+                        )}
+                      </div>
                       {planFormError && (
                         <div className="text-xs text-red-600 mt-1">{planFormError}</div>
                       )}
                       {plans.length > 0 && (
-                        <div className="mt-4">
-                          <table className="w-full text-sm border">
+                        <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                          <table className="w-full text-sm">
                             <thead>
-                              <tr className="bg-gray-100 dark:bg-gray-700">
-                                <th className="p-2">Name</th>
-                                <th className="p-2">Price</th>
-                                <th className="p-2">Description</th>
-                                <th className="p-2">Duration Type</th>
-                                <th className="p-2">Duration</th>
-                                <th className="p-2">Sale Price</th>
-                                <th className="p-2">Status</th>
-                                <th className="p-2"></th>
+                              <tr className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                <th className="p-2.5 text-left font-semibold">Name</th>
+                                <th className="p-2.5 text-left font-semibold">Price</th>
+                                <th className="p-2.5 text-left font-semibold">Description</th>
+                                <th className="p-2.5 text-left font-semibold">Duration Type</th>
+                                <th className="p-2.5 text-left font-semibold">Duration</th>
+                                <th className="p-2.5 text-left font-semibold">Sale Price</th>
+                                <th className="p-2.5 text-left font-semibold">Status</th>
+                                <th className="p-2.5 text-center font-semibold">Actions</th>
                               </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                               {plans.map((plan, idx) => (
-                                <tr key={idx}>
-                                  <td className="p-2">{plan.name}</td>
-                                  <td className="p-2">{plan.price}</td>
-                                  <td className="p-2">{plan.description}</td>
-                                  <td className="p-2">{plan.durationType}</td>
-                                  <td className="p-2">{plan.duration}</td>
-                                  <td className="p-2">{plan.salePrice}</td>
-                                  <td className="p-2">{plan.status}</td>
-                                  <td className="p-2">
+                                <tr
+                                  key={plan._id || idx}
+                                  className={`transition-colors ${
+                                    idx === editingPlanIdx
+                                      ? "bg-blue-50 dark:bg-blue-950/40 border-l-4 border-blue-500"
+                                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                  }`}
+                                >
+                                  <td className="p-2.5 font-medium text-gray-900 dark:text-gray-100">{plan.name}</td>
+                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">₹{plan.price}</td>
+                                  <td className="p-2.5 text-gray-600 dark:text-gray-400 max-w-xs truncate" title={plan.description}>{plan.description || "-"}</td>
+                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">{plan.durationType}</td>
+                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">{plan.duration}</td>
+                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">{plan.salePrice ? `₹${plan.salePrice}` : "-"}</td>
+                                  <td className="p-2.5">
+                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                      plan.status === "active"
+                                        ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
+                                        : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                                    }`}>
+                                      {plan.status || "active"}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 text-center whitespace-nowrap">
                                     <button
                                       type="button"
                                       onClick={() => handleEditPlan(idx)}
-                                      className="text-blue-500 hover:underline mr-2"
+                                      className="px-2.5 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded mr-2 transition cursor-pointer"
                                     >
                                       Edit
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => handleRemovePlan(idx)}
-                                      className="text-red-500 hover:underline"
+                                      className="px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition cursor-pointer"
                                     >
                                       Remove
                                     </button>

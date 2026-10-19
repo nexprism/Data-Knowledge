@@ -4,9 +4,11 @@ import { RootState, AppDispatch } from "../../store";
 import {
   fetchAdminSlots,
   createSlots,
+  updateSlot,
   deleteSlot,
 } from "../../store/slices/consultationSlice";
 import { toast } from "react-hot-toast";
+import { Pencil, X, Check, AlertCircle } from "lucide-react";
 
 const ConsultationSlots = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -42,6 +44,70 @@ const ConsultationSlots = () => {
   const [wePrice, setWePrice] = useState(500);
 
   const [previewSlots, setPreviewSlots] = useState<any[]>([]);
+
+  // Edit Slot State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<any | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editDuration, setEditDuration] = useState<15 | 30>(15);
+  const [editPrice, setEditPrice] = useState(0);
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleOpenEdit = (slot: any) => {
+    const sDate = new Date(slot.startTime);
+    const y = sDate.getFullYear();
+    const m = String(sDate.getMonth() + 1).padStart(2, "0");
+    const d = String(sDate.getDate()).padStart(2, "0");
+    const hh = String(sDate.getHours()).padStart(2, "0");
+    const mm = String(sDate.getMinutes()).padStart(2, "0");
+
+    setEditingSlot(slot);
+    setEditDate(`${y}-${m}-${d}`);
+    setEditStartTime(`${hh}:${mm}`);
+    setEditDuration((slot.duration === 30 ? 30 : 15) as 15 | 30);
+    setEditPrice(slot.price || 0);
+    setEditIsActive(slot.isActive !== false);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSlot) return;
+    if (!editDate || !editStartTime) {
+      toast.error("Please provide both date and start time");
+      return;
+    }
+
+    const startDateTime = new Date(`${editDate}T${editStartTime}`);
+    if (isNaN(startDateTime.getTime())) {
+      toast.error("Invalid date or time selected");
+      return;
+    }
+
+    const endDateTime = new Date(startDateTime.getTime() + editDuration * 60000);
+
+    const payload = {
+      startTime: startDateTime.toISOString(),
+      endTime: endDateTime.toISOString(),
+      duration: editDuration,
+      price: editDuration === 15 ? 0 : Number(editPrice),
+      isActive: editIsActive,
+    };
+
+    try {
+      setIsUpdating(true);
+      await dispatch(updateSlot({ id: editingSlot._id, data: payload })).unwrap();
+      toast.success("Consultation slot updated successfully");
+      setIsEditModalOpen(false);
+      setEditingSlot(null);
+    } catch (err: any) {
+      toast.error(err || "Failed to update consultation slot");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchAdminSlots());
@@ -574,15 +640,24 @@ const ConsultationSlots = () => {
                   {isBooked ? "BOOKED" : "AVAILABLE"}
                 </div>
                 
-                {!isBooked && (
+                <div className="absolute top-2 right-2 flex items-center gap-1.5">
                   <button
-                    onClick={() => handleDelete(slot._id)}
-                    className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
-                    title="Delete Slot"
+                    onClick={() => handleOpenEdit(slot)}
+                    className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-xs cursor-pointer"
+                    title="Edit Slot"
                   >
-                    ✕
+                    <Pencil className="w-3 h-3" />
                   </button>
-                )}
+                  {!isBooked && (
+                    <button
+                      onClick={() => handleDelete(slot._id)}
+                      className="w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition shadow-xs cursor-pointer"
+                      title="Delete Slot"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -595,6 +670,175 @@ const ConsultationSlots = () => {
           )}
         </div>
       </div>
+
+      {/* EDIT SLOT MODAL */}
+      {isEditModalOpen && editingSlot && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                  Edit Consultation Slot
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingSlot(null);
+                }}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition cursor-pointer"
+                title="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              {editingSlot.isBooked && (
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                  <span>
+                    <strong>Note:</strong> This slot has already been booked by a candidate.
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  Slot Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  Start Time *
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  Duration
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditDuration(15);
+                      setEditPrice(0);
+                    }}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      editDuration === 15
+                        ? "border-brand-500 bg-brand-50 text-brand-600 font-bold dark:bg-brand-950/40 dark:border-brand-500"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    <span>15 Min</span>
+                    <span className="text-[10px] font-normal text-emerald-600">(Free)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditDuration(30);
+                      if (editPrice === 0) setEditPrice(100);
+                    }}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      editDuration === 30
+                        ? "border-brand-500 bg-brand-50 text-brand-600 font-bold dark:bg-brand-950/40 dark:border-brand-500"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    <span>30 Min</span>
+                    <span className="text-[10px] font-normal text-blue-600">(Paid)</span>
+                  </button>
+                </div>
+              </div>
+
+              {editDuration === 30 && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(Number(e.target.value))}
+                    className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+              )}
+
+              <div className="pt-1">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editIsActive}
+                    onChange={(e) => setEditIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-500 focus:ring-brand-500 border-gray-300 cursor-pointer"
+                  />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Slot is Active & Available for Booking
+                  </span>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingSlot(null);
+                  }}
+                  disabled={isUpdating}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold transition flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {isUpdating ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

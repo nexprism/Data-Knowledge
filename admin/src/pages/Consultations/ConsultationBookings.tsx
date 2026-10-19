@@ -290,11 +290,11 @@ const ConsultationBookings = () => {
       {/* Details Modal */}
       {selectedBooking && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto"
           onClick={() => setSelectedBooking(null)}
         >
           <div
-            className="relative w-full max-w-lg bg-white dark:bg-boxdark rounded-2xl shadow-2xl border border-stroke dark:border-strokedark p-6 space-y-5 animate-in zoom-in-95"
+            className="relative w-full max-w-lg bg-white dark:bg-boxdark rounded-2xl shadow-2xl border border-stroke dark:border-strokedark p-6 space-y-5 my-auto animate-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-stroke dark:border-strokedark pb-3">
@@ -367,7 +367,7 @@ const ConsultationBookings = () => {
                     href={`${API_BASE_URL}/uploads/${selectedBooking.fileUpload}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-2.5 px-4 rounded-xl bg-primary text-white font-bold text-center block hover:bg-opacity-90 transition shadow-sm"
+                    className="w-full py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-center block hover:bg-brand-600 transition shadow-md hover:shadow-lg"
                   >
                     📄 Download Uploaded Document / Synopsis
                   </a>

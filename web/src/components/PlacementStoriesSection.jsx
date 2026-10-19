@@ -15,8 +15,8 @@ const PlacementStoriesSection = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
-  // In-page Video Player State (runs video without redirecting!)
-  const [activeStory, setActiveStory] = useState(null)
+  // Inline playback state (video plays directly inside the card, no modal)
+  const [playingId, setPlayingId] = useState(null)
 
   const VITE_IMAGE_URL = getApiBaseUrl()
 
@@ -24,28 +24,16 @@ const PlacementStoriesSection = () => {
     dispatch(fetchPlacementStories())
   }, [dispatch])
 
-  // ESC key listener to close video modal
+  // ESC key stops inline playback
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        setActiveStory(null)
+        setPlayingId(null)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
-
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (activeStory) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [activeStory])
 
   // Fallback seed stories if API is still connecting
   const displayStories =
@@ -192,8 +180,11 @@ const PlacementStoriesSection = () => {
     return ''
   }
 
+  const getStoryId = (story) => story._id || story.instagramUrl || story.studentName
+
   const handleCardClick = (story) => {
-    setActiveStory(story)
+    const id = getStoryId(story)
+    setPlayingId((prev) => (prev === id ? null : id))
   }
 
   return (
@@ -249,6 +240,8 @@ const PlacementStoriesSection = () => {
         >
           {displayStories.map((story, index) => {
             const imageUrl = getStoryImageUrl(story.thumbnail)
+            const isPlaying = playingId === getStoryId(story)
+            const embedUrl = getInstagramEmbedUrl(story.instagramUrl)
 
             return (
               <div
@@ -290,6 +283,31 @@ const PlacementStoriesSection = () => {
 
                 {/* 2. Visual Story / Reel Viewport */}
                 <div className="relative flex-1 w-full bg-slate-900 overflow-hidden">
+                  {isPlaying && story.video ? (
+                    /* Inline HTML5 player — plays directly in the card, no modal */
+                    <video
+                      src={getStoryVideoUrl(story.video)}
+                      poster={imageUrl}
+                      controls
+                      autoPlay
+                      playsInline
+                      loop
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute inset-0 w-full h-full object-cover bg-black"
+                    />
+                  ) : isPlaying && embedUrl ? (
+                    /* Inline Instagram embed — no modal */
+                    <iframe
+                      src={embedUrl}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute inset-0 w-full h-full border-0 bg-black"
+                      allowFullScreen
+                      scrolling="no"
+                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                      title={story.studentName}
+                    />
+                  ) : (
+                    <>
                   {/* Thumbnail Image */}
                   {imageUrl ? (
                     <img
@@ -356,6 +374,8 @@ const PlacementStoriesSection = () => {
                       )}
                     </div>
                   </div>
+                    </>
+                  )}
                 </div>
 
                 {/* 3. Bottom Instagram Action Bar */}
@@ -403,141 +423,6 @@ const PlacementStoriesSection = () => {
           })}
         </div>
       </div>
-
-      {/* ========================================================= */}
-      {/* IN-PAGE VIDEO PLAYER MODAL (Runs video WITHOUT redirecting!) */}
-      {/* ========================================================= */}
-      {activeStory && (
-        <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setActiveStory(null)}
-        >
-          <div
-            className="relative bg-[#0c101d] rounded-3xl border border-white/20 shadow-[0_0_50px_rgba(236,72,153,0.3)] w-full max-w-[400px] sm:max-w-[440px] max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="px-4 py-3 bg-black/60 border-b border-white/10 flex items-center justify-between z-30 backdrop-blur-md">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-full p-[1.5px] bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shrink-0">
-                  <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                    <svg className="w-3.5 h-3.5 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-white tracking-wide truncate">
-                    @{activeStory.handle || 'learn.with.rushikesh'}
-                  </p>
-                  <p className="text-[10px] text-amber-300 font-jetbrains truncate">
-                    {activeStory.company} • {activeStory.role}
-                  </p>
-                </div>
-              </div>
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setActiveStory(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors shadow-md"
-                aria-label="Close Video"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Video Viewport Area (9:16 Aspect Ratio) */}
-            <div className="relative aspect-[9/16] w-full bg-black flex items-center justify-center overflow-hidden">
-              {activeStory.video ? (
-                /* 1. Direct HTML5 Video Player */
-                <video
-                  src={getStoryVideoUrl(activeStory.video)}
-                  poster={getStoryImageUrl(activeStory.thumbnail)}
-                  controls
-                  autoPlay
-                  playsInline
-                  loop
-                  className="w-full h-full object-cover"
-                />
-              ) : getInstagramEmbedUrl(activeStory.instagramUrl) ? (
-                /* 2. Instagram Embed Player */
-                <iframe
-                  src={getInstagramEmbedUrl(activeStory.instagramUrl)}
-                  className="w-full h-full border-0"
-                  allowFullScreen
-                  scrolling="no"
-                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                  title={activeStory.studentName}
-                />
-              ) : (
-                /* 3. High Definition Fallback Video / Sample Player */
-                <div className="relative w-full h-full">
-                  <img
-                    src={getStoryImageUrl(activeStory.thumbnail)}
-                    alt={activeStory.studentName}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60 flex flex-col items-center justify-center p-6 text-center text-white">
-                    <div className="w-16 h-16 rounded-full bg-pink-600/30 border border-pink-400/50 flex items-center justify-center text-pink-400 mb-4 shadow-[0_0_30px_rgba(236,72,153,0.5)] animate-pulse">
-                      <svg className="w-8 h-8 fill-pink-400 ml-1" viewBox="0 0 24 24">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                    </div>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500 text-white mb-2 shadow-sm">
-                      {activeStory.badge || 'Placement Success'}
-                    </span>
-                    <h3 className="text-xl font-black">{activeStory.studentName}</h3>
-                    <p className="text-sm text-amber-300 font-bold mt-1">{activeStory.company}</p>
-                    <p className="text-xs text-gray-300 mt-2 max-w-xs">{activeStory.caption}</p>
-
-                    <a
-                      href={activeStory.instagramUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-6 px-6 py-2.5 rounded-full bg-gradient-to-r from-pink-600 via-rose-600 to-amber-500 hover:from-pink-500 hover:to-amber-400 text-white text-xs font-bold tracking-wide shadow-lg shadow-pink-500/25 transition-all flex items-center gap-2 active:scale-95"
-                    >
-                      Watch Full Reel on Instagram
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 17 17 7M7 7h10v10" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Bottom Placement Information */}
-            <div className="p-4 bg-black/90 border-t border-white/10 z-30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-black text-white">
-                    {activeStory.studentName} • {activeStory.company}
-                  </h4>
-                  <p className="text-xs text-gray-300">{activeStory.role}</p>
-                </div>
-
-                <a
-                  href={activeStory.instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-pink-600/20 border border-pink-500/30 text-pink-400 hover:bg-pink-600/30 text-xs font-bold flex items-center gap-1.5 transition-colors"
-                >
-                  Instagram
-                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M7 17 17 7M7 7h10v10" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

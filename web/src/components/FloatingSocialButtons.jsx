@@ -1,7 +1,7 @@
 import React from 'react'
 
 const WHATSAPP_URL = 'https://wa.me/917483741501'
-const INSTAGRAM_URL = 'https://www.instagram.com/dataknowledge.in?psln=MXgxbDV3bTRkZGRnag=='
+const INSTAGRAM_URL = 'https://www.instagram.com/learn.with.rushikesh?obrf=MWIzaXFtYmI5ODhmaQ%3D%3D&utm_source=qr'
 
 const FloatingSocialButtons = () => {
   return (

@@ -78,6 +78,18 @@ export const deleteSlot = createAsyncThunk(
   }
 );
 
+export const updateSlot = createAsyncThunk(
+  "consultation/updateSlot",
+  async ({ id, data }: { id: string; data: Partial<ConsultationSlot> }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(`/consultations/slots/${id}`, data);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to update slot");
+    }
+  }
+);
+
 export const fetchAdminBookings = createAsyncThunk(
   "consultation/fetchAdminBookings",
   async (_, { rejectWithValue }) => {
@@ -136,6 +148,22 @@ const consultationSlice = createSlice({
         state.slots = state.slots.filter((slot) => slot._id !== action.payload);
       })
       .addCase(deleteSlot.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update Slot
+      .addCase(updateSlot.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateSlot.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.slots.findIndex((s) => s._id === action.payload._id);
+        if (index !== -1) {
+          state.slots[index] = action.payload;
+        }
+      })
+      .addCase(updateSlot.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

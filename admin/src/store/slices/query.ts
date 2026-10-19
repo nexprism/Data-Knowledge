@@ -52,16 +52,23 @@ export const createQuery = createAsyncThunk(
 // Get all queries (admin)
 export const getAllQueries = createAsyncThunk(
   "query/getAllQueries",
-  async (token: string, { rejectWithValue }) => {
+  async (token: string | undefined, { rejectWithValue }) => {
     try {
+      const authToken =
+        token ||
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        "";
+      const headers: Record<string, string> = {};
+      if (authToken && authToken !== "cookie-session") {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
       const response = await axiosInstance.get("/queries", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -69,16 +76,23 @@ export const getAllQueries = createAsyncThunk(
 // Get single query by ID
 export const getQueryById = createAsyncThunk(
   "query/getQueryById",
-  async ({ queryId, token }: { queryId: string; token: string }, { rejectWithValue }) => {
+  async ({ queryId, token }: { queryId: string; token?: string }, { rejectWithValue }) => {
     try {
+      const authToken =
+        token ||
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        "";
+      const headers: Record<string, string> = {};
+      if (authToken && authToken !== "cookie-session") {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
       const response = await axiosInstance.get(`/queries/${queryId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -87,18 +101,27 @@ export const getQueryById = createAsyncThunk(
 export const updateQuery = createAsyncThunk(
   "query/updateQuery",
   async (
-    { queryId, queryData, token }: { queryId: string; queryData: Partial<Query>; token: string },
+    { queryId, queryData, token }: { queryId: string; queryData: Partial<Query>; token?: string },
     { rejectWithValue }
   ) => {
     try {
+      const authToken =
+        token ||
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        "";
+      const headers: Record<string, string> = {};
+      if (authToken && authToken !== "cookie-session") {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
       const response = await axiosInstance.put(`/queries/${queryId}`, queryData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(
+        error.response?.data?.message || error.response?.data || error.message || "Failed to update query"
+      );
     }
   }
 );
@@ -106,16 +129,23 @@ export const updateQuery = createAsyncThunk(
 // Get resolved queries (admin)
 export const getResolvedQueries = createAsyncThunk(
   "query/getResolvedQueries",
-  async (token: string, { rejectWithValue }) => {
+  async (token?: string, { rejectWithValue }) => {
     try {
+      const authToken =
+        token ||
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("token") ||
+        "";
+      const headers: Record<string, string> = {};
+      if (authToken && authToken !== "cookie-session") {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
       const response = await axiosInstance.get("/queries?status=resolved", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -172,15 +202,18 @@ const querySlice = createSlice({
       })
       .addCase(updateQuery.fulfilled, (state, action) => {
         state.loading = false;
-        state.query = action.payload;
+        const updatedItem = action.payload?.data || action.payload;
+        state.query = updatedItem;
         // Update in list as well
-        state.queries = state.queries.map((q) =>
-          q._id === action.payload._id ? action.payload : q
-        );
+        if (updatedItem && updatedItem._id) {
+          state.queries = state.queries.map((q) =>
+            q._id === updatedItem._id ? { ...q, ...updatedItem } : q
+          );
+        }
       })
       .addCase(updateQuery.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = typeof action.payload === 'string' ? action.payload : 'Failed to update query';
       })
       // getResolvedQueries
       .addCase(getResolvedQueries.pending, (state) => {

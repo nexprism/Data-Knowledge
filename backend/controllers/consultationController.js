@@ -68,6 +68,90 @@ export const deleteSlot = async (req, res) => {
     }
 };
 
+// Update an existing slot
+export const updateSlot = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { startTime, endTime, duration, price, isActive, isBooked } = req.body;
+
+        const slot = await ConsultationSlot.findById(id);
+        if (!slot) {
+            return res.status(404).json({ success: false, message: 'Consultation slot not found' });
+        }
+
+        const updateData = {};
+
+        if (duration !== undefined) {
+            const parsedDuration = Number(duration);
+            if (![15, 30].includes(parsedDuration)) {
+                return res.status(400).json({ success: false, message: 'Duration must be either 15 or 30 minutes' });
+            }
+            updateData.duration = parsedDuration;
+        }
+
+        const effectiveDuration = updateData.duration || slot.duration || 15;
+
+        if (startTime) {
+            const start = new Date(startTime);
+            if (isNaN(start.getTime())) {
+                return res.status(400).json({ success: false, message: 'Invalid start time format' });
+            }
+            updateData.startTime = start;
+
+            // Compute end time based on start and duration if not explicitly provided
+            if (endTime) {
+                const end = new Date(endTime);
+                if (isNaN(end.getTime()) || end <= start) {
+                    return res.status(400).json({ success: false, message: 'End time must be after start time' });
+                }
+                updateData.endTime = end;
+            } else {
+                updateData.endTime = new Date(start.getTime() + effectiveDuration * 60000);
+            }
+        } else if (endTime) {
+            const end = new Date(endTime);
+            if (isNaN(end.getTime()) || end <= new Date(slot.startTime)) {
+                return res.status(400).json({ success: false, message: 'End time must be after start time' });
+            }
+            updateData.endTime = end;
+        } else if (updateData.duration && updateData.duration !== slot.duration) {
+            // Recalculate end time based on existing start time
+            updateData.endTime = new Date(new Date(slot.startTime).getTime() + effectiveDuration * 60000);
+        }
+
+        if (price !== undefined) {
+            const parsedPrice = Number(price);
+            if (isNaN(parsedPrice) || parsedPrice < 0) {
+                return res.status(400).json({ success: false, message: 'Price must be a valid non-negative number' });
+            }
+            updateData.price = effectiveDuration === 15 ? 0 : parsedPrice;
+        }
+
+        if (isActive !== undefined) {
+            updateData.isActive = isActive === true || isActive === 'true';
+        }
+
+        // Allow toggling isBooked if explicitly requested by admin, but default to preserving existing booking state
+        if (isBooked !== undefined) {
+            updateData.isBooked = isBooked === true || isBooked === 'true';
+        }
+
+        const updatedSlot = await ConsultationSlot.findByIdAndUpdate(id, updateData, {
+            new: true,
+            runValidators: true,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Consultation slot updated successfully',
+            data: updatedSlot,
+        });
+    } catch (error) {
+        console.error('Error updating consultation slot:', error);
+        return res.status(500).json({ success: false, message: 'Failed to update slot', error: error.message });
+    }
+};
+
 // Get all bookings (for Admin)
 export const getAdminBookings = async (req, res) => {
     try {

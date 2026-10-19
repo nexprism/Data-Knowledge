@@ -54,6 +54,13 @@ layer(base);
   --color-brand-900: #081e2e;
   --color-brand-950: #05131e;
 
+  --color-primary: #1b6294;
+  --color-primary-50: #e8f2f8;
+  --color-primary-100: #d0e5f2;
+  --color-primary-500: #1b6294;
+  --color-primary-600: #16517a;
+  --color-primary-700: #103a58;
+
   --color-blue-light-25: #f5fbff;
   --color-blue-light-50: #f0f9ff;
   --color-blue-light-100: #e0f2fe;

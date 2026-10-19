@@ -602,6 +602,167 @@ class EmailService {
       throw new Error(`Failed to send consultation booking admin email: ${error.message}`);
     }
   }
+
+  /**
+   * Send notification to admin(s) when a new contact form message is submitted.
+   */
+  async sendContactFormAdminEmail(adminEmails, contactRequest) {
+    const recipients = (Array.isArray(adminEmails) ? adminEmails : [adminEmails])
+      .filter(Boolean)
+      .join(", ");
+
+    if (!recipients) {
+      throw new Error("No recipient email provided for contact notification");
+    }
+
+    const formatDateTime = (value) => {
+      if (!value) return "Just now";
+      try {
+        return new Date(value).toLocaleString("en-IN", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "Asia/Kolkata",
+        });
+      } catch (e) {
+        return new Date(value).toLocaleString();
+      }
+    };
+
+    const row = (label, value) => `
+      <tr>
+        <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #334155; width: 170px;">${label}</td>
+        <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #0f172a;">${value || "—"}</td>
+      </tr>`;
+
+    const mailOptions = {
+      from: this.getFrom("support"),
+      to: recipients,
+      replyTo: contactRequest.email || undefined,
+      subject: `New Contact Request: ${contactRequest.subject || 'General Inquiry'} – ${contactRequest.name}`,
+      html: `
+      <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:24px;">
+        <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
+          <div style="background:#1f6696; padding:22px 28px;">
+            <h2 style="margin:0; color:#ffffff; font-size:20px;">New Contact Request</h2>
+            <p style="margin:6px 0 0; color:#dbeafe; font-size:13px;">A visitor has submitted a new inquiry via the public Contact page.</p>
+          </div>
+          <div style="padding:24px 28px;">
+            <table style="width:100%; border-collapse:collapse; font-size:14px;">
+              ${row("Sender Name", contactRequest.name)}
+              ${row("Email Address", `<a href="mailto:${contactRequest.email}" style="color:#1f6696; text-decoration:none; font-weight:600;">${contactRequest.email}</a>`)}
+              ${row("Phone Number", `<a href="tel:${contactRequest.phone}" style="color:#1f6696; text-decoration:none;">${contactRequest.phone}</a>`)}
+              ${row("Subject", contactRequest.subject)}
+              ${row("Submitted At", formatDateTime(contactRequest.createdAt))}
+              ${row("Source", contactRequest.source || "Contact Form")}
+            </table>
+
+            <div style="margin-top:24px; padding:18px; background:#f8fafc; border-left:4px solid #1f6696; border-radius:6px;">
+              <p style="margin:0 0 8px; font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Message Details:</p>
+              <p style="margin:0; font-size:14px; color:#1e293b; line-height:1.6; white-space:pre-wrap;">${contactRequest.message || "No additional message text provided."}</p>
+            </div>
+
+            <p style="margin:22px 0 0; font-size:13px; color:#64748b;">
+              You can reply directly to this email to respond to <strong>${contactRequest.name}</strong> (${contactRequest.email}).
+            </p>
+          </div>
+          <div style="background:#f8fafc; padding:16px 28px; border-top:1px solid #e5e7eb;">
+            <p style="margin:0; font-size:12px; color:#94a3b8;">Automated notification from Data Knowledge System.</p>
+          </div>
+        </div>
+      </div>
+      `,
+    };
+
+    try {
+      const info = await this.sendMail("support", mailOptions);
+      console.log("✅ Contact form admin notification email sent:", info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Error sending contact form admin email:", error);
+      throw new Error(`Failed to send contact form admin email: ${error.message}`);
+    }
+  }
+
+  /**
+   * Send notification to admin(s) when a student submits a query on a course details page.
+   */
+  async sendCourseQueryAdminEmail(adminEmails, query) {
+    const recipients = (Array.isArray(adminEmails) ? adminEmails : [adminEmails])
+      .filter(Boolean)
+      .join(", ");
+
+    if (!recipients) {
+      throw new Error("No recipient email provided for course query notification");
+    }
+
+    const formatDateTime = (value) => {
+      if (!value) return "Just now";
+      try {
+        return new Date(value).toLocaleString("en-IN", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "Asia/Kolkata",
+        });
+      } catch (e) {
+        return new Date(value).toLocaleString();
+      }
+    };
+
+    const row = (label, value) => `
+      <tr>
+        <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #334155; width: 170px;">${label}</td>
+        <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #0f172a;">${value || "—"}</td>
+      </tr>`;
+
+    const mailOptions = {
+      from: this.getFrom("support"),
+      to: recipients,
+      replyTo: query.email || undefined,
+      subject: `New Student Course Query: ${query.courseTitle || 'Course Inquiry'} – ${query.name}`,
+      html: `
+      <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:24px;">
+        <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
+          <div style="background:#1f6696; padding:22px 28px;">
+            <h2 style="margin:0; color:#ffffff; font-size:20px;">New Student Course Query</h2>
+            <p style="margin:6px 0 0; color:#dbeafe; font-size:13px;">A student requested a callback / information from a course details page.</p>
+          </div>
+          <div style="padding:24px 28px;">
+            <table style="width:100%; border-collapse:collapse; font-size:14px;">
+              ${row("Student Name", query.name)}
+              ${row("Email Address", `<a href="mailto:${query.email}" style="color:#1f6696; text-decoration:none; font-weight:600;">${query.email}</a>`)}
+              ${row("Phone Number", `<a href="tel:${query.phone}" style="color:#1f6696; text-decoration:none;">${query.phone}</a>`)}
+              ${row("Course Name", `<strong style="color:#1f6696;">${query.courseTitle || "Course Page Inquiry"}</strong>`)}
+              ${row("Category", query.category || "course")}
+              ${row("Submitted At", formatDateTime(query.createdAt))}
+              ${row("Source", query.source || "Course Details Callback")}
+            </table>
+
+            <div style="margin-top:24px; padding:18px; background:#f8fafc; border-left:4px solid #1f6696; border-radius:6px;">
+              <p style="margin:0 0 8px; font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Student Query / Questions:</p>
+              <p style="margin:0; font-size:14px; color:#1e293b; line-height:1.6; white-space:pre-wrap;">${query.message || "Callback requested."}</p>
+            </div>
+
+            <p style="margin:22px 0 0; font-size:13px; color:#64748b;">
+              You can reply directly to this email to reach <strong>${query.name}</strong> (${query.email}), or call them at <strong>${query.phone}</strong>.
+            </p>
+          </div>
+          <div style="background:#f8fafc; padding:16px 28px; border-top:1px solid #e5e7eb;">
+            <p style="margin:0; font-size:12px; color:#94a3b8;">Automated notification from Data Knowledge Student Inquiries.</p>
+          </div>
+        </div>
+      </div>
+      `,
+    };
+
+    try {
+      const info = await this.sendMail("support", mailOptions);
+      console.log("✅ Student course query admin notification email sent:", info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Error sending student course query admin email:", error);
+      throw new Error(`Failed to send student course query admin email: ${error.message}`);
+    }
+  }
 }
 
 export default new EmailService();

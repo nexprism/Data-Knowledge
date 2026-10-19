@@ -5,12 +5,16 @@ interface AssignmentState {
   loading: boolean;
   error: string | null;
   data: any;
+  submissions: any[];
+  submissionsTotal: number;
 }
 
 const initialState: AssignmentState = {
   loading: false,
   error: null,
   data: null,
+  submissions: [],
+  submissionsTotal: 0,
 };
 
 export const createAssignment = createAsyncThunk(
@@ -106,13 +110,14 @@ export const fetchAssignmentById = createAsyncThunk(
 
 export const fetchAssignmentSubmissions = createAsyncThunk(
   "assignment/fetchAssignmentSubmissions",
-  async (params?: { page?: number; limit?: number; search?: string }, { rejectWithValue }) => {
+  async (params?: { page?: number; limit?: number; search?: string; status?: string }, { rejectWithValue }) => {
     try {
       const queryParams = new URLSearchParams();
       
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
       if (params?.search) queryParams.append('search', params.search);
+      if (params?.status) queryParams.append('status', params.status);
 
       const response = await axiosInstance.get(`/assignment-submissions?${queryParams.toString()}`, {
         headers: {
@@ -223,6 +228,17 @@ const assignmentSlice = createSlice({
       .addCase(fetchAssignmentSubmissions.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload;
+        const payloadData = action.payload?.data;
+        if (payloadData && Array.isArray(payloadData.submissions)) {
+          state.submissions = payloadData.submissions;
+          state.submissionsTotal = payloadData.pagination?.total ?? payloadData.submissions.length;
+        } else if (Array.isArray(payloadData)) {
+          state.submissions = payloadData;
+          state.submissionsTotal = payloadData.length;
+        } else if (Array.isArray(action.payload)) {
+          state.submissions = action.payload;
+          state.submissionsTotal = action.payload.length;
+        }
       })
       .addCase(fetchAssignmentSubmissions.rejected, (state, action) => {
         state.loading = false;

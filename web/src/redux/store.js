@@ -23,6 +23,7 @@ import programOfferReducer from './slices/programOfferSlice';
 import heroReducer from './slices/heroSlice';
 import whyChooseUsReducer from './slices/whyChooseUsSlice';
 import aboutSnapshotReducer from './slices/aboutSnapshotSlice';
+import contactReducer from './slices/contactSlice';
 
 export const store = configureStore({
   reducer: {
@@ -50,6 +51,7 @@ export const store = configureStore({
     hero: heroReducer,
     whyChooseUs: whyChooseUsReducer,
     aboutSnapshot: aboutSnapshotReducer,
+    contact: contactReducer,
   },
 });
 

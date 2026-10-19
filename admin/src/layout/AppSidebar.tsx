@@ -16,7 +16,12 @@ import {
   UserCircleIcon,
   VideoIcon,
 } from "../icons";
-import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare, ShieldCheck } from "lucide-react";
+import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare, ShieldCheck, Mail } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../hooks/redux";
+import { getAllQueries } from "../store/slices/query";
+import { fetchContactRequests } from "../store/slices/contactSlice";
+import { fetchAssignmentSubmissions } from "../store/slices/assignment";
+import { fetchSupportTickets } from "../store/slices/support";
 
 type NavSubItem = {
   name: string;
@@ -114,6 +119,12 @@ const navItems: NavItem[] = [
     name: "Support Requests",
     path: "/requests",
     keywords: ["helpdesk", "tickets", "issues"],
+  },
+  {
+    icon: <Mail className="w-5 h-5" />,
+    name: "Contact Page",
+    path: "/contact-management",
+    keywords: ["contact", "inquiries", "requests", "support", "form", "messages", "leads"],
   },
   {
     icon: <CalenderIcon />,
@@ -276,6 +287,161 @@ const AppSidebar: React.FC = () => {
 
   const [sidebarSearch, setSidebarSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const dispatch = useAppDispatch();
+  const queries = useAppSelector((state) => state.query.queries);
+  const contactRequests = useAppSelector((state) => state.contact?.requests);
+  const contactSummary = useAppSelector((state) => state.contact?.summary);
+  const assignmentSubmissions = useAppSelector((state) => state.assignment?.submissions);
+  const supportTickets = useAppSelector((state) => state.support?.tickets);
+
+  const [lastViewedQueriesAt, setLastViewedQueriesAt] = useState<string | null>(() => {
+    return typeof window !== "undefined"
+      ? localStorage.getItem("admin_queries_last_viewed_at")
+      : null;
+  });
+
+  const [lastViewedContactAt, setLastViewedContactAt] = useState<string | null>(() => {
+    return typeof window !== "undefined"
+      ? localStorage.getItem("admin_contact_last_viewed_at")
+      : null;
+  });
+
+  const [lastViewedAssignmentsAt, setLastViewedAssignmentsAt] = useState<string | null>(() => {
+    return typeof window !== "undefined"
+      ? localStorage.getItem("admin_assignments_last_viewed_at")
+      : null;
+  });
+
+  const [lastViewedTicketsAt, setLastViewedTicketsAt] = useState<string | null>(() => {
+    return typeof window !== "undefined"
+      ? localStorage.getItem("admin_tickets_last_viewed_at")
+      : null;
+  });
+
+  // When admin navigates to actionable sections, mark them viewed and clear badge
+  useEffect(() => {
+    if (location.pathname.startsWith("/queries")) {
+      const now = new Date().toISOString();
+      localStorage.setItem("admin_queries_last_viewed_at", now);
+      setLastViewedQueriesAt(now);
+    }
+    if (location.pathname.startsWith("/contact-management")) {
+      const now = new Date().toISOString();
+      localStorage.setItem("admin_contact_last_viewed_at", now);
+      setLastViewedContactAt(now);
+    }
+    if (location.pathname.startsWith("/assignments")) {
+      const now = new Date().toISOString();
+      localStorage.setItem("admin_assignments_last_viewed_at", now);
+      setLastViewedAssignmentsAt(now);
+    }
+    if (location.pathname.startsWith("/requests") || location.pathname.startsWith("/support-tickets")) {
+      const now = new Date().toISOString();
+      localStorage.setItem("admin_tickets_last_viewed_at", now);
+      setLastViewedTicketsAt(now);
+    }
+  }, [location.pathname]);
+
+  // Listen for custom viewed events to dynamically clear badge without refresh
+  useEffect(() => {
+    const handleQueriesViewed = () => {
+      const now = new Date().toISOString();
+      setLastViewedQueriesAt(now);
+    };
+    const handleAssignmentsViewed = () => {
+      const now = new Date().toISOString();
+      setLastViewedAssignmentsAt(now);
+    };
+    const handleTicketsViewed = () => {
+      const now = new Date().toISOString();
+      setLastViewedTicketsAt(now);
+    };
+    window.addEventListener("queries:viewed", handleQueriesViewed);
+    window.addEventListener("assignments:viewed", handleAssignmentsViewed);
+    window.addEventListener("tickets:viewed", handleTicketsViewed);
+    return () => {
+      window.removeEventListener("queries:viewed", handleQueriesViewed);
+      window.removeEventListener("assignments:viewed", handleAssignmentsViewed);
+      window.removeEventListener("tickets:viewed", handleTicketsViewed);
+    };
+  }, []);
+
+  useEffect(() => {
+    dispatch(getAllQueries());
+    dispatch(fetchContactRequests({ page: 1, limit: 10 }));
+    dispatch(fetchAssignmentSubmissions({ page: 1, limit: 20 }));
+    dispatch(fetchSupportTickets({ page: 1, limit: 20 }));
+
+    // Periodic poll every 45s for live notifications
+    const interval = setInterval(() => {
+      dispatch(getAllQueries());
+      dispatch(fetchContactRequests({ page: 1, limit: 10 }));
+      dispatch(fetchAssignmentSubmissions({ page: 1, limit: 20 }));
+      dispatch(fetchSupportTickets({ page: 1, limit: 20 }));
+    }, 45000);
+
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
+  const newQueriesCount = useMemo(() => {
+    if (!Array.isArray(queries)) return 0;
+    return queries.filter((q) => {
+      const isNew = (q.status || "").toLowerCase().trim().replace(/\s+/g, "_") === "new";
+      if (!isNew) return false;
+      // If admin previously viewed queries, only count queries received after that view
+      if (lastViewedQueriesAt && q.createdAt) {
+        return new Date(q.createdAt).getTime() > new Date(lastViewedQueriesAt).getTime();
+      }
+      return true;
+    }).length;
+  }, [queries, lastViewedQueriesAt]);
+
+  const newAssignmentsCount = useMemo(() => {
+    if (!Array.isArray(assignmentSubmissions)) return 0;
+    return assignmentSubmissions.filter((sub) => {
+      const status = (sub.status || "").toLowerCase().trim();
+      const isPendingReview = status === "submitted" || status === "resubmitted" || !sub.gradedAt;
+      if (!isPendingReview) return false;
+      const submissionDate = sub.submittedAt || sub.createdAt;
+      if (lastViewedAssignmentsAt && submissionDate) {
+        return new Date(submissionDate).getTime() > new Date(lastViewedAssignmentsAt).getTime();
+      }
+      return true;
+    }).length;
+  }, [assignmentSubmissions, lastViewedAssignmentsAt]);
+
+  const openTicketsCount = useMemo(() => {
+    if (!Array.isArray(supportTickets)) return 0;
+    return supportTickets.filter((ticket) => {
+      const status = (ticket.status || "").toLowerCase().trim();
+      const isOpen = status === "open" || status === "pending";
+      if (!isOpen) return false;
+      if (lastViewedTicketsAt && ticket.createdAt) {
+        return new Date(ticket.createdAt).getTime() > new Date(lastViewedTicketsAt).getTime();
+      }
+      return true;
+    }).length;
+  }, [supportTickets, lastViewedTicketsAt]);
+
+  const pendingContactCount = useMemo(() => {
+    if (contactSummary && typeof contactSummary.pending === "number") {
+      if (lastViewedContactAt) {
+        // If viewed, check if any request arrived after last view
+        if (Array.isArray(contactRequests)) {
+          return contactRequests.filter(
+            (r) =>
+              r.status === "pending" &&
+              r.createdAt &&
+              new Date(r.createdAt).getTime() > new Date(lastViewedContactAt).getTime()
+          ).length;
+        }
+        return 0;
+      }
+      return contactSummary.pending;
+    }
+    return 0;
+  }, [contactSummary, contactRequests, lastViewedContactAt]);
 
   // Keyboard shortcut listener (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -499,17 +665,59 @@ const AppSidebar: React.FC = () => {
                   }`}
                 >
                   <span
-                    className={`menu-item-icon-size ${
+                    className={`menu-item-icon-size relative ${
                       isActive(nav.path)
                         ? "menu-item-icon-active"
                         : "menu-item-icon-inactive"
                     }`}
                   >
                     {nav.icon}
+                    {nav.path === "/queries/all" && newQueriesCount > 0 && !(isExpanded || isHovered || isMobileOpen) && (
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 border border-blue-900"></span>
+                      </span>
+                    )}
+                    {nav.path === "/assignments/submissions" && newAssignmentsCount > 0 && !(isExpanded || isHovered || isMobileOpen) && (
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 border border-blue-900"></span>
+                      </span>
+                    )}
+                    {nav.path === "/requests" && openTicketsCount > 0 && !(isExpanded || isHovered || isMobileOpen) && (
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 border border-blue-900"></span>
+                      </span>
+                    )}
+                    {nav.path === "/contact-management" && pendingContactCount > 0 && !(isExpanded || isHovered || isMobileOpen) && (
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 border border-blue-900"></span>
+                      </span>
+                    )}
                   </span>
                   {(isExpanded || isHovered || isMobileOpen) && (
                     <span className="menu-item-text text-sm font-semibold truncate text-white">
                       {nav.name}
+                    </span>
+                  )}
+                  {nav.path === "/queries/all" && newQueriesCount > 0 && (isExpanded || isHovered || isMobileOpen) && (
+                    <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-black text-emerald-950 bg-emerald-400 rounded-full shadow-xs ring-1 ring-emerald-300/40 animate-pulse">
+                      {newQueriesCount}
+                    </span>
+                  )}
+                  {nav.path === "/assignments/submissions" && newAssignmentsCount > 0 && (isExpanded || isHovered || isMobileOpen) && (
+                    <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-black text-emerald-950 bg-emerald-400 rounded-full shadow-xs ring-1 ring-emerald-300/40 animate-pulse">
+                      {newAssignmentsCount}
+                    </span>
+                  )}
+                  {nav.path === "/requests" && openTicketsCount > 0 && (isExpanded || isHovered || isMobileOpen) && (
+                    <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-black text-emerald-950 bg-emerald-400 rounded-full shadow-xs ring-1 ring-emerald-300/40">
+                      {openTicketsCount}
+                    </span>
+                  )}
+                  {nav.path === "/contact-management" && pendingContactCount > 0 && (isExpanded || isHovered || isMobileOpen) && (
+                    <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-black text-emerald-950 bg-emerald-400 rounded-full shadow-xs ring-1 ring-emerald-300/40">
+                      {pendingContactCount}
                     </span>
                   )}
                 </Link>

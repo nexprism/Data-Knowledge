@@ -1591,50 +1591,75 @@ export const updateCourse = async (req, res) => {
 
     const updatedCourse = await courseService.updateById(id, updateData, req.user);
 
-    //update course plans
-    let plansArray = [];
-    if (Array.isArray(req.body.plans)) {
-      plansArray = req.body.plans;
-    } else {
-      const planFieldRegex = /^plans\[(\d+)\](?:\[(.*?)\]|\.(.*?))$/;
-      const planMap = {};
-      for (const key in req.body) {
-        const match = key.match(planFieldRegex);
-        if (match) {
-          const idx = parseInt(match[1], 10);
-          const field = match[2] || match[3];
-          if (!planMap[idx]) planMap[idx] = {};
-          planMap[idx][field] = req.body[key];
-        }
+    // update course plans
+    let plansArray = null;
+    let hasPlansPayload = false;
+
+    if (req.body.plansPayload) {
+      try {
+        plansArray = typeof req.body.plansPayload === "string" ? JSON.parse(req.body.plansPayload) : req.body.plansPayload;
+        hasPlansPayload = true;
+      } catch (e) {
+        console.error("Error parsing plansPayload:", e);
       }
-      plansArray = Object.keys(planMap)
-        .sort((a, b) => Number(a) - Number(b))
-        .map(idx => planMap[idx]);
     }
 
-    if (plansArray.length > 0) {
+    if (!hasPlansPayload) {
+      if (Array.isArray(req.body.plans)) {
+        plansArray = req.body.plans;
+        hasPlansPayload = true;
+      } else {
+        const planFieldRegex = /^plans\[(\d+)\](?:\[(.*?)\]|\.(.*?))$/;
+        const planMap = {};
+        let foundPlanKeys = false;
+        for (const key in req.body) {
+          const match = key.match(planFieldRegex);
+          if (match) {
+            foundPlanKeys = true;
+            const idx = parseInt(match[1], 10);
+            const field = match[2] || match[3];
+            if (!planMap[idx]) planMap[idx] = {};
+            planMap[idx][field] = req.body[key];
+          }
+        }
+        if (foundPlanKeys || req.body.hasPlansPayload === "true") {
+          hasPlansPayload = true;
+          plansArray = Object.keys(planMap)
+            .sort((a, b) => Number(a) - Number(b))
+            .map(idx => planMap[idx]);
+        }
+      }
+    }
+
+    if (hasPlansPayload && Array.isArray(plansArray)) {
       const formattedPlans = plansArray.map(plan => ({
         _id: plan._id,
         name: plan.name,
-        price: plan.price !== undefined ? Number(plan.price) : 0,
-        salePrice: plan.salePrice !== undefined ? Number(plan.salePrice) : 0,
+        price: plan.price !== undefined && plan.price !== "" ? Number(plan.price) : 0,
+        salePrice: plan.salePrice !== undefined && plan.salePrice !== "" ? Number(plan.salePrice) : 0,
         description: plan.description || '',
-        durationType: plan.durationType,
-        duration: plan.duration !== undefined ? Number(plan.duration) : 0,
+        durationType: plan.durationType || 'Month',
+        duration: plan.duration !== undefined && plan.duration !== "" ? Number(plan.duration) : 0,
         status: plan.status || 'active'
       }));
       await courseService.updateCoursePlans(id, formattedPlans);
     }
 
+    // Refetch the fresh course with newly updated plans
+    const freshCourse = await courseService.getById(id);
+
     const redis = await initRedis();
-    const courseId = updatedCourse._id.toString();
-    await redis.setEx(`course:${courseId}`, 3600, JSON.stringify(updatedCourse));
-    // //console.log("🗂️ Redis cache updated for course:", courseId);
+    const courseId = (freshCourse?._id || updatedCourse._id || id).toString();
+    if (freshCourse) {
+      await redis.setEx(`course:${courseId}`, 3600, JSON.stringify(freshCourse));
+    } else {
+      await redis.del(`course:${courseId}`);
+    }
 
     return res.status(200).json({
       success: true,
       message: "✅ Course updated successfully",
-      data: { course: updatedCourse },
+      data: { course: freshCourse || updatedCourse },
       err: {},
     });
   } catch (err) {

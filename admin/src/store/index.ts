@@ -45,6 +45,7 @@ import whyChooseUsReducer from "./slices/whyChooseUs";
 import aboutSnapshotReducer from "./slices/aboutSnapshot";
 import mentorReducer from "./slices/mentor";
 import adminUsersReducer from "./slices/adminUsers";
+import contactReducer from "./slices/contactSlice";
 
 export const store = configureStore({
   reducer: {
@@ -93,6 +94,7 @@ export const store = configureStore({
     aboutSnapshot: aboutSnapshotReducer,
     mentor: mentorReducer,
     adminUsers: adminUsersReducer,
+    contact: contactReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
