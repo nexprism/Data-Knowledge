@@ -269,6 +269,9 @@ const AssignmentSubmissions = () => {
 
   useEffect(() => {
     loadSubmissions();
+    const now = new Date().toISOString();
+    localStorage.setItem("admin_assignments_last_viewed_at", now);
+    window.dispatchEvent(new Event("assignments:viewed"));
   }, [pagination.page, debouncedSearch, statusFilter, activeAssignmentFilter]);
 
   const handleClearAssignmentFilter = () => {

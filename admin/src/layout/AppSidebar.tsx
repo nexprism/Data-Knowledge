@@ -319,6 +319,82 @@ const AppSidebar: React.FC = () => {
       : null;
   });
 
+  // Track visits across browser tab closures so old seen notifications do NOT reappear
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const sessionKey = "admin_active_tab_session";
+    const lastSessionCloseKey = "admin_panel_last_visited_at";
+    const isNewTabSession = !sessionStorage.getItem(sessionKey);
+
+    const now = new Date().toISOString();
+    const lastVisitedAt = localStorage.getItem(lastSessionCloseKey);
+
+    if (isNewTabSession) {
+      // User closed the browser tab and visited the admin panel again!
+      sessionStorage.setItem(sessionKey, "active");
+
+      // The baseline timestamp for seen notifications:
+      // If we have a recorded previous visit time, use that; otherwise use 'now'
+      // so historical notifications (before this visit) do NOT show as unread.
+      const baselineTime = lastVisitedAt || now;
+
+      // Update queries last viewed if not set or older than previous visit
+      const storedQueriesViewed = localStorage.getItem("admin_queries_last_viewed_at");
+      if (!storedQueriesViewed || new Date(storedQueriesViewed).getTime() < new Date(baselineTime).getTime()) {
+        localStorage.setItem("admin_queries_last_viewed_at", baselineTime);
+        setLastViewedQueriesAt(baselineTime);
+      }
+
+      // Update contact last viewed if not set or older than previous visit
+      const storedContactViewed = localStorage.getItem("admin_contact_last_viewed_at");
+      if (!storedContactViewed || new Date(storedContactViewed).getTime() < new Date(baselineTime).getTime()) {
+        localStorage.setItem("admin_contact_last_viewed_at", baselineTime);
+        setLastViewedContactAt(baselineTime);
+      }
+
+      // Update assignments last viewed
+      const storedAssignmentsViewed = localStorage.getItem("admin_assignments_last_viewed_at");
+      if (!storedAssignmentsViewed || new Date(storedAssignmentsViewed).getTime() < new Date(baselineTime).getTime()) {
+        localStorage.setItem("admin_assignments_last_viewed_at", baselineTime);
+        setLastViewedAssignmentsAt(baselineTime);
+      }
+
+      // Update tickets last viewed
+      const storedTicketsViewed = localStorage.getItem("admin_tickets_last_viewed_at");
+      if (!storedTicketsViewed || new Date(storedTicketsViewed).getTime() < new Date(baselineTime).getTime()) {
+        localStorage.setItem("admin_tickets_last_viewed_at", baselineTime);
+        setLastViewedTicketsAt(baselineTime);
+      }
+    }
+
+    // Keep updating last visited timestamp so on tab close, we know when the admin was last active
+    localStorage.setItem(lastSessionCloseKey, now);
+
+    const heartbeat = setInterval(() => {
+      localStorage.setItem(lastSessionCloseKey, new Date().toISOString());
+    }, 15000);
+
+    const handleBeforeUnload = () => {
+      localStorage.setItem(lastSessionCloseKey, new Date().toISOString());
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        localStorage.setItem(lastSessionCloseKey, new Date().toISOString());
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(heartbeat);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   // When admin navigates to actionable sections, mark them viewed and clear badge
   useEffect(() => {
     if (location.pathname.startsWith("/queries")) {
@@ -326,7 +402,7 @@ const AppSidebar: React.FC = () => {
       localStorage.setItem("admin_queries_last_viewed_at", now);
       setLastViewedQueriesAt(now);
     }
-    if (location.pathname.startsWith("/contact-management")) {
+    if (location.pathname.startsWith("/contact-management") || location.pathname.startsWith("/contact")) {
       const now = new Date().toISOString();
       localStorage.setItem("admin_contact_last_viewed_at", now);
       setLastViewedContactAt(now);
@@ -349,6 +425,10 @@ const AppSidebar: React.FC = () => {
       const now = new Date().toISOString();
       setLastViewedQueriesAt(now);
     };
+    const handleContactViewed = () => {
+      const now = new Date().toISOString();
+      setLastViewedContactAt(now);
+    };
     const handleAssignmentsViewed = () => {
       const now = new Date().toISOString();
       setLastViewedAssignmentsAt(now);
@@ -358,14 +438,37 @@ const AppSidebar: React.FC = () => {
       setLastViewedTicketsAt(now);
     };
     window.addEventListener("queries:viewed", handleQueriesViewed);
+    window.addEventListener("contact:viewed", handleContactViewed);
     window.addEventListener("assignments:viewed", handleAssignmentsViewed);
     window.addEventListener("tickets:viewed", handleTicketsViewed);
     return () => {
       window.removeEventListener("queries:viewed", handleQueriesViewed);
+      window.removeEventListener("contact:viewed", handleContactViewed);
       window.removeEventListener("assignments:viewed", handleAssignmentsViewed);
       window.removeEventListener("tickets:viewed", handleTicketsViewed);
     };
   }, []);
+
+  const handleNavItemClick = (path: string) => {
+    const now = new Date().toISOString();
+    if (path.startsWith("/queries")) {
+      localStorage.setItem("admin_queries_last_viewed_at", now);
+      setLastViewedQueriesAt(now);
+      window.dispatchEvent(new Event("queries:viewed"));
+    } else if (path.startsWith("/contact-management") || path.startsWith("/contact")) {
+      localStorage.setItem("admin_contact_last_viewed_at", now);
+      setLastViewedContactAt(now);
+      window.dispatchEvent(new Event("contact:viewed"));
+    } else if (path.startsWith("/assignments")) {
+      localStorage.setItem("admin_assignments_last_viewed_at", now);
+      setLastViewedAssignmentsAt(now);
+      window.dispatchEvent(new Event("assignments:viewed"));
+    } else if (path.startsWith("/requests") || path.startsWith("/support-tickets")) {
+      localStorage.setItem("admin_tickets_last_viewed_at", now);
+      setLastViewedTicketsAt(now);
+      window.dispatchEvent(new Event("tickets:viewed"));
+    }
+  };
 
   useEffect(() => {
     dispatch(getAllQueries());
@@ -393,7 +496,7 @@ const AppSidebar: React.FC = () => {
       if (lastViewedQueriesAt && q.createdAt) {
         return new Date(q.createdAt).getTime() > new Date(lastViewedQueriesAt).getTime();
       }
-      return true;
+      return !lastViewedQueriesAt;
     }).length;
   }, [queries, lastViewedQueriesAt]);
 
@@ -407,7 +510,7 @@ const AppSidebar: React.FC = () => {
       if (lastViewedAssignmentsAt && submissionDate) {
         return new Date(submissionDate).getTime() > new Date(lastViewedAssignmentsAt).getTime();
       }
-      return true;
+      return !lastViewedAssignmentsAt;
     }).length;
   }, [assignmentSubmissions, lastViewedAssignmentsAt]);
 
@@ -420,7 +523,7 @@ const AppSidebar: React.FC = () => {
       if (lastViewedTicketsAt && ticket.createdAt) {
         return new Date(ticket.createdAt).getTime() > new Date(lastViewedTicketsAt).getTime();
       }
-      return true;
+      return !lastViewedTicketsAt;
     }).length;
   }, [supportTickets, lastViewedTicketsAt]);
 
@@ -658,6 +761,7 @@ const AppSidebar: React.FC = () => {
               nav.path && (
                 <Link
                   to={nav.path}
+                  onClick={() => handleNavItemClick(nav.path!)}
                   className={`menu-item group ${
                     isActive(nav.path)
                       ? "menu-item-active"

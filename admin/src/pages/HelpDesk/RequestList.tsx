@@ -79,12 +79,15 @@ const RequestList: React.FC = () => {
         }
     }, [dispatch]);
 
-    // Fetch tickets for current page display
+    // Fetch tickets for current page display and mark viewed
     useEffect(() => {
         if (!hasFetched.current || (!isSearching && page !== pagination.page)) {
             dispatch(fetchSupportTickets({ page, limit: pagination.limit || 10 }));
             hasFetched.current = true;
         }
+        const now = new Date().toISOString();
+        localStorage.setItem("admin_tickets_last_viewed_at", now);
+        window.dispatchEvent(new Event("tickets:viewed"));
     }, [dispatch, page, pagination.page, pagination.limit, isSearching]);
 
     // Handle search filtering

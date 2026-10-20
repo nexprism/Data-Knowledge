@@ -418,7 +418,7 @@ const CourseDetail = () => {
               </div>
 
               {/* Curriculum Quick Stats Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-4 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+              {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-4 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
                 <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-100 text-[#3498db] flex items-center justify-center font-bold text-sm">
                     {curriculumStats.totalChapters}
@@ -458,7 +458,7 @@ const CourseDetail = () => {
                     <span className="text-xs font-semibold text-slate-800">Assignments</span>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Module Chapters Stack */}
               <div className="space-y-4 pt-2">

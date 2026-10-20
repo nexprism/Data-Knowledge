@@ -63,10 +63,14 @@ const ContactManagement: React.FC = () => {
   // Page Content Form State
   const [contentFormData, setContentFormData] = useState<ContactPageData | null>(null);
 
-  // Load initial data
+  // Load initial data and mark contact requests as viewed
   useEffect(() => {
     dispatch(fetchContactPageAdmin());
     dispatch(fetchContactRequests({ page: 1, limit: 10, status: "all" }));
+
+    const now = new Date().toISOString();
+    localStorage.setItem("admin_contact_last_viewed_at", now);
+    window.dispatchEvent(new Event("contact:viewed"));
   }, [dispatch]);
 
   // Sync content form data
