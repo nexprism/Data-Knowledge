@@ -20,10 +20,13 @@ import {
   Timer,
   RotateCcw,
   Globe,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssignmentById } from "../../store/slices/assignment";
+import PageMeta from "../../components/common/PageMeta";
 
 const AssignmentPage = () => {
   const { assignmentId } = useParams();
@@ -31,11 +34,22 @@ const AssignmentPage = () => {
   const dispatch = useDispatch();
   const { loading, data: assignmentData, error } = useSelector((state) => state.assignment);
 
-  const [assignment, setAssignment] = useState(null);
+  const [assignment, setAssignment] = useState<any>(null);
+  const [alertPopup, setAlertPopup] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type?: "warning" | "info" | "error";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "warning",
+  });
 
   useEffect(() => {
     if (assignmentId) {
-      dispatch(fetchAssignmentById(assignmentId));
+      dispatch(fetchAssignmentById(assignmentId) as any);
     }
   }, [assignmentId, dispatch]);
 
@@ -45,7 +59,7 @@ const AssignmentPage = () => {
     }
   }, [assignmentData]);
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: any) => {
     if (!dateString) return "No due date";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -57,9 +71,48 @@ const AssignmentPage = () => {
   };
 
   const handleViewCourse = () => {
-    if (assignment?.courseId?._id) {
-      navigate(`/courses/edit/${assignment.courseId._id}`);
+    const cid = assignment?.courseId?._id || assignment?.courseId;
+    if (!cid || typeof cid !== "string") {
+      setAlertPopup({
+        isOpen: true,
+        title: "Course Not Found",
+        message: "The course linked to this assignment does not exist in the database or has been deleted.",
+        type: "warning",
+      });
+      return;
     }
+    navigate(`/courses/edit/${cid}`);
+  };
+
+  const handleViewLesson = () => {
+    if (!assignment?.lessonId || !assignment?.lessonId?._id) {
+      setAlertPopup({
+        isOpen: true,
+        title: "Lesson Not Found",
+        message:
+          "This assignment does not have a linked lesson or the lesson has been removed. The assignment is currently attached directly to the course.",
+        type: "info",
+      });
+      return;
+    }
+  };
+
+  const handleViewSubmissions = () => {
+    if (!assignment?._id) {
+      setAlertPopup({
+        isOpen: true,
+        title: "Assignment Missing",
+        message: "Unable to retrieve assignment identifier.",
+        type: "error",
+      });
+      return;
+    }
+    navigate("/assignments/submissions", {
+      state: {
+        assignmentId: assignment._id,
+        assignmentTitle: assignment.title,
+      },
+    });
   };
 
   const getStatusColor = (status) => {
@@ -162,6 +215,10 @@ const AssignmentPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-white/[0.03] p-4">
+      <PageMeta
+        title={`${assignment?.title ? assignment.title + " | " : ""}Assignment Details | LMS Admin`}
+        description="View and manage assignment information and student submissions"
+      />
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-lg">
@@ -169,7 +226,7 @@ const AssignmentPage = () => {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate("/assignments/all")}
-                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -184,25 +241,16 @@ const AssignmentPage = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              {assignment?.courseId?._id && (
-                <button
-                  onClick={handleViewCourse}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Course
-                </button>
-              )}
-              {/* <button
-                onClick={() => navigate(`/assignments/edit/${assignment._id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-                Edit
-              </button> */}
               <button
-                onClick={() => navigate("/assignments/submissions")}
-                className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
+                onClick={handleViewCourse}
+                className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View Course
+              </button>
+              <button
+                onClick={handleViewSubmissions}
+                className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors cursor-pointer"
               >
                 <Eye className="w-4 h-4" />
                 View Submissions
@@ -301,33 +349,70 @@ const AssignmentPage = () => {
                   Course & Lesson
                 </h3>
                 <div className="space-y-3">
-                  {assignment.courseId && (
+                  {assignment.courseId ? (
                     <div>
                       <label className="text-sm font-medium text-gray-600 dark:text-white/90">
                         Course
                       </label>
                       <div className="flex items-center justify-between">
                         <p className="text-gray-900 dark:text-white/70">
-                          {assignment.courseId.title}
+                          {assignment.courseId.title || "Course Name"}
                         </p>
                         <button
                           onClick={handleViewCourse}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1 cursor-pointer"
                         >
                           <ExternalLink className="w-3 h-3" />
                           View
                         </button>
                       </div>
                     </div>
+                  ) : (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 dark:text-white/90">
+                        Course
+                      </label>
+                      <div className="flex items-center justify-between">
+                        <p className="text-amber-600 dark:text-amber-400 text-sm flex items-center gap-1 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Course does not exist or unlinked
+                        </p>
+                        <button
+                          onClick={handleViewCourse}
+                          className="text-amber-600 hover:text-amber-700 text-xs font-medium underline cursor-pointer"
+                        >
+                          Details
+                        </button>
+                      </div>
+                    </div>
                   )}
-                  {assignment.lessonId && (
+
+                  {assignment.lessonId ? (
                     <div>
                       <label className="text-sm font-medium text-gray-600 dark:text-white/90">
                         Lesson
                       </label>
                       <p className="text-gray-900 dark:text-white/70">
-                        {assignment.lessonId.title}
+                        {assignment.lessonId.title || "Lesson"}
                       </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 dark:text-white/90">
+                        Lesson
+                      </label>
+                      <div className="flex items-center justify-between">
+                        <p className="text-amber-600 dark:text-amber-400 text-sm flex items-center gap-1 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Lesson does not exist or not linked
+                        </p>
+                        <button
+                          onClick={handleViewLesson}
+                          className="text-blue-600 hover:text-blue-700 text-xs font-medium underline cursor-pointer"
+                        >
+                          Details
+                        </button>
+                      </div>
                     </div>
                   )}
                   <div>
@@ -475,33 +560,61 @@ const AssignmentPage = () => {
 
             </div>
             <div className="mt-6 flex gap-3">
-              {assignment?.courseId?._id && (
-                <button
-                  onClick={handleViewCourse}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Course
-                </button>
-              )}
               <button
-                onClick={() => navigate("/assignments/submissions")}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleViewCourse}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View Course
+              </button>
+              <button
+                onClick={handleViewSubmissions}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
               >
                 <Eye className="w-4 h-4" />
-                View All Submissions
+                View Submissions
               </button>
-              {/* <button
-                onClick={() => navigate(`/assignments/edit/${assignment._id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-                Edit Assignment
-              </button> */}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Alert Popup for Non-Existent or Missing Items */}
+      {alertPopup.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  {alertPopup.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => setAlertPopup((prev) => ({ ...prev, isOpen: false }))}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              {alertPopup.message}
+            </p>
+
+            <div className="pt-3 flex justify-end">
+              <button
+                onClick={() => setAlertPopup((prev) => ({ ...prev, isOpen: false }))}
+                className="px-5 py-2.5 bg-[#1b6294] hover:bg-[#16517a] text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-sm"
+              >
+                Understand & Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,29 +1,22 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getApiBaseUrl } from '../../utils/apiConfig';
-
-const BASE_URL = getApiBaseUrl();
+import { authorizedFetch, parseApiResponse } from '../../utils/apiClient';
 
 // ── Thunks ───────────────────────────────────────────────────────────────────
 export const fetchMyEnrollments = createAsyncThunk(
   'enrollment/fetchMyEnrollments',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const token = auth.token || localStorage.getItem('edrilla_token');
+      const token = localStorage.getItem('edrilla_token');
       
       if (!token) {
         return rejectWithValue('No authentication token found');
       }
 
-      const res = await fetch(`${BASE_URL}/checkout/my-enrollments`, {
+      const res = await authorizedFetch('/checkout/my-enrollments', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) return rejectWithValue(data?.message || 'Failed to fetch enrollments');
       return data;
     } catch (err) {
@@ -36,21 +29,21 @@ export const buyNow = createAsyncThunk(
   'enrollment/buyNow',
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/checkout/buy-now`, {
+      const res = await authorizedFetch('/checkout/buy-now', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) return rejectWithValue(data?.message || 'Payment processing failed');
       
       // Persist auth data if returned
       const authData = data?.data || data;
       if (authData.accessToken || authData.token) {
         localStorage.setItem('edrilla_token', authData.accessToken || authData.token);
+      }
+      if (authData.refreshToken) {
+        localStorage.setItem('edrilla_refresh', authData.refreshToken);
       }
       if (authData.guestUser || authData.user) {
         localStorage.setItem('edrilla_user', JSON.stringify(authData.guestUser || authData.user));

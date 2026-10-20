@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/all'
 import certificateImg from '../assets/images/certi-new-two.png'
 import { useLanguage } from '../context/LanguageContext'
 import { getImageBaseUrl } from '../utils/apiConfig'
+import { getDisplayPrice } from '../utils/textSanitize'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -51,14 +52,16 @@ const CertificatePricingSection = ({ course }) => {
       return () => ctx.revert()
    }, [])
 
+   const formatPrice = (p) => getDisplayPrice(p, '0');
+
    // Use API plans if available, otherwise fallback
    const apiPlans = course?.plans?.length > 0 ? course.plans.map(p => ({
-      id: p._id,
-      title: p.name || `${p.duration} ${p.durationType}`,
-      price: p.salePrice || p.price,
+      id: p._id || p.id,
+      title: p.name || `${p.duration || ''} ${p.durationType || ''}`.trim() || 'Standard Plan',
+      price: formatPrice(p.salePrice ?? p.price),
       subtitle: p.description || 'Full Access Protocol'
    })) : [
-      { id: '1year', title: '1 Year', price: course?.salePrice || course?.price || 3499, subtitle: 'Standard Access' }
+      { id: '1year', title: 'Full Access', price: formatPrice(course?.salePrice ?? course?.price ?? 3499), subtitle: 'Complete Course Access' }
    ];
 
    useEffect(() => {
@@ -152,7 +155,7 @@ const CertificatePricingSection = ({ course }) => {
 
                             <div className="flex items-center gap-8">
                                <div className="flex flex-col items-end">
-                                  <span className="font-inter text-3xl md:text-5xl text-amber-700 font-normal">₹{plan.price}</span>
+                                  <span className="font-inter text-3xl md:text-5xl text-amber-700 font-normal">₹{getDisplayPrice(plan.price)}</span>
                                   <span className="font-jetbrains text-[7px] text-slate-400 uppercase tracking-widest">Single Access</span>
                                </div>
 

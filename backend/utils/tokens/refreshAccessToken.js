@@ -3,86 +3,113 @@ import UserRefreshToken from "../../models/UserRefreshToken.js";
 import { generateTokens } from "./generateTokens.js";
 import { verifyRefreshToken } from "./verifyToken.js";
 
+// Deduplicate concurrent refreshes for the same token and keep a short grace window
+const inFlightRefreshes = new Map();
+const recentRefreshes = new Map();
+
+// Periodic cleanup of recentRefreshes cache
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of recentRefreshes.entries()) {
+    if (now - val.timestamp > 60000) {
+      recentRefreshes.delete(key);
+    }
+  }
+}, 60000).unref?.();
+
 const refreshAccessToken = async (req, res) => {
   try {
-    let oldRefreshToken = req.cookies.refreshToken || req.headers["x-refresh-token"];
-
-    //console.log("🔄 Raw refresh token:", oldRefreshToken ? "Present" : "Missing");
-    //console.log("🔄 Refresh token type:", typeof oldRefreshToken);
+    let oldRefreshToken = req.cookies?.refreshToken || req.headers["x-refresh-token"];
 
     // Handle JSON parsing for headers if needed
     if (typeof oldRefreshToken === 'string' && oldRefreshToken.startsWith('{')) {
       try {
         oldRefreshToken = JSON.parse(oldRefreshToken);
-        //console.log("📝 Parsed refresh token from JSON");
       } catch (e) {
-        //console.log("⚠️ Failed to parse refresh token as JSON, using as string");
+        // If parsing fails, use the string as is
       }
     }
 
     if (!oldRefreshToken) {
-      //console.log("❌ No refresh token provided");
       throw new Error("No refresh token provided");
     }
 
-    // Verify Refresh Token is valid or not
-    //console.log("🔍 Verifying refresh token...");
-    const { tokenDetails, error } = await verifyRefreshToken(oldRefreshToken);
-    //console.log("📊 Verification result - error:", error, "tokenDetails:", !!tokenDetails);
-
-    if (error) {
-      //console.log("❌ Token verification failed:", error.message || 'Unknown error');
-      throw new Error(`Invalid refresh token: ${error.message || 'Unknown error'}`);
+    // 1. If this token was already refreshed in the last 30 seconds, return the same active tokens
+    const cached = recentRefreshes.get(oldRefreshToken);
+    if (cached && (Date.now() - cached.timestamp < 30000)) {
+      return cached.tokenData;
     }
 
-    // Find User based on Refresh Token detail id
-    //console.log("🔍 Looking for user with ID:", tokenDetails._id);
-    const user = await User.findById(tokenDetails._id);
-
-    if (!user) {
-      //console.log("❌ User not found for ID:", tokenDetails._id);
-      throw new Error("User not found");
+    // 2. If a refresh is currently in-flight for this token, await the shared promise
+    if (inFlightRefreshes.has(oldRefreshToken)) {
+      return await inFlightRefreshes.get(oldRefreshToken);
     }
 
-    // Reject refresh token if issued before last password change
-    if (user.passwordChangedAt && tokenDetails.iat) {
-      const passwordChangedTime = Math.floor(user.passwordChangedAt.getTime() / 1000);
-      if (tokenDetails.iat < passwordChangedTime) {
-        throw new Error("Refresh token was issued before the last password change");
+    const refreshPromise = (async () => {
+      try {
+        // Verify Refresh Token is valid or not
+        const { tokenDetails, error } = await verifyRefreshToken(oldRefreshToken);
+
+        if (error) {
+          throw new Error(`Invalid refresh token: ${error.message || 'Unknown error'}`);
+        }
+
+        // Find User based on Refresh Token detail id
+        const user = await User.findById(tokenDetails._id);
+
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        // Reject refresh token if issued before last password change
+        if (user.passwordChangedAt && tokenDetails.iat) {
+          const passwordChangedTime = Math.floor(user.passwordChangedAt.getTime() / 1000);
+          if (tokenDetails.iat < passwordChangedTime) {
+            throw new Error("Refresh token was issued before the last password change");
+          }
+        }
+
+        // Additional verification: check if token still exists and is not blacklisted
+        const userRefreshToken = await UserRefreshToken.findOne({
+          userId: tokenDetails._id,
+          token: oldRefreshToken,
+          blacklisted: false
+        });
+
+        if (!userRefreshToken) {
+          throw new Error("Refresh token not found in database or is blacklisted");
+        }
+
+        // Generate new access and refresh tokens
+        const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } = await generateTokens(
+          user,
+          userRefreshToken.platform || "web",
+          userRefreshToken.deviceId
+        );
+
+        const tokenData = {
+          newAccessToken: accessToken,
+          newRefreshToken: refreshToken,
+          newAccessTokenExp: accessTokenExp,
+          newRefreshTokenExp: refreshTokenExp
+        };
+
+        recentRefreshes.set(oldRefreshToken, {
+          tokenData,
+          timestamp: Date.now()
+        });
+
+        return tokenData;
+      } finally {
+        inFlightRefreshes.delete(oldRefreshToken);
       }
-    }
-    //console.log("✅ Found user:", user._id);
+    })();
 
-    // Additional verification: check if token still exists and is not blacklisted
-    const userRefreshToken = await UserRefreshToken.findOne({
-      userId: tokenDetails._id,
-      token: oldRefreshToken,
-      blacklisted: false
-    });
-
-    //console.log("📊 Database refresh token found:", !!userRefreshToken);
-    //console.log("📊 Database token blacklisted:", userRefreshToken?.blacklisted);
-
-    if (!userRefreshToken) {
-      //console.log("❌ Refresh token not found in database or is blacklisted");
-      throw new Error("Refresh token not found in database or is blacklisted");
-    }
-
-    // Generate new access and refresh tokens
-    //console.log("🔄 Generating new tokens...");
-    const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } = await generateTokens(user, userRefreshToken.platform || "web", userRefreshToken.deviceId);
-
-    //console.log("✅ New tokens generated successfully");
-    return {
-      newAccessToken: accessToken,
-      newRefreshToken: refreshToken,
-      newAccessTokenExp: accessTokenExp,
-      newRefreshTokenExp: refreshTokenExp
-    };
+    inFlightRefreshes.set(oldRefreshToken, refreshPromise);
+    return await refreshPromise;
 
   } catch (error) {
     console.error("❌ RefreshAccessToken error:", error.message);
-    // Instead of sending response, throw error to be handled by middleware
     throw error;
   }
 };

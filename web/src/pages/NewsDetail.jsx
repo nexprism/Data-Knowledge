@@ -6,6 +6,146 @@ import { gsap } from 'gsap'
 import { useLanguage } from '../context/LanguageContext'
 import { getImageBaseUrl } from '../utils/apiConfig'
 
+// Escape plain text for safe embedding into generated HTML
+const escapeHtml = (text = '') =>
+  String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
+// Resolve possible relative upload paths to full image URLs
+const getContentImageUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  const baseUrl = getImageBaseUrl()
+  return encodeURI(`${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`)
+}
+
+// Render EditorJS blocks into plain HTML
+const renderEditorJSBlocks = (blocks) => {
+  if (!Array.isArray(blocks)) return ''
+
+  return blocks
+    .map((block) => {
+      switch (block.type) {
+        case 'paragraph':
+          return `<p class="mb-4 text-slate-700 leading-relaxed">${block.data?.text || ''}</p>`
+        case 'header': {
+          const level = block.data?.level || 2
+          return `<h${level} class="mb-4 mt-6 font-bold text-slate-900 text-xl md:text-2xl">${block.data?.text || ''}</h${level}>`
+        }
+        case 'list': {
+          const items = Array.isArray(block.data?.items) ? block.data.items : []
+          const listTag = block.data?.style === 'ordered' ? 'ol' : 'ul'
+          const listClass = listTag === 'ol' ? 'list-decimal ml-6 mb-4 space-y-1' : 'list-disc ml-6 mb-4 space-y-1'
+          
+          const renderList = (listArr) => {
+            return listArr.map((item) => {
+              const text = typeof item === 'object' && item !== null
+                ? (item.content ?? item.text ?? item.title ?? item.value ?? '')
+                : String(item ?? '')
+              const nestedHtml = (item && typeof item === 'object' && Array.isArray(item.items) && item.items.length > 0)
+                ? `<${listTag} class="${listClass} mt-2">${renderList(item.items)}</${listTag}>`
+                : ''
+              return `<li class="mb-2 text-slate-700">${text}${nestedHtml}</li>`
+            }).join('')
+          }
+
+          return `<${listTag} class="${listClass}">${renderList(items)}</${listTag}>`
+        }
+        case 'checklist': {
+          const items = Array.isArray(block.data?.items) ? block.data.items : []
+          const listItems = items.map(item => {
+            const text = typeof item === 'object' && item !== null
+              ? (item.text || item.content || '')
+              : String(item || '')
+            const checked = Boolean(item?.checked)
+            return `<li class="mb-2 flex items-center gap-2 text-slate-700">
+              <input type="checkbox" disabled ${checked ? 'checked' : ''} class="rounded text-[#3498db]" />
+              <span>${text}</span>
+            </li>`
+          }).join('')
+          return `<ul class="list-none ml-2 mb-4 space-y-1">${listItems}</ul>`
+        }
+        case 'table': {
+          const content = Array.isArray(block.data?.content) ? block.data.content : []
+          if (content.length === 0) return ''
+          const rows = content.map((row) => {
+            const cells = Array.isArray(row) 
+              ? row.map(c => {
+                  const cellText = typeof c === 'object' && c !== null ? (c.content || c.text || '') : String(c || '')
+                  return `<td class="border border-slate-200 px-3 py-2 text-sm text-slate-700">${cellText}</td>`
+                }).join('') 
+              : ''
+            return `<tr>${cells}</tr>`
+          }).join('')
+          return `<div class="overflow-x-auto my-4"><table class="min-w-full border-collapse border border-slate-200"><tbody>${rows}</tbody></table></div>`
+        }
+        case 'code': {
+          const code = block.data?.code || ''
+          return `<pre class="bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto my-4 text-sm font-mono"><code>${escapeHtml(code)}</code></pre>`
+        }
+        case 'delimiter': {
+          return `<hr class="my-6 border-slate-200" />`
+        }
+        case 'quote': {
+          const caption = block.data?.caption
+          return `<blockquote class="border-l-4 border-[#3498db] pl-4 py-2 my-4 italic text-slate-700 bg-[#3498db]/5 rounded-r-xl"><p class="mb-2">${block.data?.text || ''}</p>${caption ? `<cite class="text-sm text-slate-500 not-italic">— ${escapeHtml(caption)}</cite>` : ''}</blockquote>`
+        }
+        case 'image': {
+          const url = getContentImageUrl(block.data?.file?.url || block.data?.url)
+          if (!url) return ''
+          const caption = block.data?.caption || ''
+          return `<figure class="my-6"><img src="${url}" alt="${escapeHtml(caption || 'Image')}" class="w-full h-auto rounded-xl shadow-lg" loading="lazy" />${caption ? `<figcaption class="mt-2 text-sm text-center text-slate-500 italic">${escapeHtml(caption)}</figcaption>` : ''}</figure>`
+        }
+        case 'video': {
+          const url = getContentImageUrl(block.data?.url || block.data?.file?.url)
+          if (!url) return ''
+          return `<div class="my-6 relative w-full" style="padding-bottom: 56.25%;"><video src="${url}" controls class="absolute top-0 left-0 w-full h-full rounded-xl"></video></div>`
+        }
+        case 'youtube': {
+          const videoId = block.data?.videoId
+          if (!videoId) return ''
+          return `<div class="my-6 relative w-full" style="padding-bottom: 56.25%;"><iframe src="https://www.youtube.com/embed/${escapeHtml(videoId)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="absolute top-0 left-0 w-full h-full rounded-xl"></iframe></div>`
+        }
+        case 'twitter':
+        case 'facebook': {
+          const embedUrl = block.data?.url
+          if (!embedUrl) return ''
+          return `<div class="my-6"><iframe src="${escapeHtml(embedUrl)}" class="w-full min-h-[400px] rounded-xl" frameborder="0"></iframe></div>`
+        }
+        default:
+          return ''
+      }
+    })
+    .join('')
+}
+
+// Convert blog content (HTML string, EditorJS JSON string, object, or block array) to HTML
+const renderContentToHtml = (content) => {
+  if (!content) return ''
+
+  if (typeof content === 'object') {
+    if (Array.isArray(content)) {
+      if (content.length > 0 && content[0]?.type) return renderEditorJSBlocks(content)
+      return content.map(renderContentToHtml).join('')
+    }
+    if (Array.isArray(content.blocks)) return renderEditorJSBlocks(content.blocks)
+    return ''
+  }
+
+  const trimmed = content.trim()
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      return renderContentToHtml(JSON.parse(trimmed))
+    } catch {
+      // Not valid JSON — treat as plain HTML string
+    }
+  }
+  return content
+}
+
 const NewsDetail = () => {
   const { id: slug } = useParams()
   const dispatch = useDispatch()
@@ -64,7 +204,7 @@ const NewsDetail = () => {
 
   // Map API data
   const article = {
-    category: articleData.categories?.[0]?.toUpperCase() || "NEWS",
+    category: (typeof articleData.categories?.[0] === 'string' ? articleData.categories[0].toUpperCase() : '') || "NEWS",
     title: articleData.title,
     date: new Date(articleData.publishedAt || articleData.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase(),
     time: new Date(articleData.publishedAt || articleData.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }).toUpperCase(),
@@ -77,7 +217,7 @@ const NewsDetail = () => {
         return encodeURI(url.startsWith('http') ? url : `${baseUrl}/uploads/news/${url}`);
     })(),
     intro: articleData.summary?.replace(/<[^>]*>?/gm, '')?.replace('[&hellip;]', '...'),
-    content: articleData.content
+    content: renderContentToHtml(articleData.content)
   }
 
   const shareButtons = [

@@ -45,7 +45,7 @@ const ComparisonSection = ({ course = {}, section }) => {
 
   // Clean comparison points
   const leftPoints = (targetSection?.leftPoints && targetSection.leftPoints.length > 0)
-    ? targetSection.leftPoints.filter(p => Boolean(p && String(p).trim()))
+    ? targetSection.leftPoints.map(sanitizeParagraph).filter(Boolean)
     : [
         "Heavy focus on theoretical concepts without application",
         "Limited real-world business case studies",
@@ -55,7 +55,7 @@ const ComparisonSection = ({ course = {}, section }) => {
       ]
 
   const rightPoints = (targetSection?.rightPoints && targetSection.rightPoints.length > 0)
-    ? targetSection.rightPoints.filter(p => Boolean(p && String(p).trim()))
+    ? targetSection.rightPoints.map(sanitizeParagraph).filter(Boolean)
     : [
         "100% practical, easy-to-understand learning methodology",
         "Real-world enterprise datasets and live case studies",
@@ -82,7 +82,7 @@ const ComparisonSection = ({ course = {}, section }) => {
         </div>
 
         <h2 className="font-inter text-3xl sm:text-4xl lg:text-[2.6rem] font-bold text-slate-900 tracking-tight leading-tight">
-          {sectionTitle.split(' ').map((word, i, arr) => (
+          {String(sectionTitle || 'Program Comparison').split(' ').map((word, i, arr) => (
             <React.Fragment key={i}>
               {i >= Math.max(1, arr.length - 2) ? (
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">
@@ -101,13 +101,79 @@ const ComparisonSection = ({ course = {}, section }) => {
           </p>
         )}
 
-        {descriptionParagraphs.length > 0 && (
-          <div className="space-y-2 text-slate-600 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto pt-1">
-            {descriptionParagraphs.map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
-          </div>
-        )}
+        {(() => {
+          if (!descriptionParagraphs || descriptionParagraphs.length === 0) return null
+          const introParas = []
+          const bulletParas = []
+          const outroParas = []
+          let reachedBullets = false
+
+          descriptionParagraphs.forEach(p => {
+            const isBullet = /^[•\-\*]|\d+\./.test(p.trim())
+            if (isBullet) {
+              reachedBullets = true
+              bulletParas.push(p.replace(/^[•\-\*]\s*|\d+\.\s*/, '').trim())
+            } else if (!reachedBullets) {
+              introParas.push(p)
+            } else {
+              outroParas.push(p)
+            }
+          })
+
+          return (
+            <div className="pt-2 space-y-4">
+              {introParas.length > 0 && (
+                <div className="space-y-2 text-slate-600 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto">
+                  {introParas.map((para, i) => (
+                    <p key={i} className="font-medium text-slate-700">{para}</p>
+                  ))}
+                </div>
+              )}
+
+              {bulletParas.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-w-4xl mx-auto my-4 text-left">
+                  {bulletParas.map((item, i) => {
+                    const colonIdx = item.indexOf(': ')
+                    const hasHeading = colonIdx > -1 && colonIdx < 40
+                    const heading = hasHeading ? item.slice(0, colonIdx) : ''
+                    const body = hasHeading ? item.slice(colonIdx + 2) : item
+
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-[#3498db]/40 hover:shadow-md transition-all duration-300"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-blue-50 border border-blue-200/80 text-[#3498db] flex items-center justify-center shrink-0 mt-0.5">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                        <div className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                          {hasHeading ? (
+                            <>
+                              <strong className="font-bold text-slate-900 block mb-0.5">{heading}</strong>
+                              <span>{body}</span>
+                            </>
+                          ) : (
+                            <span>{item}</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {outroParas.length > 0 && (
+                <div className="space-y-1.5 text-slate-600 text-xs sm:text-sm leading-relaxed max-w-2xl mx-auto pt-2">
+                  {outroParas.map((para, i) => (
+                    <p key={i} className="italic text-slate-500">{para}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* COMPARISON CARDS (Side-by-side Grid) */}

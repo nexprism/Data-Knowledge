@@ -8,8 +8,10 @@ const persistAuth = (response) => {
   const data = response?.data || response;
   if (data) {
     const token = data.accessToken || data.token || '';
+    const refreshToken = data.refreshToken || '';
     const user = data.user || null;
     if (token) localStorage.setItem('edrilla_token', token);
+    if (refreshToken) localStorage.setItem('edrilla_refresh', refreshToken);
     if (user) localStorage.setItem('edrilla_user', JSON.stringify(user));
   }
 };
@@ -18,10 +20,11 @@ const loadFromStorage = () => {
   try {
     return {
       token: localStorage.getItem('edrilla_token') || null,
+      refreshToken: localStorage.getItem('edrilla_refresh') || null,
       user: JSON.parse(localStorage.getItem('edrilla_user')) || null,
     };
   } catch {
-    return { token: null, user: null };
+    return { token: null, refreshToken: null, user: null };
   }
 };
 
@@ -32,6 +35,7 @@ export const loginUser = createAsyncThunk(
     try {
       const res = await fetch(`${BASE_URL}/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, platform: "web" }),
       });
@@ -51,6 +55,7 @@ export const googleLoginUser = createAsyncThunk(
     try {
       const res = await fetch(`${BASE_URL}/google-login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           googleAccessToken,
@@ -153,6 +158,7 @@ export const registerUser = createAsyncThunk(
       if (typeof is_verify !== 'undefined') payload.is_verify = !!is_verify
       const res = await fetch(`${BASE_URL}/signup`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
@@ -179,11 +185,13 @@ const authSlice = createSlice({
   reducers: {
     logout(state) {
       state.token = null;
+      state.refreshToken = null;
       state.user = null;
       state.error = null;
       state.otpVerified = false;
       state.otpEmail = null;
       localStorage.removeItem('edrilla_token');
+      localStorage.removeItem('edrilla_refresh');
       localStorage.removeItem('edrilla_user');
     },
     clearAuthError(state) {
@@ -198,6 +206,7 @@ const authSlice = createSlice({
       state.loading = false;
       const data = payload?.data || payload;
       state.token = data?.accessToken || data?.token || null;
+      state.refreshToken = data?.refreshToken || null;
       state.user = data?.user || null;
     };
 

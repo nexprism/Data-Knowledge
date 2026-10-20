@@ -2,6 +2,7 @@ import express from 'express';
 import passport from 'passport';
 import { isAdmin } from '../middlewares/isAdmin.js';
 import accessTokenAutoRefresh from '../middlewares/accessTokenAutoRefresh.js';
+import optionalTokenAutoRefresh from '../middlewares/optionalTokenAutoRefresh.js';
 import { upload } from '../middlewares/upload-middleware.js';
 import optionalAuthenticate from '../middlewares/optionalAuthenticate.js';
 import {
@@ -29,8 +30,9 @@ router.get('/slots/available', getAvailableSlots);
 router.post('/create-order', accessTokenAutoRefresh, passport.authenticate('jwt', { session: false }), createConsultationOrder);
 
 // `upload.fields` handles multiple file uploads, here we expect 'fileUpload'
+// optionalTokenAutoRefresh: guests (no tokens) can book; logged-in users still get token refresh
 router.post('/book', 
-    accessTokenAutoRefresh, 
+    optionalTokenAutoRefresh, 
     optionalAuthenticate, 
     upload.fields([{ name: 'fileUpload', maxCount: 1 }]), 
     bookConsultation

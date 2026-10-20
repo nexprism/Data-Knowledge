@@ -30,7 +30,9 @@ import { selectIsAuthenticated } from "./store/slices/authslice";
 import StudentList from "./pages/students/StudenList";
 import StudentDetail from "./pages/students/StudentDetail";
 import AssignmentSubmissionReview from "./pages/Assignmets/AssignmentDetails";
+import AssignmentSubmissions from "./pages/Assignmets/AssignmentSubmissions";
 import AssignmentPage from "./pages/Assignmets/AssignmentPage";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import HelpDesk from "./pages/HelpDesk/RequestList";
 import TicketDetails from "./pages/HelpDesk/TicketDetails";
 import CertificationList from "./pages/Certification/CertificationList";
@@ -123,8 +125,9 @@ export default function App() {
     <Router>
       <AdminTrackerProvider>
         <ScrollToTop />
-        <Suspense fallback={<div className="text-center mt-20">Loading...</div>}>
-          <Routes>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="text-center mt-20">Loading...</div>}>
+            <Routes>
             {/* Public Routes - Only accessible when NOT authenticated */}
             <Route
               path="/signin"
@@ -191,7 +194,7 @@ export default function App() {
                 />
                 <Route
                   path="/assignments/submissions"
-                  element={<AssignmentList />}
+                  element={<AssignmentSubmissions />}
                 />
                 <Route
                   path="/assignments/submissions/:id"
@@ -337,8 +340,9 @@ export default function App() {
                 )
               }
             />
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </AdminTrackerProvider>
     </Router>
   );

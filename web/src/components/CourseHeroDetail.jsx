@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { gsap } from 'gsap'
-import sanitizeDisplay, { extractEditorBlocks, sanitizeParagraph } from '../utils/textSanitize'
+import sanitizeDisplay, { extractEditorBlocks, sanitizeParagraph, getDisplayPrice } from '../utils/textSanitize'
 import { useLanguage } from '../context/LanguageContext'
 import authorizedFetch from '../utils/apiClient'
 import { getApiBaseUrl } from '../utils/apiConfig.js'
@@ -56,7 +56,9 @@ const CourseHeroDetail = ({ course = {}, section = {} }) => {
     return () => ctx.revert()
   }, [displayTitle])
 
-  const highlights = Array.isArray(course.highlights) ? course.highlights.filter(Boolean) : []
+  const highlights = Array.isArray(course.highlights)
+    ? course.highlights.map(sanitizeParagraph).filter(Boolean)
+    : []
 
   const handleScrollToPricing = () => {
     const el = document.getElementById('pricing-section')
@@ -150,13 +152,13 @@ const CourseHeroDetail = ({ course = {}, section = {} }) => {
           <div className="reveal-hero-item inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 text-[#3498db] text-xs font-semibold tracking-wide uppercase">
             <span className="w-2 h-2 rounded-full bg-[#3498db] animate-pulse" />
             <span>
-              {course.category?.name || 'TRAINING PROGRAM'} • {Array.isArray(course.level) ? course.level[0] : (course.level || 'ALL LEVELS')}
+              {course.category?.name || 'TRAINING PROGRAM'} • {Array.isArray(course.level) ? String(course.level[0] || 'ALL LEVELS') : (typeof course.level === 'string' ? course.level : 'ALL LEVELS')}
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="reveal-hero-item font-inter text-3xl sm:text-4xl lg:text-[2.85rem] font-extrabold text-slate-900 tracking-tight leading-[1.16]">
-            {displayTitle.split(' ').map((word, i, arr) => (
+            {String(displayTitle || 'Course Overview').split(' ').map((word, i, arr) => (
               <React.Fragment key={i}>
                 {i >= Math.max(1, arr.length - 2) ? (
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">
@@ -272,7 +274,7 @@ const CourseHeroDetail = ({ course = {}, section = {} }) => {
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Program Fee</span>
                 <span className="text-base sm:text-lg font-extrabold text-[#1a5276]">
                   {course.salePrice != null || course.price != null
-                    ? `₹${course.salePrice || course.price}`
+                    ? `₹${getDisplayPrice(course.salePrice || course.price)}`
                     : 'Flexible Plans'}
                 </span>
               </div>

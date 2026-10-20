@@ -16,6 +16,11 @@ const MySubmissions = () => {
    const { submissions, loading, error } = useSelector((state) => state.assignments)
    const [selectedSub, setSelectedSub] = useState(null)
    const [searchQuery, setSearchQuery] = useState('')
+   const [modalAlert, setModalAlert] = useState({
+      show: false,
+      title: '',
+      message: '',
+   })
 
    const filteredSubmissions = useMemo(() => {
       return submissions.filter(sub => {
@@ -107,7 +112,7 @@ const MySubmissions = () => {
          : null;
 
       return (
-         <div ref={containerRef} className="min-h-screen bg-dark relative selection:bg-accent/30 overflow-x-clip">
+         <div ref={containerRef} className="min-h-screen bg-slate-50 text-slate-900 relative selection:bg-accent/30 overflow-x-clip">
             <DashboardHeader />
 
             <main className="pt-24 pb-20 px-4 lg:px-8 max-w-[1500px] mx-auto">
@@ -261,7 +266,7 @@ const MySubmissions = () => {
    }
 
    return (
-      <div ref={containerRef} className="min-h-screen bg-dark relative selection:bg-accent/30 overflow-x-clip">
+      <div ref={containerRef} className="min-h-screen bg-slate-50 text-slate-900 relative selection:bg-accent/30 overflow-x-clip">
          <DashboardHeader />
 
          <main className="pt-24 pb-20 px-4 lg:px-8 max-w-[1500px] mx-auto">
@@ -310,8 +315,18 @@ const MySubmissions = () => {
                         <div
                            key={sub._id}
                            onClick={() => {
-                              if (sub.status === 'pending' && sub.courseId?._id && sub.lessonId?._id) {
-                                 navigate(`/dashboard/assignment/${sub.courseId._id}/${sub.lessonId._id}`)
+                              if (sub.status === 'pending') {
+                                 const cId = sub.courseId?._id || sub.courseId
+                                 const lId = sub.lessonId?._id || sub.lessonId
+                                 if (cId && lId) {
+                                    navigate(`/dashboard/assignment/${cId}/${lId}`)
+                                 } else {
+                                    setModalAlert({
+                                       show: true,
+                                       title: 'Lesson or Course Not Found',
+                                       message: 'The linked course or lesson for this pending assignment is no longer available or has been removed.'
+                                    })
+                                 }
                               } else {
                                  setSelectedSub(sub)
                               }
@@ -381,6 +396,33 @@ const MySubmissions = () => {
                )}
             </div>
          </main>
+
+         {/* Alert Modal for non-existent lesson / course */}
+         {modalAlert.show && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+               <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+                  <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                     </svg>
+                  </div>
+                  <h3 className="font-inter text-lg font-bold text-slate-900 mb-2">
+                     {modalAlert.title}
+                  </h3>
+                  <p className="font-inter text-sm text-slate-600 mb-6 leading-relaxed">
+                     {modalAlert.message}
+                  </p>
+                  <button
+                     onClick={() => setModalAlert({ show: false, title: '', message: '' })}
+                     className="w-full py-2.5 px-4 rounded-xl bg-purple-600 text-white font-inter text-sm font-semibold hover:bg-purple-700 transition-colors shadow-sm"
+                  >
+                     Close
+                  </button>
+               </div>
+            </div>
+         )}
       </div>
    )
 }

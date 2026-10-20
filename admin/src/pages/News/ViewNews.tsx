@@ -107,15 +107,24 @@ const renderEditorJSBlocks = (blocks: any[]): string => {
           // Allow basic HTML in headers
           return `<${HeaderTag} class="mb-4 mt-6 font-bold text-gray-900 dark:text-white">${headerText}</${HeaderTag}>`;
 
-        case "list":
-          const items = block.data?.items || [];
+        case "list": {
+          const items = Array.isArray(block.data?.items) ? block.data.items : [];
           const style = block.data?.style || "unordered";
           const listTag = style === "ordered" ? "ol" : "ul";
-          const listClass = style === "ordered" ? "list-decimal ml-6 mb-4" : "list-disc ml-6 mb-4";
-          const listItems = items
-            .map((item: string) => `<li class="mb-2 text-gray-700 dark:text-gray-300">${item}</li>`)
-            .join("");
-          return `<${listTag} class="${listClass}">${listItems}</${listTag}>`;
+          const listClass = style === "ordered" ? "list-decimal ml-6 mb-4 space-y-1" : "list-disc ml-6 mb-4 space-y-1";
+          const renderList = (listArr: any[]): string => {
+            return listArr.map((item) => {
+              const text = typeof item === 'object' && item !== null
+                ? (item.content ?? item.text ?? item.title ?? item.value ?? "")
+                : String(item ?? "");
+              const nestedHtml = (item && typeof item === 'object' && Array.isArray(item.items) && item.items.length > 0)
+                ? `<${listTag} class="${listClass} mt-2">${renderList(item.items)}</${listTag}>`
+                : "";
+              return `<li class="mb-2 text-gray-700 dark:text-gray-300">${text}${nestedHtml}</li>`;
+            }).join("");
+          };
+          return `<${listTag} class="${listClass}">${renderList(items)}</${listTag}>`;
+        }
 
         case "quote":
           const quoteText = block.data?.text || "";

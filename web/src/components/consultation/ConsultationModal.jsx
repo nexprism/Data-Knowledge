@@ -63,6 +63,7 @@ const ConsultationModal = ({ isOpen, onClose }) => {
   });
   const [fileName, setFileName] = useState('');
   const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState(null);
 
   // WhatsApp redirect state & countdown
   const [redirectCountdown, setRedirectCountdown] = useState(null);
@@ -108,6 +109,7 @@ const ConsultationModal = ({ isOpen, onClose }) => {
       setStep(1);
       dispatch(resetBookingState());
       setFormErrors({});
+      setSubmitError(null);
       setFileName('');
       setRedirectCountdown(null);
       if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
@@ -222,6 +224,7 @@ const ConsultationModal = ({ isOpen, onClose }) => {
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: null }));
     }
+    if (submitError) setSubmitError(null);
   };
 
   const validateForm = () => {
@@ -293,7 +296,13 @@ I have booked a session:
   };
 
   const handleConfirmBooking = async () => {
+    if (!selectedSlot) {
+      setSubmitError('Please select a time slot before confirming.');
+      setStep(1);
+      return;
+    }
     if (!validateForm()) return;
+    setSubmitError(null);
 
     const submission = new FormData();
     submission.append('slotId', selectedSlot._id);
@@ -308,6 +317,22 @@ I have booked a session:
     if (formData.fileUpload) {
       submission.append('fileUpload', formData.fileUpload);
     }
+
+    // Stay on Learner Info (step 2) and surface the real error message on failure
+    const handleBookingFailure = (err) => {
+      console.error('Booking error:', err);
+      const message =
+        (typeof err === 'string' && err) ||
+        err?.message ||
+        'Something went wrong while booking your session. Please check your details and try again.';
+      setSubmitError(message);
+      // Only refresh slots if the failure is about slot availability,
+      // so a network/validation error never wipes the user's selected slot.
+      if (/slot|booked|passed|book/i.test(message)) {
+        dispatch(fetchAllUpcomingSlots());
+        if (selectedDate) dispatch(fetchAvailableSlots({ date: selectedDate }));
+      }
+    };
 
     // Check if slot is paid
     if (selectedSlot.price > 0 && selectedSlot.duration === 30) {
@@ -343,10 +368,7 @@ I have booked a session:
                   triggerWhatsAppRedirect(result.data);
                 }
               } catch (err) {
-                console.error('Paid session confirmation error:', err);
-                dispatch(fetchAllUpcomingSlots());
-                if (selectedDate) dispatch(fetchAvailableSlots({ date: selectedDate }));
-                setStep(1);
+                handleBookingFailure(err);
               }
             },
             prefill: {
@@ -359,16 +381,16 @@ I have booked a session:
 
           if (window.Razorpay) {
             const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', (response) => {
+              handleBookingFailure(response?.error?.description || 'Payment failed. Please try again.');
+            });
             rzp.open();
           } else {
-            alert('Payment gateway script loading. Please retry.');
+            setSubmitError('Payment gateway is still loading. Please wait a moment and try again.');
           }
         }
       } catch (err) {
-        console.error('Booking order error:', err);
-        dispatch(fetchAllUpcomingSlots());
-        if (selectedDate) dispatch(fetchAvailableSlots({ date: selectedDate }));
-        setStep(1);
+        handleBookingFailure(err);
       }
     } else {
       // Free consultation booking
@@ -381,10 +403,7 @@ I have booked a session:
           triggerWhatsAppRedirect(result.data);
         }
       } catch (err) {
-        console.error('Booking error:', err);
-        dispatch(fetchAllUpcomingSlots());
-        if (selectedDate) dispatch(fetchAvailableSlots({ date: selectedDate }));
-        setStep(1);
+        handleBookingFailure(err);
       }
     }
   };
@@ -758,6 +777,28 @@ I have booked a session:
           {/* ──────────────── STEP 2: Learner Details Form ──────────────── */}
           {step === 2 && selectedSlot && (
             <div className="space-y-4">
+              {/* Booking failure banner — stays on this step so the user can retry */}
+              {submitError && (
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-rose-500 shrink-0 mt-0.5">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span className="text-rose-700 text-xs font-medium leading-relaxed">{submitError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitError(null)}
+                    className="text-rose-500 hover:text-rose-800 font-bold text-sm cursor-pointer shrink-0"
+                    aria-label="Dismiss error"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Selected Slot Summary Bar with Change Slot button */}
               <div className="p-4 rounded-2xl bg-blue-50/90 border border-blue-200/80 flex items-center justify-between">
                 <div>

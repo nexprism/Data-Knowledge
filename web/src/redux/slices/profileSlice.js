@@ -1,29 +1,22 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getApiBaseUrl } from '../../utils/apiConfig';
-
-const BASE_URL = getApiBaseUrl();
+import { authorizedFetch, parseApiResponse } from '../../utils/apiClient';
 
 // ── Thunks ───────────────────────────────────────────────────────────────────
 export const fetchUserProfile = createAsyncThunk(
   'profile/fetchUserProfile',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const token = auth.token || localStorage.getItem('edrilla_token');
+      const token = localStorage.getItem('edrilla_token');
       
       if (!token) {
         return rejectWithValue('No authentication token found');
       }
 
-      const res = await fetch(`${BASE_URL}/user`, {
+      const res = await authorizedFetch('/user', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) return rejectWithValue(data?.message || 'Failed to fetch profile');
       return data;
     } catch (err) {
@@ -34,10 +27,9 @@ export const fetchUserProfile = createAsyncThunk(
 
 export const updateUserProfile = createAsyncThunk(
   'profile/updateUserProfile',
-  async (profileData, { getState, rejectWithValue }) => {
+  async (profileData, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const token = auth.token || localStorage.getItem('edrilla_token');
+      const token = localStorage.getItem('edrilla_token');
 
       if (!token) {
         return rejectWithValue('No authentication token found');
@@ -45,16 +37,12 @@ export const updateUserProfile = createAsyncThunk(
 
       const isFormData = profileData instanceof FormData;
       
-      const res = await fetch(`${BASE_URL}/profile`, {
+      const res = await authorizedFetch('/profile', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        },
         body: isFormData ? profileData : JSON.stringify(profileData),
       });
 
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) return rejectWithValue(data?.message || 'Failed to update profile');
       return data;
     } catch (err) {
@@ -65,19 +53,13 @@ export const updateUserProfile = createAsyncThunk(
 
 export const deleteDocument = createAsyncThunk(
   'profile/deleteDocument',
-  async (documentId, { getState, rejectWithValue }) => {
+  async (documentId, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const token = auth.token || localStorage.getItem('edrilla_token');
-
-      const res = await fetch(`${BASE_URL}/documentation/${documentId}`, {
+      const res = await authorizedFetch(`/documentation/${documentId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) return rejectWithValue(data?.message || 'Failed to delete document');
       return documentId;
     } catch (err) {
@@ -88,19 +70,13 @@ export const deleteDocument = createAsyncThunk(
 
 export const deleteEducation = createAsyncThunk(
   'profile/deleteEducation',
-  async (educationId, { getState, rejectWithValue }) => {
+  async (educationId, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const token = auth.token || localStorage.getItem('edrilla_token');
-
-      const res = await fetch(`${BASE_URL}/education/${educationId}`, {
+      const res = await authorizedFetch(`/education/${educationId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) return rejectWithValue(data?.message || 'Failed to delete education');
       return educationId;
     } catch (err) {

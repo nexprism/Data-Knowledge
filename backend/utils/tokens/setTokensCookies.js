@@ -16,26 +16,28 @@ const setTokensCookies = (res, accessToken, refreshToken, accessTokenMaxAge, ref
   const accessAge = accessTokenMaxAge || oneHour;
   const refreshAge = refreshTokenMaxAge || thirtyDays;
 
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: sameSiteOption,
-    maxAge: accessAge,
-  });
+  if (typeof res?.cookie === 'function') {
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: sameSiteOption,
+      maxAge: accessAge,
+    });
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: sameSiteOption,
-    maxAge: refreshAge,
-  });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: sameSiteOption,
+      maxAge: refreshAge,
+    });
 
-  res.cookie("is_auth", true, {
-    httpOnly: false,
-    secure: isSecure,
-    sameSite: sameSiteOption,
-    maxAge: refreshAge, // is_auth represents the overall session duration (refresh token)
-  });
+    res.cookie("is_auth", true, {
+      httpOnly: false,
+      secure: isSecure,
+      sameSite: sameSiteOption,
+      maxAge: refreshAge, // is_auth represents the overall session duration (refresh token)
+    });
+  }
 };
 
 const clearTokensCookies = (res) => {
@@ -46,21 +48,23 @@ const clearTokensCookies = (res) => {
     process.env.NODE_ENV === "production";
   const sameSiteOption = isSecure ? "none" : "lax";
 
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: sameSiteOption,
-  });
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: sameSiteOption,
-  });
-  res.clearCookie("is_auth", {
-    httpOnly: false,
-    secure: isSecure,
-    sameSite: sameSiteOption,
-  });
+  if (typeof res?.clearCookie === 'function') {
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: sameSiteOption,
+    });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: sameSiteOption,
+    });
+    res.clearCookie("is_auth", {
+      httpOnly: false,
+      secure: isSecure,
+      sameSite: sameSiteOption,
+    });
+  }
 };
 
 export { setTokensCookies, clearTokensCookies };

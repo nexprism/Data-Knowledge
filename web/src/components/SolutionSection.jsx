@@ -47,11 +47,11 @@ const SolutionSection = ({ course, section }) => {
   const sectionTitle = sanitizeParagraph(section?.title) || "Problems We Solve & Program Outcomes"
 
   const outcomePoints = (section?.outcomePoints && section.outcomePoints.length > 0)
-    ? section.outcomePoints.filter(p => Boolean(p && String(p).trim()))
+    ? section.outcomePoints.map(sanitizeParagraph).filter(Boolean)
     : []
 
   const solutionPoints = (section?.points && section.points.length > 0)
-    ? section.points.filter(p => Boolean(p && String(p).trim()))
+    ? section.points.map(sanitizeParagraph).filter(Boolean)
     : []
 
   // If section has nothing configured, don't render an empty section
@@ -70,7 +70,7 @@ const SolutionSection = ({ course, section }) => {
         </div>
 
         <h2 className="font-inter text-3xl sm:text-4xl lg:text-[2.6rem] font-bold text-slate-900 tracking-tight leading-tight">
-          {sectionTitle.split(' ').map((word, i, arr) => (
+          {String(sectionTitle || "Problems We Solve & Program Outcomes").split(' ').map((word, i, arr) => (
             <React.Fragment key={i}>
               {i >= Math.max(1, arr.length - 2) ? (
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">

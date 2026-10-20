@@ -173,7 +173,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// Debug (optional)
+// Ensure any 401 Unauthorized response (e.g. from Passport default plain text) is formatted as JSON
+app.use((req, res, next) => {
+  const originalEnd = res.end;
+  res.end = function (chunk, encoding) {
+    if (res.statusCode === 401 && (chunk === "Unauthorized" || chunk?.toString?.() === "Unauthorized")) {
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      const jsonBody = JSON.stringify({
+        success: false,
+        error: "Unauthorized",
+        message: "Session expired or unauthorized. Please log in again.",
+      });
+      chunk = Buffer.from(jsonBody, "utf-8");
+      res.setHeader("Content-Length", chunk.length);
+    }
+    return originalEnd.call(this, chunk, encoding);
+  };
+  next();
+});
 
 // API Routes
 app.use("/", routes);

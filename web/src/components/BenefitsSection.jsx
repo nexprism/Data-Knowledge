@@ -40,11 +40,11 @@ const BenefitsSection = ({ course, section }) => {
   }, [])
 
   const rawTitle = section?.title || "Key Benefits & Outcomes"
-  const displayTitle = sanitizeParagraph(rawTitle)
+  const displayTitle = sanitizeParagraph(rawTitle) || "Key Benefits & Outcomes"
   const descriptionParagraphs = extractEditorBlocks(section?.content)
 
   const points = (section?.points && section.points.length > 0)
-    ? section.points.filter(p => Boolean(p && String(p).trim()))
+    ? section.points.map(sanitizeParagraph).filter(Boolean)
     : [
         "Improve analytical and critical-thinking skills",
         "Understand data patterns, distributions, and trends",
@@ -63,7 +63,7 @@ const BenefitsSection = ({ course, section }) => {
         </div>
 
         <h2 className="font-inter text-3xl sm:text-4xl lg:text-[2.6rem] font-bold text-slate-900 tracking-tight leading-tight">
-          {displayTitle.split(' ').map((word, i, arr) => (
+          {String(displayTitle || "Key Benefits & Outcomes").split(' ').map((word, i, arr) => (
             <React.Fragment key={i}>
               {i >= Math.max(1, arr.length - 2) ? (
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">

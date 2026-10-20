@@ -33,12 +33,26 @@ const FrameworkSection = ({ course, section }) => {
         if (currentPhase) phases.push(currentPhase)
         currentPhase = { title: block.data?.text || '', description: '' }
       } else if (block.type === 'paragraph') {
-        const text = block.data?.text || ''
+        const text = sanitizeParagraph(block.data?.text || '')
         if (!foundFirstHeader) {
-          intro.push(text)
+          if (text) intro.push(text)
         } else if (currentPhase) {
           currentPhase.description += (currentPhase.description ? ' ' : '') + text
         }
+      } else if (block.type === 'list' || Array.isArray(block.data?.items)) {
+        const items = Array.isArray(block.data?.items) ? block.data.items : []
+        const listTexts = items.map(it => {
+          const raw = typeof it === 'object' && it !== null ? (it.content ?? it.text ?? it) : it
+          return sanitizeParagraph(raw)
+        }).filter(Boolean)
+
+        listTexts.forEach(itemText => {
+          if (!foundFirstHeader) {
+            intro.push('• ' + itemText)
+          } else if (currentPhase) {
+            currentPhase.description += (currentPhase.description ? ' • ' : '• ') + itemText
+          }
+        })
       }
     })
     if (currentPhase) phases.push(currentPhase)
@@ -109,7 +123,7 @@ const FrameworkSection = ({ course, section }) => {
         </div>
 
         <h2 className="font-inter text-3xl sm:text-4xl lg:text-[2.6rem] font-bold text-slate-900 tracking-tight leading-tight">
-          {sectionTitle.split(' ').map((word, i, arr) => (
+          {String(sectionTitle || "Master Data Knowledge Step by Step").split(' ').map((word, i, arr) => (
             <React.Fragment key={i}>
               {i >= Math.max(1, arr.length - 2) ? (
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3498db] via-blue-600 to-[#1a5276]">

@@ -13,11 +13,15 @@ import {
   Award,
   Send,
   ExternalLink,
+  ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import axiosInstance from "../../services/axiosConfig";
 import { useNavigate, useParams } from "react-router";
 import { useDispatch } from "react-redux";
 import { fetchAssignmentSubmissions } from "../../store/slices/assignment";
+import PageMeta from "../../components/common/PageMeta";
+import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 
 const AssignmentSubmissionReview = () => {
   const [formData, setFormData] = useState({
@@ -27,7 +31,8 @@ const AssignmentSubmissionReview = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [submission, setSubmission] = useState(null);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [submission, setSubmission] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
   const params = useParams();
@@ -35,27 +40,23 @@ const AssignmentSubmissionReview = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // Mock submission data - in real app, this would come from props or API
-
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
     if (name === "scoreGiven") {
       const numValue = parseFloat(value);
-      const maxScore = submission?.assignmentId?.maxScore || 0;
+      const maxScore = submission?.assignmentId?.maxScore ?? 100;
 
-      // Prevent values above maxScore
       if (numValue > maxScore) {
         setError(`Score cannot exceed ${maxScore} points`);
         setFormData((prev) => ({
           ...prev,
           [name]: maxScore.toString(),
         }));
-        // Clear error after 3 seconds
         setTimeout(() => setError(""), 3000);
         return;
       } else {
-        setError(""); // Clear error if value is valid
+        setError("");
       }
     }
 
@@ -65,51 +66,57 @@ const AssignmentSubmissionReview = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!submission) return;
     setLoading(true);
     setError("");
 
     try {
-      // Validation
-      if (!formData.scoreGiven) {
+      if (formData.scoreGiven === "" || formData.scoreGiven === undefined) {
         throw new Error("Score is required");
       }
 
       const score = parseFloat(formData.scoreGiven);
-      if (score < 0 || score > submission.assignmentId.maxScore) {
-        throw new Error(
-          `Score must be between 0 and ${submission.assignmentId.maxScore}`
-        );
+      const maxScore = submission?.assignmentId?.maxScore ?? 100;
+      if (isNaN(score) || score < 0 || score > maxScore) {
+        throw new Error(`Score must be between 0 and ${maxScore}`);
       }
 
       if (!formData.feedback.trim()) {
         throw new Error("Feedback is required");
       }
 
-      // Simulate API call
-      const response = await axiosInstance.put(
+      await axiosInstance.put(
         `/assignment-submissions/${submission._id}/grade`,
         {
-          scoreGiven: formData.scoreGiven,
-          feedback: formData.feedback,
+          scoreGiven: score,
+          feedback: formData.feedback.trim(),
           status: formData.status,
         }
       );
 
-      console.log("Submission graded:", response.data);
       setShowSuccess(true);
-      dispatch(fetchAssignmentSubmissions()).unwrap();
-      navigate("/assignments/submissions");
-    } catch (err) {
-      setError(err.message);
+      try {
+        dispatch(fetchAssignmentSubmissions() as any);
+      } catch (e) {
+        // Ignore background refresh errors
+      }
+      setTimeout(() => {
+        navigate("/assignments/submissions");
+      }, 1200);
+    } catch (err: any) {
+      setError(err?.message || "Failed to submit grade");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "No date recorded";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "Invalid date";
+    return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -118,63 +125,64 @@ const AssignmentSubmissionReview = () => {
     });
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (status?: string) => {
+    switch ((status || "").toLowerCase()) {
       case "submitted":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "graded":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400";
       case "resubmitted":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300";
     }
   };
 
   const getData = async () => {
+    if (!assignmentId) {
+      setDataLoading(false);
+      setError("No submission ID provided.");
+      return;
+    }
     try {
+      setDataLoading(true);
+      setError("");
       const response = await axiosInstance.get(
         `/assignment-submissions/byID/${assignmentId}`
       );
-      setSubmission(response.data.data);
-      setFormData({
-        scoreGiven: response.data.data.scoreGiven || "",
-        feedback: response.data.data.feedback || "",
-        status: response.data.data.status || "graded",
-      });
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to fetch submission data.");
+      const sub = response.data?.data || null;
+      setSubmission(sub);
+      if (sub) {
+        setFormData({
+          scoreGiven: sub.scoreGiven !== null && sub.scoreGiven !== undefined ? String(sub.scoreGiven) : "",
+          feedback: sub.feedback || "",
+          status: sub.status === "resubmitted" ? "resubmitted" : "graded",
+        });
+      }
+    } catch (err: any) {
+      console.error("Error fetching submission data:", err);
+      setError(err?.response?.data?.message || err?.message || "Failed to fetch submission data.");
+      setSubmission(null);
+    } finally {
+      setDataLoading(false);
     }
   };
 
   const handleViewAssignment = () => {
     if (submission?.assignmentId?._id) {
-      // Navigate directly to the assignment page
       navigate(`/assignments/${submission.assignmentId._id}`);
     }
   };
 
-  const handleFileDownload = (filePath, fileName = null) => {
+  const handleFileDownload = (filePath: string, fileName: string | null = null) => {
     if (!filePath) return;
-
-    // Create a proper download link
     const baseUrl = (import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in").replace(/\/+$/, '');
-    const fullUrl = `${baseUrl}/${filePath}`;
-
-    // Create a temporary anchor element for download
+    const fullUrl = filePath.startsWith('http') ? filePath : `${baseUrl}/${filePath.replace(/^\/+/, '')}`;
     const link = document.createElement("a");
     link.href = fullUrl;
-
-    // Extract filename from path if not provided
-    const extractedFileName = fileName || filePath.split("/").pop() || "download";
-    link.download = extractedFileName;
-
-    // Set proper attributes to force download
+    link.download = fileName || filePath.split("/").pop() || "download";
     link.setAttribute("target", "_blank");
     link.setAttribute("rel", "noopener noreferrer");
-
-    // Append to body, click, and remove
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -182,163 +190,174 @@ const AssignmentSubmissionReview = () => {
 
   useEffect(() => {
     getData();
-  }, []);
+  }, [assignmentId]);
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 text-[#1b6294] animate-spin mb-3" />
+        <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Loading submission review...</p>
+      </div>
+    );
+  }
+
+  if (!submission) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-8 text-center space-y-4 border border-gray-200 dark:border-gray-700">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto text-red-600 dark:text-red-400">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Submission Not Found</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            {error || "The submission you are looking for does not exist or may have been deleted."}
+          </p>
+          <button
+            onClick={() => navigate("/assignments/submissions")}
+            className="w-full py-2.5 bg-[#1b6294] hover:bg-[#16517a] text-white rounded-xl text-sm font-semibold transition-all cursor-pointer"
+          >
+            Back to Submissions
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const assignmentTitle = submission.assignmentId?.title || "Untitled Assignment";
+  const studentName = submission.submittedBy?.fullName || "Student";
+  const studentEmail = submission.submittedBy?.email || "No email available";
+  const courseTitle = submission.courseId?.title || "General Course";
+  const lessonTitle = submission.lessonId?.title || "No linked lesson";
+  const maxScore = submission.assignmentId?.maxScore ?? 100;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-white/[0.03] p-4">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-white/[0.03] p-4 lg:p-8">
+      <PageMeta
+        title={`Review - ${studentName} | LMS Admin`}
+        description="Review and grade student assignment submission"
+      />
+      <PageBreadcrumb pageTitle="Submission Review" />
+
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Navigation & Header */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate("/assignments/submissions")}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Submissions
+          </button>
+
+          {submission.assignmentId?._id && (
+            <button
+              onClick={handleViewAssignment}
+              className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-[#1b6294] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer"
+            >
+              <ExternalLink className="w-4 h-4" />
+              View Assignment Spec
+            </button>
+          )}
+        </div>
+
         {showSuccess && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <p className="text-green-800 font-medium">
-              Assignment graded successfully!
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />
+            <p className="text-green-800 dark:text-green-200 font-medium text-sm">
+              Assignment graded successfully! Redirecting to submissions list...
             </p>
           </div>
         )}
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-800 font-medium">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
+            <p className="text-red-800 dark:text-red-200 font-medium text-sm">{error}</p>
           </div>
         )}
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#1b6294] to-[#16517a] text-white p-6 rounded-t-2xl shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Assignment Review</h1>
-              <p className="text-cyan-100 text-sm">Grade & Provide Feedback</p>
+        {/* Card Container */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+          {/* Card Header Banner */}
+          <div className="bg-gradient-to-r from-[#1b6294] to-[#16517a] text-white p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center shrink-0">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Assignment Review</h1>
+                  <p className="text-blue-100 text-sm mt-0.5">
+                    Evaluate work submitted by <strong className="text-white">{studentName}</strong>
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                  submission.status === "graded"
+                    ? "bg-green-500 text-white"
+                    : "bg-amber-400 text-slate-900"
+                }`}
+              >
+                {submission.status || "Submitted"}
+              </span>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white dark:bg-white/[0.03] rounded-b-lg shadow-lg">
-          {/* Submission Info */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Assignment Details */}
+          {/* Details Section */}
+          <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-gray-800">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Assignment Information */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white/90 flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-[#1b6294]" />
-                    Assignment Details
-                  </h3>
-                  {submission?.assignmentId?._id && (
-                    <button
-                      onClick={handleViewAssignment}
-                      className="flex items-center gap-2 px-3 py-2 bg-[#1b6294] hover:bg-[#16517a] text-white rounded-xl shadow-xs transition-colors text-sm font-medium"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      View Assignment
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-3">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[#1b6294]" />
+                  Assignment Information
+                </h3>
+                <div className="bg-gray-50/70 dark:bg-gray-800/40 rounded-xl p-4 space-y-3 text-sm">
                   <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Assignment Title
-                    </label>
-                    <p className="text-gray-900 dark:text-white/70 font-medium">
-                      {submission?.assignmentId.title}
-                    </p>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Title</label>
+                    <p className="font-semibold text-gray-900 dark:text-white">{assignmentTitle}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                        Course
-                      </label>
-                      <p className="text-gray-900 dark:text-white/70">
-                        {submission?.courseId.title}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-white/90">
-                        {submission?.courseId.code}
-                      </p>
+                      <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Course</label>
+                      <p className="text-gray-800 dark:text-gray-200 font-medium">{courseTitle}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                        Subject
-                      </label>
-                      <p className="text-gray-900 dark:text-white/70">
-                        {submission?.assignmentId?.subject}
-                      </p>
+                      <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Lesson</label>
+                      <p className="text-gray-800 dark:text-gray-200 font-medium">{lessonTitle}</p>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Lesson
-                    </label>
-                    <p className="text-gray-900 dark:text-white/70">
-                      {submission?.lessonId?.title}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Max Score
-                    </label>
-                    <p className="text-gray-900 dark:text-white/70   font-semibold flex items-center gap-1">
-                      <Award className="w-4 h-4 text-yellow-500" />
-                      {submission?.assignmentId?.maxScore} points
-                    </p>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Marks</span>
+                    <span className="font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                      <Award className="w-4 h-4 text-amber-500" />
+                      {maxScore} points
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Student Details */}
+              {/* Student Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white/90 flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
+                <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-600" />
                   Student Information
                 </h3>
-                <div className="space-y-3">
+                <div className="bg-gray-50/70 dark:bg-gray-800/40 rounded-xl p-4 space-y-3 text-sm">
                   <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Student Name
-                    </label>
-                    <p className="text-gray-900 font-medium dark:text-white/70">
-                      {submission?.submittedBy.fullName}
-                    </p>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Full Name</label>
+                    <p className="font-semibold text-gray-900 dark:text-white">{studentName}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Email
-                    </label>
-                    <p className="text-gray-900 dark:text-white/70">
-                      {submission?.submittedBy.email}
-                    </p>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Email Address</label>
+                    <p className="text-gray-800 dark:text-gray-200">{studentEmail}</p>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Student ID
-                    </label>
-                    <p className="text-gray-900 dark:text-white/70">
-                      {submission?.submittedBy._id}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Submitted At
-                    </label>
-                    <p className="text-gray-900 flex items-center gap-1 dark:text-white/70">
-                      <Calendar className="w-4 h-4 text-gray-500" />
-                      {formatDate(submission?.submittedAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 dark:text-white/90">
-                      Status
-                    </label>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(
-                        submission?.status
-                      )}`}
-                    >
-                      <Clock className="w-3 h-3 mr-1" />
-                      {submission?.status.charAt(0).toUpperCase() +
-                        submission?.status.slice(1)}
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Submission Date</span>
+                    <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      {formatDate(submission.submittedAt || submission.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -346,201 +365,135 @@ const AssignmentSubmissionReview = () => {
             </div>
           </div>
 
-          {/* Submission Content */}
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white/90 mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-green-600" />
-              Student Submission
+          {/* Submission Text & Attached File */}
+          <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-gray-800 space-y-6">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-emerald-600" />
+              Student's Submitted Work
             </h3>
 
-            {/* Submission Text */}
-            {submission?.submissionText && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-600 dark:text-white/90 mb-2">
-                  Submission Text
-                </label>
-                <div className="bg-gray-50 dark:bg-white/[0.03] border border-gray-200   rounded-lg p-4">
-                  <p className="text-gray-900 dark:text-white/70 whitespace-pre-wrap">
-                    {submission?.submissionText}
-                  </p>
+            {submission.submissionText ? (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Written Answer</label>
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                  {submission.submissionText}
                 </div>
               </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic">No written response attached.</p>
             )}
 
-            {/* Submission File */}
-            {submission?.submissionFile && (
-              <div>
-                <label className="block text-sm font-medium text-gray-600 dark:text-white/90 mb-2">
-                  Submitted File
-                </label>
-                <div className="bg-blue-50 dark:bg-white/[0.03] border border-blue-200 rounded-lg p-4 flex sm:flex-row items-center sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-6 h-6 text-blue-600" />
-                    <div>
-                      <p className="font-medium text-blue-900">
-                        {submission.submissionFile.split("/").pop() || "Submitted File"}
-                      </p>
-                      <p className="text-sm text-blue-600">
-                        Click to download and review
-                      </p>
-                    </div>
+            {submission.submissionFile && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Attached File</label>
+                <div className="p-4 bg-blue-50/60 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-6 h-6 text-blue-600 shrink-0" />
+                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 truncate">
+                      {submission.submissionFile.split("/").pop() || "submission_attachment"}
+                    </p>
                   </div>
                   <button
                     onClick={() => handleFileDownload(submission.submissionFile)}
-                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1b6294] hover:bg-[#16517a] text-white rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer"
                   >
-                    <Download className="w-4 h-4" />
-                    Download
+                    <Download className="w-3.5 h-3.5" />
+                    Download File
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Grading Section */}
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white/90 mb-4 flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-600" />
-              Grade Assignment
+          {/* Grading Form */}
+          <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Star className="w-4 h-4 text-amber-500" />
+              Grade & Feedback
             </h3>
 
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Score Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-white/90 mb-2">
-                  Score (out of {submission?.assignmentId?.maxScore})*
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                  Score Given (Max: {maxScore} points) *
                 </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    name="scoreGiven"
-                    value={formData.scoreGiven}
-                    onChange={handleInputChange}
-                    min="0"
-                    max={submission?.assignmentId.maxScore}
-                    step="0.5"
-                    onInput={(e) => {
-                      // Additional safety check on input
-                      const value = parseFloat(e.target.value);
-                      const maxScore = submission?.assignmentId?.maxScore || 0;
-                      if (value > maxScore) {
-                        e.target.value = maxScore;
-                        setFormData(prev => ({ ...prev, scoreGiven: maxScore.toString() }));
-                        setError(`Score cannot exceed ${maxScore} points`);
-                        setTimeout(() => setError(""), 3000);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      // Allow navigation and control keys
-                      const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
-                      if (allowedKeys.includes(e.key)) {
-                        return;
-                      }
-                      
-                      // Allow decimal point and digits
-                      if (e.key === '.' || /^\d$/.test(e.key)) {
-                        const currentValue = e.target.value;
-                        const cursorPosition = e.target.selectionStart;
-                        const newValue = currentValue.slice(0, cursorPosition) + e.key + currentValue.slice(e.target.selectionEnd);
-                        const numValue = parseFloat(newValue);
-                        const maxScore = submission?.assignmentId?.maxScore || 0;
-                        
-                        if (!isNaN(numValue) && numValue > maxScore) {
-                          e.preventDefault();
-                          setError(`Score cannot exceed ${maxScore} points`);
-                          setTimeout(() => setError(""), 3000);
-                        }
-                      } else {
-                        // Block any other keys
-                        e.preventDefault();
-                      }
-                    }}
-                    className="w-full px-4 py-3 dark:text-white/70 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    placeholder={`Enter score (0-${submission?.assignmentId.maxScore})`}
-                    disabled={loading}
-                  />
-                  <div className="absolute right-4 top-3 text-gray-500">
-                    / {submission?.assignmentId?.maxScore}
-                  </div>
-                </div>
-                {formData.scoreGiven &&
-                  parseFloat(formData.scoreGiven) === submission?.assignmentId?.maxScore && (
-                    <p className="text-sm text-green-600 mt-1">
-                      Maximum score reached
-                    </p>
-                  )}
-              </div>
-
-              {/* Feedback */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-white/90 mb-2">
-                  Feedback*
-                </label>
-                <textarea
-                  name="feedback"
-                  value={formData.feedback}
+                <input
+                  type="number"
+                  name="scoreGiven"
+                  value={formData.scoreGiven}
                   onChange={handleInputChange}
-                  rows={6}
-                  maxLength={1000}
-                  className="w-full px-4 py-3 border dark:text-white/70 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
-                  placeholder="Provide detailed feedback about the student's work, highlighting strengths and areas for improvement..."
-                  disabled={loading}
+                  min="0"
+                  max={maxScore}
+                  step="0.5"
+                  required
+                  placeholder={`Enter score 0 - ${maxScore}`}
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#1b6294] dark:bg-gray-800 dark:text-white"
                 />
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-sm text-gray-500 dark:text-white/70">
-                    Provide constructive feedback to help the student learn
-                  </p>
-                  <span className="text-sm text-gray-400">
-                    {formData.feedback.length}/1000
-                  </span>
-                </div>
               </div>
 
-              {/* Status */}
+              {/* Status Select */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-white/90 mb-2">
-                  Status
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                  Review Status *
                 </label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border dark:text-white/70 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  disabled={loading}
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#1b6294] dark:bg-gray-800 dark:text-white"
                 >
-                  <option className="dark:text-black" value="graded">
-                    Graded
-                  </option>
-                  <option className="dark:text-black" value="resubmitted">
-                    Needs Resubmission
-                  </option>
+                  <option value="graded">Graded (Pass / Evaluated)</option>
+                  <option value="resubmitted">Needs Resubmission</option>
+                  <option value="submitted">Under Review</option>
                 </select>
               </div>
-
-              {/* Submit Button */}
-              <div className="flex justify-end pt-6 border-t">
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className={`px-8 py-3 bg-gradient-to-r from-[#1b6294] to-[#16517a] hover:from-[#16517a] hover:to-[#103a58] text-white rounded-xl shadow-md shadow-[#1b6294]/20 hover:shadow-lg focus:ring-2 focus:ring-[#1b6294]/30 transition-all font-medium flex items-center gap-2 cursor-pointer ${
-                    loading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Saving Grade...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Submit Grade & Feedback
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
-          </div>
+
+            {/* Feedback */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                Instructor Feedback *
+              </label>
+              <textarea
+                name="feedback"
+                value={formData.feedback}
+                onChange={handleInputChange}
+                rows={5}
+                required
+                placeholder="Write constructive evaluation notes, highlights, and improvements for the student..."
+                className="w-full px-4 py-3 text-sm border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#1b6294] dark:bg-gray-800 dark:text-white resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => navigate("/assignments/submissions")}
+                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#1b6294] hover:bg-[#16517a] text-white rounded-xl text-sm font-semibold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving Evaluation...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Save & Submit Evaluation
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

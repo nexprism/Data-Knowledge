@@ -91,20 +91,23 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     console.log("Created Category:", addSubcategory,subcategories, createdCategory);
 
-    // If subcategories are to be added, dispatch createSubCategory for each
+    // If subcategories are to be added, dispatch createSubCategory for each non-empty entry
     if (addSubcategory && subcategories.length > 0 && createdCategory?._id) {
-      await Promise.all(
-        subcategories.map((sub) =>
-          dispatch(
-            createSubCategory({
-              name: sub.name,
-              categoryId: createdCategory._id,
-              slug: "",
-              status: "active"
-            }) as any
-          ).unwrap()
-        )
-      );
+      const validSubs = subcategories.filter(s => s.name && s.name.trim() !== "");
+      if (validSubs.length > 0) {
+        await Promise.all(
+          validSubs.map((sub) =>
+            dispatch(
+              createSubCategory({
+                name: sub.name.trim(),
+                categoryId: createdCategory._id,
+                slug: "",
+                status: "active"
+              }) as any
+            ).unwrap()
+          )
+        );
+      }
     }
 
      setPopup({

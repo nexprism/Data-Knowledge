@@ -74,6 +74,20 @@ const courseSlice = createSlice({
           if (price && typeof price === 'object' && price.$numberDecimal) {
             price = Number(price.$numberDecimal);
           }
+
+          const plans = Array.isArray(course.plans)
+            ? course.plans.map(p => {
+                let pPrice = p.price;
+                let pSalePrice = p.salePrice;
+                if (pPrice && typeof pPrice === 'object' && pPrice.$numberDecimal) {
+                  pPrice = Number(pPrice.$numberDecimal);
+                }
+                if (pSalePrice && typeof pSalePrice === 'object' && pSalePrice.$numberDecimal) {
+                  pSalePrice = Number(pSalePrice.$numberDecimal);
+                }
+                return { ...p, price: pPrice ?? 0, salePrice: pSalePrice };
+              })
+            : [];
           
           let description = course.description || '';
           if (typeof description === 'string') {
@@ -89,6 +103,7 @@ const courseSlice = createSlice({
             category: course.category || course.categoryId || null,
             salePrice,
             price,
+            plans,
             description,
             shortDescription
           };
@@ -109,16 +124,24 @@ const courseSlice = createSlice({
         const course = action.payload?.data?.course || action.payload?.data || action.payload;
         
         if (course) {
+          const parseDecimal = (val) => {
+            if (val === null || val === undefined || val === '') return null;
+            if (typeof val === 'object' && val.$numberDecimal) return Number(val.$numberDecimal);
+            const n = Number(val);
+            return isNaN(n) ? null : n;
+          };
+
           // Normalize prices
-          let salePrice = course.salePrice;
-          let price = course.price;
+          const salePrice = parseDecimal(course.salePrice);
+          const price = parseDecimal(course.price) ?? 0;
           
-          if (salePrice && typeof salePrice === 'object' && salePrice.$numberDecimal) {
-            salePrice = Number(salePrice.$numberDecimal);
-          }
-          if (price && typeof price === 'object' && price.$numberDecimal) {
-            price = Number(price.$numberDecimal);
-          }
+          const normalizedPlans = Array.isArray(course.plans)
+            ? course.plans.map(p => ({
+                ...p,
+                price: parseDecimal(p.price) ?? 0,
+                salePrice: parseDecimal(p.salePrice)
+              }))
+            : [];
           
           // Strip HTML from descriptions if they are strings
           let description = course.description;
@@ -135,19 +158,56 @@ const courseSlice = createSlice({
           const processEditorJS = (content) => {
             if (!content || !content.blocks) return '';
             return content.blocks
-              .map(block => block.data?.text || '')
+              .map(block => {
+                if (typeof block.data?.text === 'string') return block.data.text;
+                if (Array.isArray(block.data?.items)) {
+                  return block.data.items
+                    .map(it => typeof it === 'object' && it !== null ? (it.content || it.text || '') : String(it || ''))
+                    .join(' ');
+                }
+                return '';
+              })
               .join(' ')
               .replace(/&nbsp;/g, ' ')
               .replace(/<[^>]*>?/gm, '');
           };
+
+          // Safe parse mentor achievements
+          let mentorAchievements = course.mentorAchievements;
+          if (typeof mentorAchievements === 'string') {
+            try {
+              mentorAchievements = JSON.parse(mentorAchievements);
+            } catch {
+              mentorAchievements = mentorAchievements.split('\n').filter(Boolean);
+            }
+          }
+          if (!Array.isArray(mentorAchievements)) {
+            mentorAchievements = [];
+          }
+
+          // Safe parse mentor social links
+          let mentorSocialLinks = course.mentorSocialLinks;
+          if (typeof mentorSocialLinks === 'string') {
+            try {
+              mentorSocialLinks = JSON.parse(mentorSocialLinks);
+            } catch {
+              mentorSocialLinks = {};
+            }
+          }
+          if (!mentorSocialLinks || typeof mentorSocialLinks !== 'object') {
+            mentorSocialLinks = {};
+          }
 
           state.currentCourse = {
             ...course,
             category: course.category || course.categoryId || null,
             salePrice,
             price,
+            plans: normalizedPlans,
             description,
             shortDescription,
+            mentorAchievements,
+            mentorSocialLinks,
             comparisonText: processEditorJS(course.comparisonSection?.content),
             benefitsText: processEditorJS(course.benefitsSection?.content)
           };

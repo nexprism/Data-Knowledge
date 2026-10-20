@@ -140,7 +140,7 @@ export default function CategorySubcategoryDropdowns({
       }
 
       if (popupFor === "category") {
-        await dispatch(createCourseCategory(formData)).unwrap();
+        const catResult = await dispatch(createCourseCategory(formData)).unwrap();
         toast.success("New category added successfully!");
         // Refetch categories to update the dropdown
         await dispatch(
@@ -153,12 +153,25 @@ export default function CategorySubcategoryDropdowns({
             },
           })
         ).unwrap();
+        if (catResult?._id && onCategoryChange) {
+          onCategoryChange(catResult._id, catResult.name || data.title);
+        }
       } else if (popupFor === "subcategory") {
-        await dispatch(createSubCategory(formData)).unwrap();
+        const subResult = await dispatch(
+          createSubCategory({
+            name: data.title.trim(),
+            categoryId: selectedCategoryId,
+            status: "active",
+            slug: "",
+          })
+        ).unwrap();
         toast.success("New subcategory added successfully!");
         // Refetch subcategories for the selected category
         if (selectedCategoryId) {
           await dispatch(fetchSubcategoriesByCategory(selectedCategoryId)).unwrap();
+        }
+        if (subResult?._id && onSubcategoryChange) {
+          onSubcategoryChange(subResult._id, subResult.name || data.title.trim());
         }
       }
 

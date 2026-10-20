@@ -4,7 +4,7 @@ import { fetchCourseById, updateCourse } from "../../store/slices/course";
 import CourseMembershipTiersEditor from "../../components/CourseMembershipTiersEditor";
 import CategorySubcategoryDropdowns from "../../components/CategorySubcategoryDropdowns";
 import { RootState, AppDispatch } from "../../store";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import {
   FileText,
   DollarSign,
@@ -217,17 +217,23 @@ const YouTubeUrlInput = ({
 };
 
 const EditCourse = () => {
-  const { id } = useParams();
+  const { courseId: paramCourseId, id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   // Fallback extraction from pathname
-  const courseId = id || location.pathname.split("/").pop();
+  const courseId = paramCourseId || id || location.pathname.split("/").filter(Boolean).pop() || "";
   const {
     loading,
     error,
     data: courseData,
   } = useSelector((state) => state.course);
+
+  const errorMessage =
+    typeof error === "object" && error !== null
+      ? (error as any).message || (error as any).err?.message || JSON.stringify(error)
+      : String(error || "");
 
   // Tab state
   const [activeTab, setActiveTab] = useState("basic");
@@ -626,11 +632,11 @@ const EditCourse = () => {
         setPlans(
           course.plans.map((p) => ({
             name: p.name || "",
-            price: String(p.price ?? ""),
+            price: String(toNumber(p.price) || (p.price?.$numberDecimal ?? p.price ?? "")),
             description: p.description || "",
             durationType: p.durationType || "Month",
-            duration: String(p.duration ?? ""),
-            salePrice: String(p.salePrice ?? ""),
+            duration: String(toNumber(p.duration) || p.duration || ""),
+            salePrice: String(toNumber(p.salePrice) || (p.salePrice?.$numberDecimal ?? p.salePrice ?? "")),
             status: p.status || "active",
             _id: p._id,
           }))
@@ -999,6 +1005,51 @@ const EditCourse = () => {
     { key: "reviews", title: "Reviews", icon: Star, isRequired: false },
   ];
 
+  if (loading && !courseData) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 text-[#1b6294] animate-spin mb-3" />
+        <p className="text-gray-600 dark:text-gray-300 font-medium">Loading course editor...</p>
+      </div>
+    );
+  }
+
+  const isNotFound =
+    !loading &&
+    ((!courseData && Boolean(errorMessage)) ||
+      errorMessage.toLowerCase().includes("not found") ||
+      errorMessage.toLowerCase().includes("course not found"));
+
+  if (isNotFound) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-8 text-center space-y-4 border border-gray-200 dark:border-gray-700">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto text-red-600 dark:text-red-400">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Course Not Found</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            The course with ID <code className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs font-mono">{courseId}</code> does not exist or may have been deleted.
+          </p>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <button
+              onClick={() => navigate("/courses/all/courses")}
+              className="w-full py-2.5 bg-[#1b6294] hover:bg-[#16517a] text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-sm"
+            >
+              Back to All Courses
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium transition-all cursor-pointer"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <SuccessPopup
@@ -1076,10 +1127,10 @@ const EditCourse = () => {
             )}
           </div>
 
-          {error && (
+          {errorMessage && (
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-6 flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-500" />
-              <span className="text-red-700 dark:text-red-300 text-sm">{error}</span>
+              <span className="text-red-700 dark:text-red-300 text-sm">{errorMessage}</span>
             </div>
           )}
 

@@ -47,6 +47,7 @@ import { TrackerProvider } from './components/ActivityTracker'
 import GlobalChatButton from './components/dashboard/GlobalChatButton'
 // import Preloader from './components/Preloader'
 import Lenis from '@studio-freight/lenis'
+import { getApiBaseUrl } from './utils/apiConfig'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -55,17 +56,70 @@ gsap.registerPlugin(ScrollTrigger)
 // Global Fetch Interceptor for Session Expiry across all Redux Thunks
 const originalFetch = window.fetch;
 window.fetch = async function (...args) {
-  const response = await originalFetch.apply(this, args);
+  let [resource, config = {}] = args;
+  config = { ...config };
+
+  const token = localStorage.getItem('edrilla_token');
+  const refreshToken = localStorage.getItem('edrilla_refresh');
+  const baseUrl = getApiBaseUrl();
+
+  const urlStr = typeof resource === 'string' ? resource : resource?.url || '';
+  const isApiRequest =
+    urlStr.startsWith('/') ||
+    urlStr.includes(baseUrl) ||
+    urlStr.includes('dataknowledge') ||
+    urlStr.includes('localhost') ||
+    urlStr.includes('127.0.0.1');
+
+  if (isApiRequest) {
+    if (!config.credentials) {
+      config.credentials = 'include';
+    }
+
+    let headersObj = {};
+    if (config.headers instanceof Headers) {
+      config.headers.forEach((val, key) => { headersObj[key] = val; });
+    } else if (config.headers) {
+      headersObj = { ...config.headers };
+    }
+
+    if (token && !headersObj['Authorization'] && !headersObj['authorization']) {
+      headersObj['Authorization'] = `Bearer ${token}`;
+    }
+    if (token && !headersObj['x-access-token']) {
+      headersObj['x-access-token'] = token;
+    }
+    if (refreshToken && !headersObj['x-refresh-token']) {
+      headersObj['x-refresh-token'] = refreshToken;
+    }
+    config.headers = headersObj;
+  }
+
+  const response = await originalFetch(resource, config);
+
+  // Capture refreshed tokens from response headers
+  try {
+    const newAccess = response.headers.get('x-access-token');
+    const newRefresh = response.headers.get('x-refresh-token');
+    if (newAccess) localStorage.setItem('edrilla_token', newAccess);
+    if (newRefresh) localStorage.setItem('edrilla_refresh', newRefresh);
+  } catch (e) { }
 
   if (response.status === 401) {
     try {
       const resClone = response.clone();
-      const data = await resClone.json();
-      if (data && data.isNewDeviceLogin) {
+      const contentType = resClone.headers.get('content-type') || '';
+      let data = null;
+      if (contentType.includes('application/json')) {
+        data = await resClone.json();
+      }
+      const hadToken = !!(localStorage.getItem('edrilla_token') || localStorage.getItem('edrilla_refresh'));
+      const isLoginOrSignup = urlStr.includes('/login') || urlStr.includes('/signup');
+      if (hadToken && !isLoginOrSignup) {
         window.dispatchEvent(
           new CustomEvent("sessionExpired", {
             detail: {
-              message: data.message || "Your session has expired due to a login from another device. Please log in again.",
+              message: data?.message || "Your session has expired. Please log in again.",
             },
           })
         );

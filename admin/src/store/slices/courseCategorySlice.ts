@@ -83,24 +83,28 @@ interface SubCategory {
 // Add the async thunk for creating a subcategory
 export const createSubCategory = createAsyncThunk<
     SubCategory,
-    {
-        name: string;
-        slug: string;
-        categoryId: string;
-        status: string;
-    }
+    any
 >('subCategories/create', async (subCategoryData, { rejectWithValue }) => {
     try {
+        let payload: any = subCategoryData;
+        if (typeof FormData !== 'undefined' && subCategoryData instanceof FormData) {
+            payload = {
+                name: (subCategoryData.get('name') as string) || '',
+                categoryId: (subCategoryData.get('categoryId') as string) || '',
+                status: (subCategoryData.get('status') as string) || 'active',
+                slug: (subCategoryData.get('slug') as string) || '',
+            };
+        }
         const response = await axiosInstance.post(
-            `${API_BASE_URL}/subcategories/`,
-            subCategoryData,
+            `/subcategories/`,
+            payload,
             {
                 headers: {
                     'Content-Type': 'application/json',
                 },
             }
         );
-        return response.data?.data?.subCategory;
+        return response.data?.data?.subCategory || response.data?.data;
     } catch (err: any) {
         return rejectWithValue(err.response?.data?.message || err.message);
     }

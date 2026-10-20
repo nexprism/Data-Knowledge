@@ -61,7 +61,7 @@ const SwimlaneRow = ({ category, courses, navigate }) => {
         >
           {courses.map((course, i) => (
             <div
-              key={i}
+              key={course._id || course.id || i}
               className="snap-start relative flex-shrink-0 w-[340px] sm:w-[400px] md:w-[480px] cursor-pointer group"
               onClick={() => navigate(`/course-detail/${course._id || course.id}`)}
             >
@@ -91,7 +91,7 @@ const SwimlaneRow = ({ category, courses, navigate }) => {
                 <div className="flex flex-col flex-grow gap-2.5 px-2 pb-2">
                   <div className="flex items-center gap-2 justify-between">
                     <span className="font-jetbrains text-[10px] tracking-widest font-bold uppercase bg-amber-100/80 text-amber-900 px-3 py-1 rounded-full border border-amber-300/60 truncate max-w-[180px]">
-                      {course.category?.name || course.category || course.tag || 'COURSE'}
+                      {course.category?.name || (typeof course.category === 'string' ? course.category : null) || course.tag || 'COURSE'}
                     </span>
                     <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center group-hover:bg-accent group-hover:border-amber-400 transition-colors shadow-sm">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -136,13 +136,8 @@ const CourseSlider = () => {
     dispatch(fetchCourses())
   }, [dispatch])
 
-  // Show all courses in a single row (not category-wise)
-  let allCourses = [...baseCourses]
-
-  // Repeat backend records only to preserve the existing carousel interaction.
-  if (allCourses.length > 0 && allCourses.length < 6) {
-    allCourses = [...allCourses, ...allCourses, ...allCourses]
-  }
+  // Show all courses exactly as added — no duplication
+  const allCourses = baseCourses
 
   return (
     <section className="relative w-full py-12 bg-slate-50 overflow-hidden select-none">

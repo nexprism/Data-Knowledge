@@ -12,7 +12,7 @@ const accessTokenAutoRefresh = async (req, res, next) => {
       (req.headers["authorization"]?.startsWith("Bearer ")
         ? req.headers["authorization"].slice(7)
         : null) ||
-      req.cookies.accessToken;
+      req.cookies?.accessToken;
 
     // Handle JSON parsing for headers if needed
     if (typeof accessToken === "string" && accessToken.startsWith("{")) {
@@ -36,10 +36,11 @@ const accessTokenAutoRefresh = async (req, res, next) => {
 
     // Check if access token is blacklisted before proceeding
     // Pass decoded user so admins can bypass the blacklist check
-    if (accessToken) {
+    if (accessToken && decodedUser) {
       const isBlacklisted = await Token.isAccessTokenBlacklisted(accessToken, decodedUser);
       if (isBlacklisted) {
         return res.status(401).json({
+          success: false,
           error: "Unauthorized",
           isNewDeviceLogin: true,
           message: "Session expired. Please log in again.",
@@ -47,13 +48,13 @@ const accessTokenAutoRefresh = async (req, res, next) => {
       }
     }
 
-    // If access token exists and is not blacklisted, check device approval and proceed
-    if (accessToken) {
+    // If access token is valid and not blacklisted, check device approval and proceed
+    if (decodedUser) {
       req.headers["authorization"] = `Bearer ${accessToken}`;
 
       // Device approval guard for existing access tokens
       try {
-        const decoded = jwt.decode(accessToken);
+        const decoded = decodedUser;
         const platform = decoded?.platform;
 
         const bypassPaths = [
@@ -118,9 +119,9 @@ const accessTokenAutoRefresh = async (req, res, next) => {
       return next();
     }
 
-    // If access token is missing or blacklisted, try to refresh it
+    // If access token is missing or expired, try to refresh it
     // Read refresh token from cookies or custom header `X-Refresh-Token`
-    let refreshToken = req.cookies.refreshToken || req.headers["x-refresh-token"];
+    let refreshToken = req.cookies?.refreshToken || req.headers["x-refresh-token"];
 
     // Handle JSON parsing for headers if needed
     if (typeof refreshToken === "string" && refreshToken.startsWith("{")) {
@@ -134,14 +135,15 @@ const accessTokenAutoRefresh = async (req, res, next) => {
     if (!refreshToken) {
       // If refresh token is also missing, return an unauthorized response
       return res.status(401).json({
+        success: false,
         error: "Unauthorized",
         message: "Access and refresh tokens are missing or invalid",
       });
     }
 
     try {
-      // Blacklist old access token so it can't be reused after refresh
-      if (accessToken) {
+      // Blacklist old access token if it had not already expired
+      if (accessToken && decodedUser) {
         const exp = decodedUser?.exp ? decodedUser.exp * 1000 : Date.now();
         if (!(decodedUser?.role === "admin" || decodedUser?.roles?.includes("admin"))) {
           await Token.blacklistAccessToken(accessToken, exp);
@@ -153,6 +155,7 @@ const accessTokenAutoRefresh = async (req, res, next) => {
 
       if (!tokenData) {
         return res.status(401).json({
+          success: false,
           error: "Unauthorized",
           message: "Failed to refresh access token",
         });
@@ -254,6 +257,7 @@ const accessTokenAutoRefresh = async (req, res, next) => {
     } catch (refreshError) {
       console.error("Error during token refresh:", refreshError);
       return res.status(401).json({
+        success: false,
         error: "Unauthorized",
         message: "Failed to refresh access token or token is invalid",
       });
@@ -263,6 +267,7 @@ const accessTokenAutoRefresh = async (req, res, next) => {
     // Log error and send a response if something goes wrong
     console.error("Error in accessTokenAutoRefresh:", error);
     return res.status(401).json({
+      success: false,
       error: "Unauthorized",
       message: "Authentication error",
     });

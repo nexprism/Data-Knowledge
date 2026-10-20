@@ -13,11 +13,42 @@ import { isAdmin, isSuperAdmin } from '../middlewares/isAdmin.js';
 import { validateResetPassword } from '../middlewares/validation.js';
 import isUserBanned from '../middlewares/isUserBanned.js';
 import dotenv from "dotenv"
+import { Token } from '../utils/index.js';
 
 dotenv.config();
 
 const userRouter = express.Router();
 
+userRouter.post('/refresh-token', async (req, res) => {
+  try {
+    const tokenData = await Token.refreshAccessToken(req, res);
+    if (!tokenData) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+        message: "Failed to refresh token",
+      });
+    }
+    const { newAccessToken, newRefreshToken, newAccessTokenExp, newRefreshTokenExp } = tokenData;
+    Token.setTokensCookies(res, newAccessToken, newRefreshToken, newAccessTokenExp, newRefreshTokenExp);
+    res.setHeader("x-access-token", newAccessToken);
+    res.setHeader("x-refresh-token", newRefreshToken);
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      data: {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      },
+    });
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      error: "Unauthorized",
+      message: err.message || "Invalid refresh token",
+    });
+  }
+});
 
 userRouter.post('/signup', signup);
 userRouter.post('/forgot-password', forgotPassword);

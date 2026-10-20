@@ -136,85 +136,89 @@ const SuccessPopup = ({ isVisible, onClose, onAddContent, courseId }: { isVisibl
   };
 
   return (
-    <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl max-h-[90vh] max-w-lg w-full mx-4 overflow-hidden transform transition-all duration-300 scale-100">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-8 text-center relative overflow-hidden">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[99999] p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl max-h-[90vh] max-w-lg w-full mx-4 overflow-hidden shadow-2xl flex flex-col transform transition-all duration-300 scale-100">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-8 text-center relative overflow-hidden flex-shrink-0">
           <div className="absolute inset-0 bg-white opacity-10 transform rotate-12 scale-150"></div>
           <div className="relative z-10">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-white bg-opacity-20 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-4">
               <CheckCircle className="w-12 h-12 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">
               Course Created Successfully! 🎉
             </h2>
-            <p className="text-emerald-100 text-lg">
+            <p className="text-blue-100 text-sm sm:text-base">
               Your course has been created and is ready for content
             </p>
           </div>
           <Sparkles className="absolute top-4 right-4 w-6 h-6 text-white opacity-30" />
           <Sparkles className="absolute bottom-4 left-4 w-4 h-4 text-white opacity-30" />
         </div>
-        <div className="p-8 mb-96 overflow-auto">
-          <div className="text-center mb-8">
-            <h3 className="text-xl font-semibold dark:text-gray-100 mb-2">
+
+        <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6">
+          <div className="text-center">
+            <h3 className="text-xl font-semibold dark:text-gray-100 mb-1">
               What's Next?
             </h3>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-gray-600 dark:text-gray-300 text-sm">
               Add modules and lessons to make your course complete
             </p>
           </div>
-          <div className="space-y-4 mb-8 max-h-[200px] overflow-scroll">
-            <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
+          <div className="space-y-3">
+            <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl border border-blue-100 dark:border-blue-800/40">
+              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-xl flex items-center justify-center">
                 <Layers className="w-5 h-5 text-blue-600 dark:text-blue-300" />
               </div>
               <div>
-                <h4 className="font-semibold dark:text-gray-100">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                   Create Modules
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+                <p className="text-xs text-gray-600 dark:text-gray-300">
                   Organize your course into logical sections
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
-              <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-800 rounded-full flex items-center justify-center">
+            <div className="flex items-center gap-4 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-2xl border border-purple-100 dark:border-purple-800/40">
+              <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-800 rounded-xl flex items-center justify-center">
                 <FileEdit className="w-5 h-5 text-purple-600 dark:text-purple-300" />
               </div>
               <div>
-                <h4 className="font-semibold dark:text-gray-100">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                   Add Lessons
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+                <p className="text-xs text-gray-600 dark:text-gray-300">
                   Create engaging lessons with videos and content
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/30 rounded-xl">
-              <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center">
-                <PlayCircle className="w-5 h-5 text-green-600 dark:text-green-300" />
+            <div className="flex items-center gap-4 p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl border border-emerald-100 dark:border-emerald-800/40">
+              <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 dark:bg-emerald-800 rounded-xl flex items-center justify-center">
+                <PlayCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
               </div>
               <div>
-                <h4 className="font-semibold dark:text-gray-100">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                   Upload Videos
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+                <p className="text-xs text-gray-600 dark:text-gray-300">
                   Add video content to your lessons
                 </p>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex gap-3 fixed w-full pt-10 bottom-4 px-8 bg-white dark:bg-gray-800">
+
+        <div className="flex gap-3 p-6 pt-4 bg-gray-50 dark:bg-gray-800/80 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 font-medium"
+            className="flex-1 py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 font-medium text-sm"
           >
             Close
           </button>
           <button
+            type="button"
             onClick={handleAddContent}
-            className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium flex items-center justify-center gap-2"
+            className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 shadow-sm"
           >
             Add Content
             <ArrowRight className="w-4 h-4" />
@@ -378,6 +382,7 @@ const AddCourse = () => {
     type: "",
   });
   const [successPopup, setSuccessPopup] = useState(false);
+  const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("basic");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -711,7 +716,11 @@ const AddCourse = () => {
     // --- END FLATTEN PLANS ---
 
     try {
-      await dispatch(createCourse(submitFormData) as any).unwrap();
+      const res = await dispatch(createCourse(submitFormData) as any).unwrap();
+      const newCourseId = res?.data?.course?._id || res?.course?._id || res?._id || res?.data?._id;
+      if (newCourseId) {
+        setCreatedCourseId(newCourseId);
+      }
 
       if (!isDraft) {
         setSuccessPopup(true);
@@ -831,8 +840,11 @@ const AddCourse = () => {
 
   const handleAddContent = () => {
     setSuccessPopup(false);
-    if (data && data?.data?.course?._id) {
-      navigate(`/courses/edit/${data?.data?.course?._id}`);
+    const targetId = createdCourseId || data?.data?.course?._id;
+    if (targetId) {
+      navigate(`/courses/edit/${targetId}`);
+    } else {
+      navigate("/courses");
     }
   };
 
@@ -870,7 +882,7 @@ const AddCourse = () => {
         isVisible={successPopup}
         onClose={() => setSuccessPopup(false)}
         onAddContent={handleAddContent}
-        courseId={data?.data?.course?._id}
+        courseId={createdCourseId || data?.data?.course?._id}
       />
       <PopupAlert
         isVisible={popup.isVisible}

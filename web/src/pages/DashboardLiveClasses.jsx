@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
-import authorizedFetch from '../utils/apiClient'
+import authorizedFetch, { parseApiResponse } from '../utils/apiClient'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import DashboardLoading from '../components/dashboard/DashboardLoading'
 import { gsap } from 'gsap'
@@ -81,8 +81,8 @@ const DashboardLiveClasses = () => {
         try {
             setLoading(true)
             const response = await authorizedFetch('/zoom/meetings?type=upcoming')
-            if (!response.ok) throw new Error('Sync failure')
-            const data = await response.json()
+            const data = await parseApiResponse(response)
+            if (!response.ok) throw new Error(data?.message || 'Sync failure')
             if (data.success && data.meetings?.meetings) {
                 const fetchedMeetings = data.meetings.meetings
                 setMeetings(fetchedMeetings)

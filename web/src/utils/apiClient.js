@@ -3,13 +3,36 @@ import { getApiBaseUrl } from './apiConfig.js';
 const rawBase = getApiBaseUrl();
 const BASE = rawBase.includes('/api/v1') ? rawBase : `${rawBase}`;
 
+/**
+ * Safely parse response body without throwing SyntaxError if server returns plain text (e.g. 401 Unauthorized)
+ */
+export async function parseApiResponse(res) {
+  if (!res) return { success: false, message: 'No response received' };
+  
+  const contentType = res.headers?.get?.('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: 'Invalid JSON response from server' };
+    }
+  }
+
+  try {
+    const text = await res.text();
+    return { success: false, message: text || res.statusText || 'Unexpected server response' };
+  } catch (e) {
+    return { success: false, message: res.statusText || 'Unexpected server response' };
+  }
+}
+
 export async function authorizedFetch(path, opts = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path.startsWith('/') ? path : `/${path}`}`;
   const token = localStorage.getItem('edrilla_token') || null;
+  const refreshToken = localStorage.getItem('edrilla_refresh') || null;
 
-  // Only set Content-Type to json if body is NOT FormData
   const headers = { ...(opts.headers || {}) };
-  if (!(opts.body instanceof FormData)) {
+  if (!(opts.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
@@ -17,8 +40,17 @@ export async function authorizedFetch(path, opts = {}) {
     headers['Authorization'] = `Bearer ${token}`;
     headers['x-access-token'] = token;
   }
+  if (refreshToken) {
+    headers['x-refresh-token'] = refreshToken;
+  }
 
-  const res = await fetch(url, { ...opts, headers });
+  const fetchOpts = {
+    credentials: 'include',
+    ...opts,
+    headers,
+  };
+
+  const res = await fetch(url, fetchOpts);
 
   // If server returns refreshed tokens in headers, persist them for future calls
   try {

@@ -1,32 +1,17 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getApiBaseUrl } from '../../utils/apiConfig';
-
-const BASE_URL = getApiBaseUrl();
+import { authorizedFetch, parseApiResponse } from '../../utils/apiClient';
 
 export const fetchMySubmissions = createAsyncThunk(
   'assignment/fetchMySubmissions',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const token = state.auth.token || localStorage.getItem('edrilla_token');
-      
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${BASE_URL}/assignment-submissions/my`, {
+      const response = await authorizedFetch('/assignment-submissions/my', {
         method: 'GET',
-        headers
       });
-      
+      const data = await parseApiResponse(response);
       if (!response.ok) {
-        throw new Error('Failed to fetch your submissions');
+        throw new Error(data?.message || 'Failed to fetch your submissions');
       }
-      const data = await response.json();
       return data;
     } catch (error) {
       return rejectWithValue(error.message);
@@ -36,16 +21,14 @@ export const fetchMySubmissions = createAsyncThunk(
 
 export const fetchMyAssignmentArchive = createAsyncThunk(
   'assignment/fetchMyAssignmentArchive',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const token = getState().auth.token || localStorage.getItem('edrilla_token');
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const response = await fetch(`${BASE_URL}/assignment-submissions/my/archive`, {
-        headers,
+      const response = await authorizedFetch('/assignment-submissions/my/archive', {
+        method: 'GET',
       });
-      if (!response.ok) throw new Error('Failed to fetch assignments');
-      return await response.json();
+      const data = await parseApiResponse(response);
+      if (!response.ok) throw new Error(data?.message || 'Failed to fetch assignments');
+      return data;
     } catch (error) {
       return rejectWithValue(error.message);
     }
