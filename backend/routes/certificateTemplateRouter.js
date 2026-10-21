@@ -7,15 +7,26 @@ import { isAdmin } from '../middlewares/isAdmin.js';
 
 const certificateTemplateRouter = express.Router();
 
+import { createR2Storage, isR2Configured } from '../services/r2Service.js';
+
 // Configure multer for file uploads
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Ensure this directory exists
+    cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
+
+const r2Storage = createR2Storage({
+  destination: 'uploads',
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`);
+  },
+});
+
+const storage = isR2Configured() ? r2Storage : diskStorage;
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // Limit file size to 5MB
 
 // Create a certificate template (admin only)

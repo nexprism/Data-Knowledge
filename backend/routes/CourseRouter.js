@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { createCourse, getCourseById, getAllCourses, updateCourse, deleteCourse, getCourseContents, getCourseAttachments,getMyCourses,getCoursesByCategory,getCourseBySlug ,getAllCourseAttachments ,filterCourses, sortCourses, disableDripForUser, addContentSection, updateContentSection, deleteContentSection, reorderContentSections, getContentSections, updateCourseBranding, getCourseLandingPage, uploadCourseEditorImage, uploadCourseEditorVideo, addReview, deleteReview, updateReview } from '../controllers/CourseController.js';
+import { createCourse, getCourseById, getAllCourses, updateCourse, deleteCourse, getCourseContents, getCourseAttachments,getMyCourses,getCoursesByCategory,getCourseBySlug ,getAllCourseAttachments ,filterCourses, sortCourses, disableDripForUser, addContentSection, updateContentSection, deleteContentSection, reorderContentSections, getContentSections, updateCourseBranding, getCourseLandingPage, uploadCourseEditorImage, uploadCourseEditorVideo, addReview, deleteReview, updateReview, duplicateCourseController } from '../controllers/CourseController.js';
 // import { createCourse, getCourseById, getAllCourses, updateCourse, deleteCourse, getCourseContents, getCourseAttachments,getMyCourses  } from '../controllers/CourseController.js';
 import accessTokenAutoRefresh from '../middlewares/accessTokenAutoRefresh.js';
 import passport from 'passport';
@@ -13,15 +13,26 @@ import courseContentVideoUpload from '../middlewares/courseContentVideoUpload.js
 
 const courseRouter = express.Router();
 
+import { createR2Storage, isR2Configured } from '../services/r2Service.js';
+
 // Configure multer for file uploads
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Ensure this directory exists
+    cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
+
+const r2Storage = createR2Storage({
+  destination: 'uploads',
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`);
+  },
+});
+
+const storage = isR2Configured() ? r2Storage : diskStorage;
 const upload = multer({ storage });
 
 
@@ -121,6 +132,25 @@ courseRouter.get('/:courseId/attachments', getCourseAttachments);
 courseRouter.get('/:courseId/all-attachments', getAllCourseAttachments);
 // courseRouter.get('/:courseId/all-attachments-new', getAllCourseAttachmentsNested);
 
+
+// Duplicate / Copy course to start a new batch (admin or instructor)
+courseRouter.post(
+  '/:id/copy',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  isUserBanned,
+  duplicateCourseController
+);
+
+courseRouter.post(
+  '/:id/duplicate',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  isUserBanned,
+  duplicateCourseController
+);
 
 // Update a course (admin or instructor)
 courseRouter.put(

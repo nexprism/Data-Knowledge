@@ -73,6 +73,7 @@ const courseSchema = new mongoose.Schema({
 
   // Enrollment & Access
   isPublished: { type: Boolean, default: true },
+  publishDate: { type: Date, default: null },
   enrollmentType: { type: String, enum: ['open', 'invite_only', 'paid', 'subscription'], default: 'open' },
   maxStudents: { type: Number },
   currentEnrollments: { type: Number, default: 0 },
@@ -367,6 +368,8 @@ courseSchema.index({ averageRating: -1 });
 courseSchema.index({ coursePosition: 1 });
 // Index to quickly query featured courses
 courseSchema.index({ isFeatured: -1 });
+// Index for scheduled publishing
+courseSchema.index({ publishDate: 1 });
 
 courseSchema.post('save', async function (doc) {
   if (doc.isNew) {

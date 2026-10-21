@@ -6,7 +6,7 @@ import { Server } from 'socket.io';
 import app from './app.js';
 import { connectToDatabase } from './db/connect.js';
 import { ServerConfig } from './config/server.config.js';
-// import { initRedis } from './config/redisClient.js';
+import { initRedis } from './config/redisClient.js';
 import videoSocketHandler from './sockets/videoSocketHandler.js';
 import jwt from 'jsonwebtoken';
 import Message from './models/Message.js';
@@ -18,11 +18,77 @@ import mongoose from 'mongoose';
 import path from 'path';
 
 import './cron/wordPressNewsCron.js';
+import './cron/coursePublishCron.js';
 
 import express from 'express';
 
-// Serve uploads directory so uploaded files are reachable
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+import { getFromR2, isR2Configured, getR2Config } from './services/r2Service.js';
+
+// Serve uploads directory with CORS enabled:
+// 1) First check local disk (for existing/legacy uploads)
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+}, express.static(path.join(process.cwd(), 'uploads')));
+
+// 2) If not found on local disk, fetch and stream directly from Cloudflare R2
+app.use('/uploads', async (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return next();
+  }
+  if (!isR2Configured()) {
+    return next();
+  }
+
+  try {
+    const cleanPath = decodeURIComponent(req.path).replace(/^\/+/, '');
+    const key = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
+
+    const r2Config = getR2Config();
+    if (r2Config.publicUrl) {
+      return res.redirect(302, `${r2Config.publicUrl.replace(/\/+$/, '')}/${key}`);
+    }
+
+    const r2File = await getFromR2(key, req.headers.range);
+    if (!r2File) {
+      return next();
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    if (r2File.contentType) {
+      res.setHeader('Content-Type', r2File.contentType);
+    }
+    if (r2File.contentLength) {
+      res.setHeader('Content-Length', r2File.contentLength);
+    }
+    if (r2File.contentRange) {
+      res.setHeader('Content-Range', r2File.contentRange);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.status(206);
+    } else {
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.status(200);
+    }
+
+    if (req.method === 'HEAD') {
+      return res.end();
+    }
+
+    r2File.body.pipe(res);
+  } catch (err) {
+    if (err.name === 'NoSuchKey' || err.Code === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+      return next();
+    }
+    console.error('Error fetching file from R2:', err);
+    return next(err);
+  }
+});
 
 // Create the HTTP server for Express and Socket.io
 const server = http.createServer(app);
@@ -464,7 +530,7 @@ const PORT = process.env.PORT || ServerConfig.port || 4000;
 server.listen(PORT, async () => {
   try {
     await connectToDatabase();
-    // await initRedis();
+    await initRedis();
     console.log(`🚀 Server + WebSocket running on port ${PORT}`);
   } catch (error) {
     console.error('❌ Error starting server:', error);

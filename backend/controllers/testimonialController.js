@@ -4,7 +4,7 @@ import Testimonial from '../models/Testimonial.js';
 // Admin: Add testimonial manually
 export const addTestimonialAdmin = async (req, res) => {
   try {
-    const { name, role, message, rating, courseId } = req.body;
+    const { name, role, message, rating, courseId, order } = req.body;
     if (!message || !name) {
       return res.status(400).json({ success: false, message: 'Name and message are required.' });
     }
@@ -27,7 +27,8 @@ export const addTestimonialAdmin = async (req, res) => {
       image, 
       screenshot, 
       reviewImages, 
-      video 
+      video,
+      order: order !== undefined ? Number(order) : 0
     }, true);
     res.json({ success: true, message: 'Testimonial added and approved.', data: testimonial });
   } catch (err) {
@@ -43,7 +44,7 @@ export const listTestimonialsAdmin = async (req, res) => {
     if (status) filter.status = status;
     if (search) filter.message = { $regex: search, $options: 'i' };
     if (courseId) filter.courseId = courseId;
-    const testimonials = await testimonialService.getTestimonials(filter, { sort: '-createdAt' });
+    const testimonials = await testimonialService.getTestimonials(filter, { sort: { order: 1, createdAt: -1 } });
     res.json({ success: true, message: 'Testimonials fetched.', data: testimonials });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -54,7 +55,7 @@ export const listTestimonialsAdmin = async (req, res) => {
 export const updateTestimonialAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, message, status, rating, courseId, existingReviewImages } = req.body;
+    const { name, role, message, status, rating, courseId, existingReviewImages, order } = req.body;
     const update = {};
     if (name) update.name = name;
     if (role !== undefined) update.role = role;
@@ -62,6 +63,7 @@ export const updateTestimonialAdmin = async (req, res) => {
     if (status) update.status = status;
     if (rating) update.rating = rating;
     if (courseId !== undefined) update.courseId = courseId || null;
+    if (order !== undefined) update.order = Number(order);
 
     if (req.files?.image?.[0]) {
       update.image = req.files.image[0].path.replace(/\\/g, '/');
@@ -110,6 +112,40 @@ export const deleteTestimonialAdmin = async (req, res) => {
     const testimonial = await testimonialService.deleteTestimonial(id);
     if (!testimonial) return res.status(404).json({ success: false, message: 'Testimonial not found.' });
     res.json({ success: true, message: 'Testimonial deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Admin: Reorder testimonials and/or batch update status (Kanban drag-and-drop)
+export const reorderTestimonialsAdmin = async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Items array is required.' });
+    }
+
+    const bulkOps = items.map((item, idx) => {
+      const setFields = {};
+      if (item.order !== undefined) {
+        setFields.order = Number(item.order);
+      } else {
+        setFields.order = idx;
+      }
+      if (item.status && ['pending', 'approved', 'rejected'].includes(item.status)) {
+        setFields.status = item.status;
+      }
+
+      return {
+        updateOne: {
+          filter: { _id: item.id || item._id },
+          update: { $set: setFields }
+        }
+      };
+    });
+
+    await Testimonial.bulkWrite(bulkOps);
+    res.json({ success: true, message: 'Testimonials positions updated successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -243,7 +279,7 @@ export const getApprovedTestimonials = async (req, res) => {
 
     const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
     if (!hasPagination) {
-      const testimonials = await testimonialService.getTestimonials(filter, { sort: '-createdAt' });
+      const testimonials = await testimonialService.getTestimonials(filter, { sort: { order: 1, createdAt: -1 } });
       return res.json({ success: true, message: 'Approved testimonials fetched.', data: testimonials });
     }
 
@@ -252,7 +288,7 @@ export const getApprovedTestimonials = async (req, res) => {
     const [total, testimonials] = await Promise.all([
       Testimonial.countDocuments(filter),
       testimonialService.getTestimonials(filter, {
-        sort: '-createdAt',
+        sort: { order: 1, createdAt: -1 },
         skip: (page - 1) * limit,
         limit,
       }),

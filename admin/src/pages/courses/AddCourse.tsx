@@ -31,6 +31,7 @@ import {
   FileEdit,
   Layers,
   Layout,
+  Eye,
 } from "lucide-react";
 import { createCourse } from "../../store/slices/course";
 import CourseMembershipTiersEditor from "../../components/CourseMembershipTiersEditor";
@@ -399,6 +400,7 @@ const AddCourse = () => {
     duration: "",
     instructorId: "",
     isPublished: false,
+    publishDate: "",
     enrollmentType: "open",
     maxStudents: "",
     enrolledStudentsCount: 0,
@@ -692,7 +694,17 @@ const AddCourse = () => {
     submitFormData.append("description", description);
     submitFormData.append("seoContent", seoContent);
     submitFormData.append("tags", JSON.stringify(selectedTags));
-    submitFormData.append("isPublished", (!isDraft).toString());
+    
+    if (formData.publishDate) {
+      submitFormData.append("publishDate", formData.publishDate);
+      if (new Date(formData.publishDate) > new Date()) {
+        submitFormData.set("isPublished", "false");
+      } else {
+        submitFormData.set("isPublished", (!isDraft).toString());
+      }
+    } else {
+      submitFormData.append("isPublished", (!isDraft).toString());
+    }
     submitFormData.append("demoVideo", demoVideoUrl);
 
     if (thumbnailFile) submitFormData.append("thumbnail", thumbnailFile);
@@ -854,6 +866,7 @@ const AddCourse = () => {
     { key: "media", title: "Media Files", icon: Image, isRequired: true },
     { key: "pricing", title: "Pricing", icon: DollarSign, isRequired: true },
     { key: "tags", title: "Tags", icon: Tag, isRequired: true },
+    { key: "publication", title: "Publication & Scheduling", icon: Eye, isRequired: false },
     { key: "settings", title: "Advanced Settings", icon: Users, isRequired: false },
     { key: "seo", title: "SEO Settings", icon: Target, isRequired: false },
     { key: "mentor", title: "Mentor Information", icon: Users, isRequired: false },
@@ -1835,6 +1848,89 @@ const AddCourse = () => {
                         placeholder="https://example.com"
                       />
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "publication" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Publication & Scheduling</h3>
+                
+                <div className="p-5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4">
+                  <div className="space-y-3">
+                    {/* Option 1: Publish Immediately */}
+                    <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                      <input
+                        type="radio"
+                        name="pubMode"
+                        checked={Boolean(!formData.publishDate)}
+                        onChange={() => {
+                          setFormData((prev: any) => ({
+                            ...prev,
+                            publishDate: "",
+                          }));
+                        }}
+                        className="mt-1 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                          Publish Immediately
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Course will be visible to students and live on the platform right away upon creation.
+                        </span>
+                      </div>
+                    </label>
+
+                    {/* Option 2: Schedule for Date & Time */}
+                    <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                      <input
+                        type="radio"
+                        name="pubMode"
+                        checked={Boolean(formData.publishDate)}
+                        onChange={() => {
+                          const defaultDate = new Date(Date.now() + 86400000).toISOString().slice(0, 16);
+                          setFormData((prev: any) => ({
+                            ...prev,
+                            publishDate: prev.publishDate || defaultDate,
+                          }));
+                        }}
+                        className="mt-1 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                          Schedule Automatic Publish Date & Time
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 block mb-2">
+                          Course will automatically become public only when this date & time arrives.
+                        </span>
+
+                        {Boolean(formData.publishDate) && (
+                          <div className="mt-3 space-y-2">
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                              Select Scheduled Date & Time:
+                            </label>
+                            <input
+                              type="datetime-local"
+                              name="publishDate"
+                              value={formData.publishDate || ""}
+                              onChange={(e) => {
+                                setFormData((prev: any) => ({
+                                  ...prev,
+                                  publishDate: e.target.value,
+                                }));
+                              }}
+                              className="w-full px-4 py-2.5 rounded-lg border border-blue-300 dark:border-blue-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+                              min={new Date().toISOString().slice(0, 16)}
+                            />
+                            <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 p-2.5 rounded-lg">
+                              ⏰ Scheduled: On {new Date(formData.publishDate).toLocaleString()}, this course will automatically transition from scheduled to public for all users.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </label>
                   </div>
                 </div>
               </div>

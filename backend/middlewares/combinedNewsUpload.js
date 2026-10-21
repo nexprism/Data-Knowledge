@@ -28,8 +28,10 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+import { createR2Storage, isR2Configured } from '../services/r2Service.js';
+
 // Dynamic storage based on field name
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const today = new Date().toISOString().slice(0, 10);
     
@@ -51,6 +53,24 @@ const storage = multer.diskStorage({
     cb(null, safe);
   }
 });
+
+const r2Storage = createR2Storage({
+  destination: (req, file, cb) => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (file.fieldname === 'content' || file.fieldname === 'contentImages') {
+      cb(null, `uploads/news/content/${today}`);
+    } else {
+      cb(null, `uploads/news/${today}`);
+    }
+  },
+  filename: (req, file, cb) => {
+    const originalName = file.originalname;
+    const safe = originalName.replace(/[\/\\]/g, '_').trim();
+    cb(null, safe);
+  }
+});
+
+const storage = isR2Configured() ? r2Storage : diskStorage;
 
 // Create multer instance with fields support
 const upload = multer({

@@ -271,6 +271,7 @@ const EditCourse = () => {
     duration: "",
     instructorId: "",
     isPublished: false,
+    publishDate: "",
     enrollmentType: "open",
     maxStudents: "",
     enrolledStudentsCount: 0,
@@ -478,6 +479,7 @@ const EditCourse = () => {
         duration: course.duration || "",
         instructorId: course.instructorId || course.instructor?._id || "",
         isPublished: course.isPublished || false,
+        publishDate: course.publishDate ? new Date(course.publishDate).toISOString().slice(0, 16) : "",
         enrollmentType: course.enrollmentType || "open",
         maxStudents: course.maxStudents || "",
         enrolledStudentsCount: course.enrolledStudentsCount || 0,
@@ -807,6 +809,8 @@ const EditCourse = () => {
       const value = formData[key];
       if (key === "isPublished") {
         submitFormData.set("isPublished", (!isDraft && !!formData.isPublished).toString());
+      } else if (key === "publishDate") {
+        submitFormData.set("publishDate", formData.publishDate || "");
       } else if (key === "learningOutcomes" || key === "targetAudience" || key === "mentorAchievements") {
         // Handle arrays properly
         if (Array.isArray(value) && value.length > 0) {
@@ -2343,47 +2347,119 @@ const EditCourse = () => {
 
                 {activeTab === "publication" && (
                   <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Publication Status</h3>
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                      <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">
-                        Publication Status
-                      </h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-400 mb-3">
-                        Choose whether to publish your course immediately or save as draft.
-                      </p>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          name="isPublished"
-                          checked={formData.isPublished}
-                          // Only update local state, do NOT call handleSubmit here
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setFormData((prev) => ({
-                              ...prev,
-                              isPublished: checked,
-                            }));
-                            setFormErrors((prev) => ({ ...prev, isPublished: "" }));
-                          }}
-                          className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
-                        />
-                        <Eye className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm text-gray-700 dark:text-gray-200">
-                          Publish Course
-                        </span>
-                      </label>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Publication & Scheduling</h3>
+                    
+                    <div className="p-5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4">
+                      <div className="space-y-3">
+                        {/* Option 1: Publish Immediately */}
+                        <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                          <input
+                            type="radio"
+                            name="pubMode"
+                            checked={Boolean(formData.isPublished && !formData.publishDate)}
+                            onChange={() => {
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                isPublished: true,
+                                publishDate: "",
+                              }));
+                            }}
+                            className="mt-1 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                              Publish Immediately
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              Course will be visible to students and live on the platform right away.
+                            </span>
+                          </div>
+                        </label>
+
+                        {/* Option 2: Schedule for Date & Time */}
+                        <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                          <input
+                            type="radio"
+                            name="pubMode"
+                            checked={Boolean(formData.publishDate)}
+                            onChange={() => {
+                              const defaultDate = new Date(Date.now() + 86400000).toISOString().slice(0, 16);
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                isPublished: false,
+                                publishDate: prev.publishDate || defaultDate,
+                              }));
+                            }}
+                            className="mt-1 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                              Schedule Automatic Publish Date & Time
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 block mb-2">
+                              Course will automatically become public only when this date & time arrives.
+                            </span>
+
+                            {Boolean(formData.publishDate) && (
+                              <div className="mt-3 space-y-2">
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                                  Select Scheduled Date & Time:
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  name="publishDate"
+                                  value={formData.publishDate || ""}
+                                  onChange={(e) => {
+                                    setFormData((prev: any) => ({
+                                      ...prev,
+                                      publishDate: e.target.value,
+                                      isPublished: false,
+                                    }));
+                                  }}
+                                  className="w-full px-4 py-2.5 rounded-lg border border-blue-300 dark:border-blue-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+                                  min={new Date().toISOString().slice(0, 16)}
+                                />
+                                <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 p-2.5 rounded-lg">
+                                  ⏰ Scheduled: On {new Date(formData.publishDate).toLocaleString()}, this course will automatically transition from scheduled to public for all users.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </label>
+
+                        {/* Option 3: Draft */}
+                        <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                          <input
+                            type="radio"
+                            name="pubMode"
+                            checked={Boolean(!formData.isPublished && !formData.publishDate)}
+                            onChange={() => {
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                isPublished: false,
+                                publishDate: "",
+                              }));
+                            }}
+                            className="mt-1 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                              Save as Draft
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              Course remains hidden from public view until published manually or scheduled.
+                            </span>
+                          </div>
+                        </label>
+                      </div>
                     </div>
-                    {formData.isPublished && (
-                      <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                          <span className="font-medium text-green-900 dark:text-green-300">
-                            Ready to Publish
-                          </span>
-                        </div>
-                        <p className="text-sm text-green-700 dark:text-green-400">
-                          Your course will be visible to students once published.
-                        </p>
+
+                    {formData.isPublished && !formData.publishDate && (
+                      <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-900 dark:text-green-300">
+                          Course is Published and visible to all users.
+                        </span>
                       </div>
                     )}
                   </div>

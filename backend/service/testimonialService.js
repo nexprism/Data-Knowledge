@@ -107,7 +107,7 @@ const getTestimonials = async (filter = {}, options = {}) => {
   if (options.sort) {
     query = query.sort(options.sort);
   } else {
-    query = query.sort({ createdAt: -1 });
+    query = query.sort({ order: 1, createdAt: -1 });
   }
   if (options.skip !== undefined) {
     query = query.skip(options.skip);

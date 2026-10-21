@@ -173,17 +173,17 @@ let memoryFallbackClient = null;
 const initRedis = async () => {
   if (redisClient) return redisClient;
 
-  const isRedisEnabled = process.env.REDIS_ENABLED === 'true';
+  const isRedisEnabled = process.env.REDIS_ENABLED !== 'false' && Boolean(process.env.REDIS_HOST && process.env.REDIS_PORT);
 
-  // Only attempt external Redis if explicitly enabled in environment variables
-  if (isRedisEnabled && process.env.REDIS_HOST && process.env.REDIS_PORT) {
+  // Attempt external Redis if enabled and configuration is present
+  if (isRedisEnabled) {
     let client = null;
     try {
       const clientOptions = {
         socket: {
           host: process.env.REDIS_HOST,
           port: Number(process.env.REDIS_PORT),
-          connectTimeout: 1000,
+          connectTimeout: 1500,
           reconnectStrategy: false,
         },
       };
@@ -198,11 +198,11 @@ const initRedis = async () => {
       await Promise.race([
         client.connect(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Redis connection timeout')), 1200)
+          setTimeout(() => reject(new Error('Redis connection timeout')), 2000)
         ),
       ]);
 
-      console.log('✅ Connected to external Redis server');
+      console.log('✅ Connected to Redis');
       redisClient = client;
       return redisClient;
     } catch (err) {

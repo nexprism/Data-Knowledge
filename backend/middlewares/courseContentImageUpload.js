@@ -2,6 +2,8 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+import { createR2Storage, isR2Configured } from '../services/r2Service.js';
+
 // Allowed mime types for images
 const ALLOWED_MIME = [
   'image/png',
@@ -13,7 +15,7 @@ const ALLOWED_MIME = [
   'image/jfif', // JPEG File Interchange Format
 ];
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const today = new Date().toISOString().slice(0, 10);
     const dir = path.join(process.cwd(), 'uploads', 'courses', 'content', today);
@@ -21,18 +23,25 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    // Use original filename from multipart form data
-    // Only sanitize for security (remove path separators)
     const originalName = file.originalname;
-    // Remove path separators to prevent path traversal attacks
-    // Keep spaces and most special characters as they are in the original
-    const safe = originalName
-      .replace(/[\/\\]/g, '_') // Replace path separators only
-      .trim(); // Remove leading/trailing whitespace
-    
+    const safe = originalName.replace(/[\/\\]/g, '_').trim();
     cb(null, safe);
   }
 });
+
+const r2Storage = createR2Storage({
+  destination: (req, file, cb) => {
+    const today = new Date().toISOString().slice(0, 10);
+    cb(null, `uploads/courses/content/${today}`);
+  },
+  filename: (req, file, cb) => {
+    const originalName = file.originalname;
+    const safe = originalName.replace(/[\/\\]/g, '_').trim();
+    cb(null, safe);
+  }
+});
+
+const storage = isR2Configured() ? r2Storage : diskStorage;
 
 const fileFilter = (req, file, cb) => {
   // Check MIME type

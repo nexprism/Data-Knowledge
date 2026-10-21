@@ -91,6 +91,26 @@ export const updateTestimonial = createAsyncThunk<
     }
 });
 
+export const reorderTestimonials = createAsyncThunk<
+    void,
+    { items: { id: string; order?: number; status?: string }[]; token: string },
+    { rejectValue: string }
+>('testimonial/reorderTestimonials', async ({ items, token }, { rejectWithValue }) => {
+    try {
+        await axiosInstance.put(
+            '/admin/testimonials/reorder',
+            { items },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+    } catch (err: any) {
+        return rejectWithValue(err.response?.data?.message || 'Failed to reorder testimonials');
+    }
+});
+
 
 export const getTestimonialById = createAsyncThunk<
     Testimonial,

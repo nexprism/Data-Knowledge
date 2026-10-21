@@ -184,6 +184,45 @@ export const deleteCourse = createAsyncThunk(
   }
 );
 
+export const duplicateCourse = createAsyncThunk(
+  "course/duplicateCourse",
+  async (
+    {
+      courseId,
+      title,
+      startDate,
+      publishDate,
+      isPublished,
+    }: {
+      courseId: string;
+      title?: string;
+      startDate?: string;
+      publishDate?: string | null;
+      isPublished?: boolean;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const response = await axiosInstance.post(
+        `/courses/${courseId}/copy`,
+        { title, startDate, publishDate, isPublished },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || "Failed to copy course"
+      );
+    }
+  }
+);
+
 const courseSlice = createSlice({
   name: "course",
   initialState,

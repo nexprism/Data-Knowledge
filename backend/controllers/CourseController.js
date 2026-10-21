@@ -221,8 +221,24 @@ export const createCourse = async (req, res) => {
           : req.body.topic.split(',').map(item => item.trim())
         : [],
       tags,
-      // Parse booleans
-      isPublished: parseBoolean(req.body.isPublished),
+      // Parse publishDate & isPublished
+      publishDate: (() => {
+        if (req.body.publishDate && req.body.publishDate !== 'null' && req.body.publishDate !== '') {
+          const pDate = new Date(req.body.publishDate);
+          return isNaN(pDate.getTime()) ? null : pDate;
+        }
+        return null;
+      })(),
+      // If publishDate is in the future, isPublished defaults to false (scheduled) unless explicitly provided
+      isPublished: (() => {
+        if (req.body.publishDate && req.body.publishDate !== 'null' && req.body.publishDate !== '') {
+          const pDate = new Date(req.body.publishDate);
+          if (!isNaN(pDate.getTime()) && pDate > new Date()) {
+            return false;
+          }
+        }
+        return parseBoolean(req.body.isPublished);
+      })(),
       // Featured flag
       isFeatured: parseBoolean(req.body.isFeatured),
       certificateTemplate: parseBoolean(req.body.certificateTemplate),
@@ -475,9 +491,26 @@ export const getCourseById = async (req, res) => {
 
     // //console.log(`🔄 Fetching course ${id} and processing VdoCipher videos...`);
     const course = await courseService.getById(id);
-    // //console.log("Course details fetched:", course);
-    // //console.log("User ID:", userId);
-    // //console.log("user new:",req.user)
+    if (!course || course.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
+        data: {},
+      });
+    }
+
+    // Role-based scheduled check
+    const isAdminUser = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    if (!isAdminUser) {
+      const isScheduledFuture = course.publishDate && new Date(course.publishDate) > new Date();
+      if (!course.isPublished || isScheduledFuture) {
+        return res.status(404).json({
+          success: false,
+          message: "Course is not yet published",
+          data: {},
+        });
+      }
+    }
 
     // Skip VdoCipher OTP processing for detail page (data not sent)
     if (course && course.modules && !isDetailPage) {
@@ -691,6 +724,26 @@ export const getCourseBySlug = async (req, res) => {
 
     //console.log(`🔄 Fetching course with slug ${slug} and processing VdoCipher videos...`);
     const course = await courseService.getBySlug(slug);
+    if (!course || course.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
+        data: {},
+      });
+    }
+
+    // Role-based scheduled check
+    const isAdminUserSlug = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    if (!isAdminUserSlug) {
+      const isScheduledFuture = course.publishDate && new Date(course.publishDate) > new Date();
+      if (!course.isPublished || isScheduledFuture) {
+        return res.status(404).json({
+          success: false,
+          message: "Course is not yet published",
+          data: {},
+        });
+      }
+    }
 
     if (course && course.modules) {
       //console.log(`🔍 Processing ${course.modules.length} modules for VdoCipher videos...`);
@@ -1199,15 +1252,24 @@ export const getAllCourses = async (req, res) => {
       filter.isFeatured = String(filterParams.isFeatured).toLowerCase() === 'true';
     }
 
-    // Role-based visibility for isPublished
+    // Role-based visibility for isPublished and publishDate
     if (req.user?.role === "admin" || req.user?.role === "super_admin") {
       // Allow filter from query, or no filter (all courses)
       if (filterParams.hasOwnProperty("isPublished")) {
         filter.isPublished = filterParams.isPublished === "true";
       }
+      if (filterParams.status === "scheduled") {
+        filter.publishDate = { $gt: new Date() };
+      }
     } else {
-      // Non-admins (student, instructor): only see published courses
+      // Non-admins (student, public): only see published courses whose scheduled publishDate has arrived or has no publishDate
+      const now = new Date();
       filter.isPublished = true;
+      filter.$or = [
+        { publishDate: null },
+        { publishDate: { $exists: false } },
+        { publishDate: { $lte: now } }
+      ];
     }
 
     // Always exclude deleted
@@ -1521,6 +1583,15 @@ export const updateCourse = async (req, res) => {
 
       // Only set isFeatured when provided in update payload
       ...(req.body.isFeatured !== undefined && { isFeatured: parseBoolean(req.body.isFeatured) }),
+
+      // Scheduled publishDate handling
+      ...(req.body.publishDate !== undefined && {
+        publishDate: (() => {
+          if (!req.body.publishDate || req.body.publishDate === '' || req.body.publishDate === 'null') return null;
+          const p = new Date(req.body.publishDate);
+          return isNaN(p.getTime()) ? null : p;
+        })(),
+      }),
 
       price: parsePrice(req.body.price),
       salePrice: req.body.salePrice !== undefined && req.body.salePrice !== '' ? req.body.salePrice : undefined, // <-- always pass as string/number
@@ -3177,6 +3248,14 @@ export const getCourseLandingPage = async (req, res) => {
       });
     }
 
+    const isScheduledFuture = course.publishDate && new Date(course.publishDate) > new Date();
+    if (!course.isPublished || isScheduledFuture) {
+      return res.status(404).json({
+        success: false,
+        message: "Course is not yet published"
+      });
+    }
+
     // Sort content sections by order
     const sortedSections = course.contentSections
       .filter(section => section.isVisible)
@@ -3401,5 +3480,41 @@ export const updateReview = async (req, res) => {
     res.status(200).json({ message: 'Review updated successfully', course });
   } catch (error) {
     res.status(500).json({ message: 'Error updating review', error: error.message });
+  }
+};
+
+// Duplicate / Copy course to start a new batch
+export const duplicateCourseController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, slug, startDate, publishDate, isPublished } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course ID is required',
+      });
+    }
+
+    const { duplicateCourse } = await import('../duplicateCourse.js');
+    const newCourse = await duplicateCourse(id, {
+      title,
+      slug,
+      startDate,
+      publishDate,
+      isPublished,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Course copied successfully and new batch started',
+      data: newCourse,
+    });
+  } catch (error) {
+    console.error('Error duplicating course:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to duplicate course',
+    });
   }
 };

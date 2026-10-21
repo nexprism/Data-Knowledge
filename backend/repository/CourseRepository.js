@@ -76,13 +76,6 @@ class CourseRepository extends CrudRepository {
 
 
 
-      // Combine filters with search and isDeleted
-      const query = {
-        isDeleted: false,
-        ...filter,
-        ...searchQuery,
-      };
-
       // Support explicit coursePosition sorting when `courseposition` or `coursePosition` flag is passed in filter
       let useCoursePositionSort = false;
 
@@ -99,10 +92,17 @@ class CourseRepository extends CrudRepository {
         // remove the helper flags so they don't affect query matching
         if (filter.courseposition !== undefined) delete filter.courseposition;
         if (filter.coursePosition !== undefined) delete filter.coursePosition;
-        // also ensure we remove them from the final query object (they were spread into `query` above)
-        if (query && query.courseposition !== undefined) delete query.courseposition;
-        if (query && query.coursePosition !== undefined) delete query.coursePosition;
       }
+
+      // Combine filters with search and isDeleted safely using $and to avoid $or collisions
+      const andConditions = [{ isDeleted: false }];
+      if (filter && Object.keys(filter).length > 0) {
+        andConditions.push(filter);
+      }
+      if (searchQuery && Object.keys(searchQuery).length > 0) {
+        andConditions.push(searchQuery);
+      }
+      const query = andConditions.length === 1 ? andConditions[0] : { $and: andConditions };
 
       // Build sort object dynamically
       const sortOptions = {};

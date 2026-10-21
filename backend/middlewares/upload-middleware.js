@@ -1,6 +1,8 @@
 import multer from "multer";
 import path from "path";
 
+import { createR2Storage, isR2Configured } from "../services/r2Service.js";
+
 const ALLOWED_MIME = [
   'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml',
   'application/pdf',
@@ -14,7 +16,7 @@ const ALLOWED_MIME = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ];
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
   },
@@ -22,6 +24,15 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
+
+const r2Storage = createR2Storage({
+  destination: "uploads",
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const storage = isR2Configured() ? r2Storage : diskStorage;
 
 const fileFilter = (req, file, cb) => {
   console.log("File Name:", file.originalname);

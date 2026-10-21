@@ -152,11 +152,15 @@ const ChevronRightIcon = ({ className = 'w-5 h-5' }) => (
 
 // Single Testimonial Card Component
 const ReviewCard = ({ item, getImageSrc, onOpenVideo, onOpenScreenshot, isGrid = false, showScreenshot = false }) => {
+  const [avatarErr, setAvatarErr] = useState(false)
+  const [proofErr, setProofErr] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const avatar = getImageSrc(item.image)
   const studentName = item.name || item.userId?.fullName || 'Verified Student'
   const studentRole = item.role || 'Data Analytics Alum'
   const ratingCount = Number(item.rating) || 5
   const hasVideo = Boolean(item.video)
+  const isLongMessage = (item.message?.length || 0) > 160
 
   const reviewImages = useMemo(() => {
     const list = []
@@ -216,12 +220,24 @@ const ReviewCard = ({ item, getImageSrc, onOpenVideo, onOpenScreenshot, isGrid =
         </div>
 
         {/* Review Quote Text */}
-        <p className="text-slate-700 text-sm sm:text-[14.5px] leading-relaxed line-clamp-4 font-normal">
+        <p className={`text-slate-700 text-sm sm:text-[14.5px] leading-relaxed font-normal ${!isExpanded ? 'line-clamp-4' : ''}`}>
           "{item.message}"
         </p>
+        {isLongMessage && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsExpanded(!isExpanded)
+            }}
+            className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-[#1b6294] hover:text-[#3498db] transition-colors cursor-pointer"
+          >
+            {isExpanded ? 'Read less ↑' : 'Read more ↓'}
+          </button>
+        )}
 
         {/* Attached Review Screenshot Proof */}
-        {showScreenshot && reviewImages.length > 0 && (
+        {showScreenshot && reviewImages.length > 0 && !proofErr && (
           <div className="mt-4 pt-3.5 border-t border-slate-100 md:flex md:items-start md:gap-4">
             {reviewImages.length === 1 ? (
               <button
@@ -246,9 +262,7 @@ const ReviewCard = ({ item, getImageSrc, onOpenVideo, onOpenScreenshot, isGrid =
                     src={reviewImages[0]}
                     alt="Review Screenshot"
                     className="w-full h-full object-contain group-hover/shot:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      e.target.style.display = 'none'
-                    }}
+                    onError={() => setProofErr(true)}
                   />
                 </div>
                 <div className="min-w-0 flex-1 text-center md:text-left">
@@ -321,14 +335,12 @@ const ReviewCard = ({ item, getImageSrc, onOpenVideo, onOpenScreenshot, isGrid =
       {/* Student Profile Info */}
       <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
         <div className="flex items-center gap-3 min-w-0">
-          {avatar ? (
+          {avatar && !avatarErr ? (
             <img
               src={avatar}
               alt={studentName}
               className="w-11 h-11 rounded-full object-cover border-2 border-blue-100 shrink-0"
-              onError={(e) => {
-                e.target.style.display = 'none'
-              }}
+              onError={() => setAvatarErr(true)}
             />
           ) : (
             <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#3498db] to-[#2980b9] text-white font-extrabold flex items-center justify-center text-sm shadow-md shadow-blue-500/20 shrink-0">

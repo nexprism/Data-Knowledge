@@ -4,6 +4,7 @@ import {
   listTestimonialsAdmin,
   updateTestimonialAdmin,
   deleteTestimonialAdmin,
+  reorderTestimonialsAdmin,
   submitTestimonial,
   getMyTestimonials,
   getApprovedTestimonials,
@@ -38,6 +39,13 @@ router.get(
   passport.authenticate('jwt', { session: false }),
   isAdmin,
   listTestimonialsAdmin
+);
+router.put(
+  '/admin/testimonials/reorder',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  reorderTestimonialsAdmin
 );
 router.patch(
   '/admin/testimonials/:id',

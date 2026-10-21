@@ -11,7 +11,7 @@ try {
     });
 
     progressQueue.client.on('ready', () => {
-        //console.log('Redis connected successfully.');
+        console.log('✅ Connected to Redis (Queue)');
     });
 
     progressQueue.client.on('error', (err) => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
-import { fetchCourses, fetchCourseEnrollments, deleteCourse } from "../../store/slices/course";
+import { fetchCourses, fetchCourseEnrollments, deleteCourse, duplicateCourse } from "../../store/slices/course";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PopupAlert from "../../components/popUpAlert";
 import PageMeta from "../../components/common/PageMeta";
@@ -28,6 +28,7 @@ import {
   Edit3,
   Trash2,
   Award,
+  Copy,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { deleteEnrollment } from "../../store/slices/students";
@@ -59,6 +60,9 @@ interface Course {
     profilePicture: string;
   };
   isPublished: boolean;
+  publishDate?: string;
+  startDate?: string;
+  coursePosition?: number;
   createdAt: string;
   salesCount: number;
   totalViews: number;
@@ -91,6 +95,23 @@ const CourseList: React.FC = () => {
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deletingCourse, setDeletingCourse] = useState(false);
+  const [duplicateModal, setDuplicateModal] = useState<{
+    open: boolean;
+    course: Course | null;
+    title: string;
+    startDate: string;
+    publishOption: 'immediate' | 'schedule' | 'draft';
+    publishDate: string;
+  }>({
+    open: false,
+    course: null,
+    title: '',
+    startDate: '',
+    publishOption: 'immediate',
+    publishDate: '',
+  });
+  const [duplicating, setDuplicating] = useState(false);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [imageError, setImageError] = useState<{ isVisible: boolean; url?: string }>(
     { isVisible: false }
   );
@@ -158,10 +179,12 @@ const CourseList: React.FC = () => {
     const matchesSearch =
       !searchInput ||
       course.title.toLowerCase().includes(searchInput.toLowerCase());
+    const isScheduled = Boolean(course.publishDate && new Date(course.publishDate) > new Date());
     const matchesStatus =
       !statusFilter ||
-      (statusFilter === "published" && course.isPublished) ||
-      (statusFilter === "draft" && !course.isPublished);
+      (statusFilter === "published" && course.isPublished && !isScheduled) ||
+      (statusFilter === "scheduled" && isScheduled) ||
+      (statusFilter === "draft" && !course.isPublished && !isScheduled);
     return matchesSearch && matchesStatus;
   });
 
@@ -220,25 +243,114 @@ const CourseList: React.FC = () => {
     console.log('deleteConfirm state changed', deleteConfirm);
   }, [deleteConfirm]);
 
-  const StatusBadge = ({ isPublished }: { isPublished: boolean }) => (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-      isPublished 
-        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800' 
-        : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
-    }`}>
-      {isPublished ? (
-        <>
-          <CheckCircle className="w-3 h-3" />
-          Published
-        </>
-      ) : (
-        <>
-          <Clock className="w-3 h-3" />
-          Draft
-        </>
-      )}
-    </span>
-  );
+  // Open Duplicate Modal for Starting a New Batch
+  const handleOpenDuplicateModal = (course: Course) => {
+    const baseTitle = course.title
+      .replace(/\s*-\s*Batch\s*\d+/gi, '')
+      .replace(/\s*\(Copy\s*\d*\)/gi, '')
+      .trim();
+
+    setDuplicateModal({
+      open: true,
+      course,
+      title: `${baseTitle} - Next Batch`,
+      startDate: new Date().toISOString().slice(0, 10),
+      publishOption: 'immediate',
+      publishDate: '',
+    });
+  };
+
+  // Submit Duplicate Course / Start New Batch
+  const handleConfirmDuplicate = async () => {
+    if (!duplicateModal.course) return;
+    if (!duplicateModal.title.trim()) {
+      window.alert("Please provide a title for the new course batch.");
+      return;
+    }
+
+    if (duplicateModal.publishOption === 'schedule' && !duplicateModal.publishDate) {
+      window.alert("Please select a scheduled publish date and time.");
+      return;
+    }
+
+    setDuplicating(true);
+    try {
+      const payload: any = {
+        courseId: duplicateModal.course._id,
+        title: duplicateModal.title.trim(),
+        startDate: duplicateModal.startDate || undefined,
+      };
+
+      if (duplicateModal.publishOption === 'immediate') {
+        payload.isPublished = true;
+        payload.publishDate = null;
+      } else if (duplicateModal.publishOption === 'draft') {
+        payload.isPublished = false;
+        payload.publishDate = null;
+      } else if (duplicateModal.publishOption === 'schedule') {
+        payload.publishDate = duplicateModal.publishDate;
+        payload.isPublished = false;
+      }
+
+      await dispatch(duplicateCourse(payload) as any).unwrap();
+      await dispatch(fetchCourses({ page, limit }) as any);
+      setSuccessNotice(`New batch "${duplicateModal.title}" created successfully!`);
+      setDuplicateModal({
+        open: false,
+        course: null,
+        title: '',
+        startDate: '',
+        publishOption: 'immediate',
+        publishDate: '',
+      });
+    } catch (e: any) {
+      window.alert(e?.message || 'Failed to start new batch / copy course');
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
+  const StatusBadge = ({ isPublished, publishDate }: { isPublished: boolean; publishDate?: string }) => {
+    const isScheduled = Boolean(publishDate && new Date(publishDate) > new Date());
+
+    if (isScheduled) {
+      const formattedDate = new Date(publishDate!).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800"
+          title={`Scheduled to publish on ${new Date(publishDate!).toLocaleString()}`}
+        >
+          <Calendar className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+          Scheduled ({formattedDate})
+        </span>
+      );
+    }
+
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
+        isPublished 
+          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800' 
+          : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+      }`}>
+        {isPublished ? (
+          <>
+            <CheckCircle className="w-3 h-3" />
+            Published
+          </>
+        ) : (
+          <>
+            <Clock className="w-3 h-3" />
+            Draft
+          </>
+        )}
+      </span>
+    );
+  };
 
   const CourseCard = ({ course, index }: { course: Course; index: number }) => (
     <div className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-300">
@@ -255,7 +367,7 @@ const CourseList: React.FC = () => {
             }}
         />
         <div className="absolute top-3 left-3">
-          <StatusBadge isPublished={course.isPublished} />
+          <StatusBadge isPublished={course.isPublished} publishDate={course.publishDate} />
         </div>
         <div className="absolute top-3 right-3">
           <span className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-sm font-semibold text-gray-800">
@@ -313,6 +425,16 @@ const CourseList: React.FC = () => {
               title="View Enrollments"
             >
               <Users className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenDuplicateModal(course);
+              }}
+              className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+              title="Copy Course / Start New Batch"
+            >
+              <Copy className="w-4 h-4" />
             </button>
             <button
               onClick={() => navigate(`/courses/edit/${course._id}`)}
@@ -425,6 +547,7 @@ const CourseList: React.FC = () => {
               >
                 <option value="">All Status</option>
                 <option value="published">Published</option>
+                <option value="scheduled">Scheduled</option>
                 <option value="draft">Draft</option>
               </select>
             </div>
@@ -604,7 +727,7 @@ const CourseList: React.FC = () => {
                           </td>
                          
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <StatusBadge isPublished={course.isPublished} />
+                            <StatusBadge isPublished={course.isPublished} publishDate={course.publishDate} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {new Date(course.createdAt).toLocaleDateString()}
@@ -620,6 +743,16 @@ const CourseList: React.FC = () => {
                                 title="View Enrollments"
                               >
                                 <Users className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDuplicateModal(course);
+                                }}
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Copy Course / Start New Batch"
+                              >
+                                <Copy className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -965,32 +1098,244 @@ const CourseList: React.FC = () => {
               </div>
             </div>
           )}
-          {/* Delete Course Confirmation Popup */}
-          <PopupAlert
-            isVisible={!!deleteConfirm}
-            type="error"
-            message={`Are you sure you want to permanently delete "${deleteConfirm?.title}"? This action cannot be undone.`}
-            onClose={() => setDeleteConfirm(null)}
-            onConfirm={() => deleteConfirm && handleConfirmDeleteCourse(deleteConfirm.id)}
-            confirmLabel={deletingCourse ? "Deleting..." : "Delete"}
-            cancelLabel="Cancel"
-          />
-
-          <PopupAlert
-            isVisible={imageError.isVisible}
-            type="error"
-            message={`Failed to load image: ${imageError.url || "unknown"}. This may be because the file is missing or blocked by cross-origin policy.`}
-            onClose={() => setImageError({ isVisible: false })}
-          />
-
-          <PopupAlert
-            isVisible={testPopup}
-            type="info"
-            message="This is a test popup. The popup component is working correctly."
-            onClose={() => setTestPopup(false)}
-          />
         </div>
       )}
+
+      {/* Start New Batch / Copy Course Modal */}
+      {duplicateModal.open && duplicateModal.course && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden my-auto border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-md">
+                  <Copy className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Start New Batch
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Duplicate course content, structure & plans for a new cohort
+                  </p>
+                </div>
+              </div>
+              <button
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                onClick={() => setDuplicateModal({ open: false, course: null, title: '', startDate: '', publishOption: 'immediate', publishDate: '' })}
+                disabled={duplicating}
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+              {/* Source Course Info */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-3">
+                {duplicateModal.course.thumbnail && (
+                  <img
+                    src={`${VITE_IMAGE_URL}/${duplicateModal.course.thumbnail}`}
+                    alt=""
+                    className="w-12 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "https://tse2.mm.bing.net/th/id/OIP.z2HmY-oQPSmmDwR-MYmW6QAAAA?pid=Api&P=0&h=180";
+                    }}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    Source Course
+                  </span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {duplicateModal.course.title}
+                  </p>
+                </div>
+              </div>
+
+              {/* Batch / New Course Title */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
+                  New Batch / Course Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={duplicateModal.title}
+                  onChange={(e) => setDuplicateModal({ ...duplicateModal, title: e.target.value })}
+                  placeholder="e.g. Master Python - Batch 2"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  disabled={duplicating}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  All modules, lessons, videos, quizzes, and assignments will be copied to this new batch.
+                </p>
+              </div>
+
+              {/* Start Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
+                  Batch Start Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={duplicateModal.startDate}
+                  onChange={(e) => setDuplicateModal({ ...duplicateModal, startDate: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  disabled={duplicating}
+                />
+              </div>
+
+              {/* Publishing Schedule Options */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                  Publishing & Visibility
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="publishOption"
+                      value="immediate"
+                      checked={duplicateModal.publishOption === 'immediate'}
+                      onChange={() => setDuplicateModal({ ...duplicateModal, publishOption: 'immediate', publishDate: '' })}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                      disabled={duplicating}
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white block">
+                        Publish Immediately
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Course will be live and accessible to students right away
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="publishOption"
+                      value="schedule"
+                      checked={duplicateModal.publishOption === 'schedule'}
+                      onChange={() => setDuplicateModal({ ...duplicateModal, publishOption: 'schedule' })}
+                      className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                      disabled={duplicating}
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white block">
+                        Schedule Automatic Publish Date & Time
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 block mb-2">
+                        Course automatically becomes public only when the selected date and time arrives
+                      </span>
+
+                      {duplicateModal.publishOption === 'schedule' && (
+                        <div className="mt-2 space-y-2">
+                          <input
+                            type="datetime-local"
+                            value={duplicateModal.publishDate}
+                            onChange={(e) => setDuplicateModal({ ...duplicateModal, publishDate: e.target.value })}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-300 dark:border-emerald-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                            disabled={duplicating}
+                            min={new Date().toISOString().slice(0, 16)}
+                          />
+                          <p className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded-lg">
+                            🕒 Will stay unpublished until this exact moment, then automatically switch to public.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="publishOption"
+                      value="draft"
+                      checked={duplicateModal.publishOption === 'draft'}
+                      onChange={() => setDuplicateModal({ ...duplicateModal, publishOption: 'draft', publishDate: '' })}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                      disabled={duplicating}
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white block">
+                        Save as Draft
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Keep hidden until you manually publish it later
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <button
+                type="button"
+                className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium transition-colors"
+                onClick={() => setDuplicateModal({ open: false, course: null, title: '', startDate: '', publishOption: 'immediate', publishDate: '' })}
+                disabled={duplicating}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                onClick={handleConfirmDuplicate}
+                disabled={duplicating}
+              >
+                {duplicating ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Creating Batch...
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Start Batch
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Course Confirmation Popup */}
+      <PopupAlert
+        isVisible={!!deleteConfirm}
+        type="error"
+        message={`Are you sure you want to permanently delete "${deleteConfirm?.title}"? This action cannot be undone.`}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteConfirm && handleConfirmDeleteCourse(deleteConfirm.id)}
+        confirmLabel={deletingCourse ? "Deleting..." : "Delete"}
+        cancelLabel="Cancel"
+      />
+
+      {/* Success Notification Popup */}
+      <PopupAlert
+        isVisible={!!successNotice}
+        type="success"
+        message={successNotice || ""}
+        onClose={() => setSuccessNotice(null)}
+      />
+
+      <PopupAlert
+        isVisible={imageError.isVisible}
+        type="error"
+        message={`Failed to load image: ${imageError.url || "unknown"}. This may be because the file is missing or blocked by cross-origin policy.`}
+        onClose={() => setImageError({ isVisible: false })}
+      />
+
+      <PopupAlert
+        isVisible={testPopup}
+        type="info"
+        message="This is a test popup. The popup component is working correctly."
+        onClose={() => setTestPopup(false)}
+      />
     </div>
   );
 };

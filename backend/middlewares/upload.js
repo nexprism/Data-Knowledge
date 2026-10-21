@@ -2,6 +2,8 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+import { createR2Storage, isR2Configured } from '../services/r2Service.js';
+
 // Allowed mime types for images and common documents
 const ALLOWED_MIME = [
   'image/png',
@@ -24,7 +26,7 @@ const ALLOWED_MIME = [
   'audio/webm'
 ];
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const today = new Date().toISOString().slice(0, 10);
     const dir = path.join(process.cwd(), 'uploads', 'course', today);
@@ -37,6 +39,19 @@ const storage = multer.diskStorage({
   }
 });
 
+const r2Storage = createR2Storage({
+  destination: (req, file, cb) => {
+    const today = new Date().toISOString().slice(0, 10);
+    cb(null, `uploads/course/${today}`);
+  },
+  filename: (req, file, cb) => {
+    const safe = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+    cb(null, safe);
+  }
+});
+
+const storage = isR2Configured() ? r2Storage : diskStorage;
+
 const fileFilter = (req, file, cb) => {
   if (ALLOWED_MIME.includes(file.mimetype)) cb(null, true);
   else cb(new Error('Unsupported file type'), false);
@@ -47,3 +62,4 @@ export default multer({
   fileFilter,
   limits: { fileSize: 20 * 1024 * 1024 } // 20 MB per file
 });
+
