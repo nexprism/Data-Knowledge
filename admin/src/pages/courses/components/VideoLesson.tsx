@@ -32,11 +32,12 @@ interface RootState {
   };
 }
 
-// Fixed props interface to include fileId
+// Fixed props interface to include fileId and videoData
 type VideoLessonProps = {
   lessonId: string;
   videoId?: string;
   fileId?: string; // Added this missing prop
+  videoData?: any;
   onClose: () => void;
   onSaveSuccess?: (data: any) => void;
 };
@@ -181,6 +182,7 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
   lessonId,
   videoId,
   fileId,
+  videoData,
   onClose,
   onSaveSuccess,
 }) => {
@@ -213,6 +215,36 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
     message: "",
     type: "",
   });
+
+  const getYouTubeVideoId = (url: string): string => {
+    const match = url?.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/
+    );
+    return match ? match[1] : "";
+  };
+
+  useEffect(() => {
+    if (videoData) {
+      setIsEditMode(true);
+      const isYt =
+        videoData.youtubeUrl ||
+        videoData.url?.includes("youtube") ||
+        videoData.url?.includes("youtu.be");
+      setForm((prev) => ({
+        ...prev,
+        title: videoData.title || videoData.name || prev.title,
+        description: videoData.description || prev.description,
+        sourcePlatform:
+          videoData.sourcePlatform || (isYt ? "youtube" : prev.sourcePlatform || "videocypher"),
+        youtubeUrl:
+          videoData.youtubeUrl || (isYt ? videoData.url : prev.youtubeUrl),
+        secureUrl: videoData.secureUrl || videoData.url || prev.secureUrl,
+        videoId: videoData.videoId || prev.videoId,
+        vdocipherVideoId: videoData.videoId || prev.vdocipherVideoId,
+        quality: videoData.quality || prev.quality,
+      }));
+    }
+  }, [videoData]);
 
   const [uploadProgress, setUploadProgress] = useState({
     isVisible: false,
@@ -290,33 +322,43 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
     try {
       setIsEditMode(true);
       const response = await axiosInstance.get(`/video/${fileId}`);
-      const videoData = response.data.data;
+      const fetchedData = response.data?.data || response.data?.video || response.data;
       
-      setForm({
-        title: videoData.title || "",
-        description: videoData.description || "",
-        sourcePlatform: videoData.sourcePlatform || "",
-        file: null,
-        videoId: videoData.videoId || "", // VdoCipher video ID
-        secureUrl: videoData.secureUrl || "",
-        embedUrl: videoData.secureUrl || "", // Use secureUrl for embed
-        originalUrl: videoData.secureUrl || "",
-        youtubeUrl: videoData.youtubeUrl || "",
-        vdocipherVideoId: videoData.videoId || "", // Set for existing video ID mode
-        uploadMethod: videoData.uploadMethod === "existing_video_id" ? "videoId" : "file",
-        thumbnail: videoData.thumbnail || "",
-        quality: videoData.quality || "auto",
-        status: videoData.status || "",
-      });
+      if (fetchedData) {
+        setForm({
+          title: fetchedData.title || "",
+          description: fetchedData.description || "",
+          sourcePlatform:
+            fetchedData.sourcePlatform ||
+            (fetchedData.youtubeUrl ? "youtube" : "videocypher"),
+          file: null,
+          videoId: fetchedData.videoId || "", // VdoCipher video ID
+          secureUrl: fetchedData.secureUrl || "",
+          embedUrl: fetchedData.secureUrl || "", // Use secureUrl for embed
+          originalUrl: fetchedData.secureUrl || "",
+          youtubeUrl: fetchedData.youtubeUrl || "",
+          vdocipherVideoId: fetchedData.videoId || "", // Set for existing video ID mode
+          uploadMethod:
+            fetchedData.uploadMethod === "existing_video_id" ||
+            (!fetchedData.secureUrl && fetchedData.videoId)
+              ? "videoId"
+              : "file",
+          thumbnail: fetchedData.thumbnail || "",
+          quality: fetchedData.quality || "auto",
+          status: fetchedData.status || "",
+        });
+      }
       
-      console.log("Fetched VdoCipher video data:", videoData);
+      console.log("Fetched VdoCipher video data:", fetchedData);
     } catch (error) {
       console.error("Error fetching video data:", error);
-      setPopup({
-        isVisible: true,
-        message: "Failed to fetch video data",
-        type: "error",
-      });
+      if (!videoData) {
+        setPopup({
+          isVisible: true,
+          message: "Failed to fetch video data",
+          type: "error",
+        });
+      }
     }
   };
 
@@ -737,10 +779,21 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
             </div>
           )}
           {form.youtubeUrl && isValidYouTubeUrl(form.youtubeUrl) && (
-            <div className="flex items-center gap-2 text-green-600 text-sm">
-              <CheckCircle2 className="w-4 h-4" />
-              Valid YouTube URL detected
-            </div>
+            <>
+              <div className="flex items-center gap-2 text-green-600 text-sm">
+                <CheckCircle2 className="w-4 h-4" />
+                Valid YouTube URL detected
+              </div>
+              <div className="mt-3 rounded-xl overflow-hidden border border-gray-200 shadow-sm aspect-video bg-black">
+                <iframe
+                  src={`https://www.youtube.com/embed/${getYouTubeVideoId(form.youtubeUrl)}`}
+                  title={form.title || "YouTube Preview"}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </>
           )}
         </div>
       );
@@ -922,34 +975,34 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
 
   return (
     <>
-      <div className="bg-white lg:w-[800px] rounded-2xl max-w-4xl w-full mx-auto shadow-2xl max-h-[700px] overflow-scroll">
+      <div className="bg-white rounded-2xl max-w-4xl w-full mx-auto shadow-2xl max-h-[85vh] overflow-y-auto relative flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#1b6294] to-[#16517a] p-6 text-white">
+        <div className="bg-gradient-to-r from-[#1b6294] to-[#16517a] p-6 text-white sticky top-0 z-20">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                <FileVideo className="w-6 h-6 text-black" />
+                <FileVideo className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold">
-                  {isEditMode ? "Edit Video Lesson" : "Upload Video Lesson"}
+                  {isEditMode ? "Video Lesson Details" : "Upload Video Lesson"}
                 </h2>
                 <p className="text-blue-100 text-sm">
-                  {isEditMode ? "Update your video content" : "Add a new video to your lesson"}
+                  {isEditMode ? "View or update your video content" : "Add a new video to your lesson"}
                 </p>
               </div>
             </div>
             <button
               onClick={handleClose}
-              className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center hover:bg-opacity-30 transition-all"
+              className="w-8 h-8 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg flex items-center justify-center transition-all text-white"
             >
-              <X className="w-5 h-5 text-black" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 pb-36">
+        <div className="p-6 space-y-6">
           {/* Title */}
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-gray-700">
@@ -1052,8 +1105,8 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
         </div>
         
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row items-start fixed bottom-0 w-full justify-between items-center">
-          <div className="text-sm text-gray-600">
+        <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between w-full sticky bottom-0 z-20 mt-auto">
+          <div className="text-sm text-gray-600 mb-2 sm:mb-0">
             * Required fields
           </div>
           <div className="flex gap-3">

@@ -712,6 +712,7 @@ const CourseAccordion = ({ courseId }) => {
                     targetType: dripModalData.targetType,
                     targetId: dripModalData.targetId,
                   }}
+                  courseData={{ modules }}
                   targetType={dripModalData.targetType}
                   targetId={dripModalData.targetId}
                 />
@@ -763,6 +764,7 @@ const CourseAccordion = ({ courseId }) => {
                       targetId: moduleDripModal.targetId,
                     },
                   ]}
+                  courseData={{ module: moduleDripModal.module, modules }}
                   targetType="lesson"
                   targetId={moduleDripModal.targetId}
                 />

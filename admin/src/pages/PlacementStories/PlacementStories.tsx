@@ -23,7 +23,7 @@ import {
   CheckCircle,
   AlertCircle,
   X,
-  Upload,
+  // Upload, // COMMENTED OUT — banner/thumbnail upload removed (stories are video only)
   Play,
   Heart,
   MessageCircle,
@@ -64,9 +64,10 @@ const PlacementStoriesPage: React.FC = () => {
     isActive: true,
   });
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // Banner / thumbnail upload state — COMMENTED OUT (stories are video only, no banner)
+  // const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [externalImageUrl, setExternalImageUrl] = useState<string>('');
+  // const [externalImageUrl, setExternalImageUrl] = useState<string>('');
 
   const VITE_IMAGE_URL = IMAGE_BASE_URL;
 
@@ -105,9 +106,9 @@ const PlacementStoriesPage: React.FC = () => {
       order: stories.length + 1,
       isActive: true,
     });
-    setSelectedFile(null);
     setPreviewUrl('');
-    setExternalImageUrl('');
+    // setSelectedFile(null);
+    // setExternalImageUrl('');
     setIsModalOpen(true);
   };
 
@@ -126,32 +127,34 @@ const PlacementStoriesPage: React.FC = () => {
       order: story.order || 0,
       isActive: story.isActive !== false,
     });
-    setSelectedFile(null);
-    setPreviewUrl(story.thumbnail ? getImageUrl(story.thumbnail) : '');
-    setExternalImageUrl(
-      story.thumbnail && (story.thumbnail.startsWith('http://') || story.thumbnail.startsWith('https://'))
-        ? story.thumbnail
-        : ''
-    );
+    setPreviewUrl('');
+    // setSelectedFile(null);
+    // setExternalImageUrl(
+    //   story.thumbnail && (story.thumbnail.startsWith('http://') || story.thumbnail.startsWith('https://'))
+    //     ? story.thumbnail
+    //     : ''
+    // );
     setIsModalOpen(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setExternalImageUrl('');
-    }
-  };
+  // Banner file picker handler — COMMENTED OUT (no banner upload)
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     const file = e.target.files[0];
+  //     setSelectedFile(file);
+  //     setPreviewUrl(URL.createObjectURL(file));
+  //     setExternalImageUrl('');
+  //   }
+  // };
 
-  const handleExternalUrlChange = (url: string) => {
-    setExternalImageUrl(url);
-    if (url) {
-      setSelectedFile(null);
-      setPreviewUrl(url);
-    }
-  };
+  // Banner external URL handler — COMMENTED OUT (no banner upload)
+  // const handleExternalUrlChange = (url: string) => {
+  //   setExternalImageUrl(url);
+  //   if (url) {
+  //     setSelectedFile(null);
+  //     setPreviewUrl(url);
+  //   }
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,11 +172,12 @@ const PlacementStoriesPage: React.FC = () => {
     data.append('order', String(formData.order));
     data.append('isActive', String(formData.isActive));
 
-    if (selectedFile) {
-      data.append('thumbnail', selectedFile);
-    } else if (externalImageUrl) {
-      data.append('thumbnail', externalImageUrl);
-    }
+    // Banner / thumbnail upload — COMMENTED OUT (stories are video only, no banner)
+    // if (selectedFile) {
+    //   data.append('thumbnail', selectedFile);
+    // } else if (externalImageUrl) {
+    //   data.append('thumbnail', externalImageUrl);
+    // }
 
     if (editingStory) {
       await dispatch(updatePlacementStory({ id: editingStory._id, formData: data }));
@@ -692,12 +696,14 @@ const PlacementStoriesPage: React.FC = () => {
 
                 {/* Live Card Preview & Upload Column (5 cols) */}
                 <div className="lg:col-span-5 space-y-4">
+                  {/* Banner / Thumbnail Image uploader — COMMENTED OUT (stories are video only, no banner) */}
+                  {/*
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                       Thumbnail Image
                     </label>
 
-                    {/* File Upload Dropzone */}
+                    // File Upload Dropzone
                     <div className="p-4 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-center hover:border-purple-500 transition-colors">
                       <input
                         type="file"
@@ -728,6 +734,7 @@ const PlacementStoriesPage: React.FC = () => {
                       />
                     </div>
                   </div>
+                  */}
 
                   {/* Live Instagram Card Preview */}
                   <div>

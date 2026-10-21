@@ -1104,7 +1104,7 @@ const EditCourse = () => {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 p-4 lg:p-8">
+        <div className="flex-1 min-w-0 p-4 lg:p-8">
           {/* Mobile Sidebar Toggle */}
           <button
             className="lg:hidden mb-4 p-2 bg-blue-600 text-white rounded-lg"

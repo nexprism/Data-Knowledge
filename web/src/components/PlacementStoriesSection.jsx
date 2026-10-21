@@ -157,12 +157,13 @@ const PlacementStoriesSection = () => {
     }
   }
 
-  const getStoryImageUrl = (thumbnail) => {
-    if (!thumbnail) return ''
-    if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail
-    if (thumbnail.startsWith('data:')) return thumbnail
-    return `${VITE_IMAGE_URL}/uploads/${thumbnail.replace(/^uploads\//, '')}`
-  }
+  // Banner / cover image helper — COMMENTED OUT (stories render video only, no banner)
+  // const getStoryImageUrl = (thumbnail) => {
+  //   if (!thumbnail) return ''
+  //   if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail
+  //   if (thumbnail.startsWith('data:')) return thumbnail
+  //   return `${VITE_IMAGE_URL}/uploads/${thumbnail.replace(/^uploads\//, '')}`
+  // }
 
   const getStoryVideoUrl = (video) => {
     if (!video) return ''
@@ -239,7 +240,8 @@ const PlacementStoriesSection = () => {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {displayStories.map((story, index) => {
-            const imageUrl = getStoryImageUrl(story.thumbnail)
+            // Banner / thumbnail url — COMMENTED OUT (video only, no banner)
+            // const imageUrl = getStoryImageUrl(story.thumbnail)
             const isPlaying = playingId === getStoryId(story)
             const embedUrl = getInstagramEmbedUrl(story.instagramUrl)
 
@@ -283,13 +285,14 @@ const PlacementStoriesSection = () => {
 
                 {/* 2. Visual Story / Reel Viewport */}
                 <div className="relative flex-1 w-full bg-slate-900 overflow-hidden">
-                  {isPlaying && story.video ? (
-                    /* Inline HTML5 player — plays directly in the card, no modal */
+                  {story.video ? (
+                    /* Inline HTML5 player — video plays directly in the card, no modal.
+                       Banner / poster removed (poster={imageUrl} commented out) — video only. */
                     <video
                       src={getStoryVideoUrl(story.video)}
-                      poster={imageUrl}
                       controls
                       autoPlay
+                      muted
                       playsInline
                       loop
                       onClick={(e) => e.stopPropagation()}
@@ -308,24 +311,27 @@ const PlacementStoriesSection = () => {
                     />
                   ) : (
                     <>
-                  {/* Thumbnail Image */}
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={story.studentName}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-center">
-                      <div className="w-16 h-16 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3">
-                        <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polygon points="5 3 19 12 5 21 5 3" />
-                        </svg>
-                      </div>
-                      <h4 className="text-lg font-bold text-white">{story.studentName}</h4>
-                      <p className="text-xs text-pink-300 mt-1">{story.company}</p>
+                  {/* Banner / Thumbnail Image — COMMENTED OUT (stories show the video only, no banner) */}
+                  {/*
+                    imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={story.studentName}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                      />
+                    ) : null
+                  */}
+
+                  {/* Fallback cover — only used when the story has no video */}
+                  <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-center">
+                    <div className="w-16 h-16 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3">
+                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
                     </div>
-                  )}
+                    <h4 className="text-lg font-bold text-white">{story.studentName}</h4>
+                    <p className="text-xs text-pink-300 mt-1">{story.company}</p>
+                  </div>
 
                   {/* Vignette Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/50 pointer-events-none" />

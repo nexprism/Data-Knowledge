@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Calendar,
   Clock,
@@ -140,6 +140,30 @@ const DripPopup = ({
   const [edit, setEdit] = useState(false);
 
   const [activeCategory, setActiveCategory] = useState("all");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [multiSelectOpen, setMultiSelectOpen] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
+
+  const dropdownRef = useRef(null);
+  const multiSelectRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+      if (
+        multiSelectRef.current &&
+        !multiSelectRef.current.contains(event.target)
+      ) {
+        setMultiSelectOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Always use the latest drip rule from API, not just initialData
   const getInitialForm = () => ({
@@ -159,8 +183,10 @@ const DripPopup = ({
   // Always fetch latest drip rule from API when popup opens (targetId changes)
   const getData = async () => {
     try {
+      const idToFetch = Array.isArray(targetId) ? targetId[0] : targetId;
+      if (!idToFetch) return;
       const result = await axiosInstance.get(
-        `/drip/drip-rules/by-reference/${targetId}`
+        `/drip/drip-rules/by-reference/${idToFetch}`
       );
       // Support both array and object API responses
       const data =
@@ -219,7 +245,7 @@ const DripPopup = ({
     dispatch(fetchCourseContents());
   }, [dispatch]);
 
-  console.log("Initial Data:", initialData[0]?.dripType);
+  console.log("Initial Data:", Array.isArray(initialData) ? initialData[0]?.dripType : initialData?.dripType);
 
   // Update form state for multi-select
   const handleMultiSelectChange = (value) => {
@@ -305,22 +331,34 @@ const DripPopup = ({
   };
 
   const getDropdownOptions = () => {
-    if (!course) return [];
+    const courseContent = course || courseData;
+    if (!courseContent) return [];
+
+    const modules = courseContent.modules || courseContent.data?.modules || [];
+    let lessons = courseContent.lessons || courseContent.data?.lessons || [];
+    if (lessons.length === 0 && modules.length > 0) {
+      lessons = modules.flatMap((m) =>
+        (m.lessons || []).map((l) => ({
+          ...l,
+          moduleId: l.moduleId || m,
+        }))
+      );
+    }
 
     if (form.referenceType === "module") {
       return (
-        course.modules?.map((module) => ({
-          value: module._id,
-          label: module.title,
-          sublabel: `Course: ${module.courseId?.title || "Unknown"} | Order: ${
-            module.order
+        modules.map((module) => ({
+          value: module._id || module.id,
+          label: module.title || module.name || "Untitled Module",
+          sublabel: `Course: ${module.courseId?.title || "Course"} | Order: ${
+            module.order ?? "-"
           }`,
         })) || []
       );
     }
 
     if (form.referenceType === "lesson") {
-      let filteredLessons = course.lessons || [];
+      let filteredLessons = lessons;
 
       if (form.dripType === "after_quiz_passed") {
         filteredLessons = filteredLessons.filter(
@@ -335,20 +373,24 @@ const DripPopup = ({
         form.dripType === "days_after_lesson_completed"
       ) {
         filteredLessons = filteredLessons.filter(
-          (lesson) => lesson.type === "video-lesson"
+          (lesson) =>
+            lesson.type === "video-lesson" ||
+            lesson.type === "video" ||
+            lesson.type === "text" ||
+            !lesson.type
         );
       }
 
       return filteredLessons.map((lesson) => {
-        const module = course.modules?.find(
-          (m) => m._id === lesson.moduleId._id
-        );
+        const lessonModId =
+          lesson.moduleId?._id || lesson.moduleId?.id || lesson.moduleId;
+        const module = modules.find((m) => (m._id || m.id) === lessonModId);
         return {
-          value: lesson._id,
-          label: lesson.title,
-          sublabel: `Type: ${lesson.type} | Module: ${
-            module?.title || "Unknown"
-          } | Order: ${lesson.order}`,
+          value: lesson._id || lesson.id,
+          label: lesson.title || lesson.name || "Untitled Lesson",
+          sublabel: `Type: ${lesson.type || "video"} | Module: ${
+            module?.title || module?.name || "Unknown"
+          } | Order: ${lesson.order ?? "-"}`,
         };
       });
     }
@@ -408,33 +450,59 @@ const DripPopup = ({
 
   // Get lesson options for multi-select
   const getLessonMultiSelectOptions = () => {
-    if (!course) return [];
-    return (course.lessons || []).map((lesson) => ({
-      value: lesson._id,
-      label: lesson.title,
+    if (courseData?.module?.lessons) {
+      return courseData.module.lessons.map((lesson) => ({
+        value: lesson._id || lesson.id,
+        label: lesson.title || lesson.name || "Untitled Lesson",
+      }));
+    }
+    const courseContent = course || courseData;
+    if (!courseContent) return [];
+    const modules = courseContent.modules || courseContent.data?.modules || [];
+    let lessons = courseContent.lessons || courseContent.data?.lessons || [];
+    if (lessons.length === 0 && modules.length > 0) {
+      lessons = modules.flatMap((m) => m.lessons || []);
+    }
+    return lessons.map((lesson) => ({
+      value: lesson._id || lesson.id,
+      label: lesson.title || lesson.name || "Untitled Lesson",
     }));
   };
 
-  // Add handleChange function (was missing)
+  const handleSelectDripType = (dripTypeValue) => {
+    let nextRefType = form.referenceType;
+    if (dripTypeValue === "days_after_enrollment") {
+      nextRefType = "enrollment";
+    } else if (dripTypeValue === "specific_date") {
+      nextRefType = "date";
+    } else if (
+      !nextRefType ||
+      nextRefType === "enrollment" ||
+      nextRefType === "date"
+    ) {
+      nextRefType = "lesson";
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      dripType: dripTypeValue,
+      referenceType: nextRefType,
+      referenceId: prev.dripType !== dripTypeValue ? "" : prev.referenceId,
+    }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "dripType") {
+      handleSelectDripType(value);
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       [name]: value,
+      ...(name === "referenceType" ? { referenceId: "" } : {}),
     }));
-
-    // Reset referenceId when reference type changes
-    if (name === "referenceType") {
-      setForm((prev) => ({
-        ...prev,
-        referenceId: "",
-      }));
-    }
   };
-
-  // Add missing state for multiSelectOpen and selectAll
-  const [multiSelectOpen, setMultiSelectOpen] = useState(false);
-  const [selectAll, setSelectAll] = useState(false);
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -495,9 +563,7 @@ const DripPopup = ({
                         ? "border-[#1b6294] bg-blue-50/50 dark:bg-white/[0.1] shadow-md"
                         : "border-gray-200 hover:border-blue-300"
                     }`}
-                    onClick={() =>
-                      setForm((prev) => ({ ...prev, dripType: type.value }))
-                    }
+                    onClick={() => handleSelectDripType(type.value)}
                   >
                     <div className="flex items-start space-x-3">
                       <div
@@ -609,19 +675,19 @@ const DripPopup = ({
 
               {/* Reference ID Dropdown - Only show if reference type is lesson or module */}
               {shouldShowReferenceTypeSelection() &&
-                (form.referenceType !== "lesson" ||
-                  form.referenceType !== "module") && (
+                (form.referenceType === "lesson" ||
+                  form.referenceType === "module") && (
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-gray-900 dark:text-white/90">
                       {form.referenceType === "lesson"
                         ? "Select Lesson"
                         : "Select Module"}
                     </label>
-                    <div className="relative">
+                    <div className="relative" ref={dropdownRef}>
                       <button
                         type="button"
                         onClick={() => setDropdownOpen(!dropdownOpen)}
-                        className="w-full px-4 py-3 border dark:text-white/70 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-white/[0.03] text-left flex sm:flex-row items-center sm:items-center justify-between gap-4"
+                        className="w-full px-4 py-3 border dark:text-white/70 border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-white/[0.03] text-left flex sm:flex-row items-center sm:items-center justify-between gap-4"
                       >
                         <span
                           className={
@@ -640,13 +706,13 @@ const DripPopup = ({
                       </button>
 
                       {dropdownOpen && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                           {loading ? (
-                            <div className="px-4 py-3 text-gray-500 text-center">
+                            <div className="px-4 py-3 text-gray-500 dark:text-white/60 text-center">
                               Loading...
                             </div>
                           ) : getDropdownOptions().length === 0 ? (
-                            <div className="px-4 py-3 text-gray-500 text-center">
+                            <div className="px-4 py-3 text-gray-500 dark:text-white/60 text-center">
                               {form.dripType === "after_quiz_passed"
                                 ? "No quizzes available"
                                 : form.dripType === "after_assignment_submitted"
@@ -657,10 +723,10 @@ const DripPopup = ({
                             getDropdownOptions().map((option) => (
                               <div
                                 key={option.value}
-                                className={`px-4 py-3 cursor-pointer hover:bg-purple-50 border-b border-gray-100 last:border-b-0 transition-colors duration-150 ${
+                                className={`px-4 py-3 cursor-pointer hover:bg-purple-50 dark:hover:bg-white/[0.05] border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors duration-150 ${
                                   form.referenceId === option.value
-                                    ? "bg-purple-50 text-purple-700"
-                                    : "text-gray-900"
+                                    ? "bg-purple-50 dark:bg-white/[0.08] text-purple-700 dark:text-purple-300 font-medium"
+                                    : "text-gray-900 dark:text-white/90"
                                 }`}
                                 onClick={() => {
                                   setForm((prev) => ({
@@ -673,7 +739,7 @@ const DripPopup = ({
                                 <div className="font-medium">
                                   {option.label}
                                 </div>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm text-gray-600 dark:text-white/60">
                                   {option.sublabel}
                                 </div>
                               </div>
@@ -686,16 +752,16 @@ const DripPopup = ({
                 )}
 
               {/* Multi-select for lessons as targetId */}
-              {form.targetType === "lesson" && (
+              {form.targetType === "lesson" && Array.isArray(form.targetId) && (
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-gray-900 dark:text-white/90">
                     Select Lessons to Apply Drip (Multi-select)
                   </label>
-                  <div className="relative">
+                  <div className="relative" ref={multiSelectRef}>
                     <button
                       type="button"
                       onClick={() => setMultiSelectOpen(!multiSelectOpen)}
-                      className="w-full px-4 py-3 border dark:text-white/70 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-white/[0.03] text-left flex sm:flex-row items-center sm:items-center justify-between gap-4"
+                      className="w-full px-4 py-3 border dark:text-white/70 border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-white/[0.03] text-left flex sm:flex-row items-center sm:items-center justify-between gap-4"
                     >
                       <span>
                         {Array.isArray(form.targetId) && form.targetId.length > 0
@@ -709,8 +775,8 @@ const DripPopup = ({
                       />
                     </button>
                     {multiSelectOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <div className="px-4 py-2 border-b border-gray-100 flex items-center">
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center">
                           <input
                             type="checkbox"
                             checked={selectAll}
@@ -718,14 +784,14 @@ const DripPopup = ({
                             className="mr-2"
                             id="select-all-lessons"
                           />
-                          <label htmlFor="select-all-lessons" className="text-sm font-medium">
+                          <label htmlFor="select-all-lessons" className="text-sm font-medium text-gray-900 dark:text-white/90">
                             Select All
                           </label>
                         </div>
                         {getLessonMultiSelectOptions().map((option) => (
                           <div
                             key={option.value}
-                            className="px-4 py-2 flex items-center cursor-pointer hover:bg-purple-50 border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+                            className="px-4 py-2 flex items-center cursor-pointer hover:bg-purple-50 dark:hover:bg-white/[0.05] border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors duration-150 text-gray-900 dark:text-white/90"
                             onClick={() => handleMultiSelectChange(option.value)}
                           >
                             <input
