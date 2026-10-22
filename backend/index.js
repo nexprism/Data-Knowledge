@@ -578,16 +578,20 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start server and initialize DB + Redis
+// Start server after initializing DB + Redis
 const PORT = process.env.PORT || ServerConfig.port || 4000;
 
-server.listen(PORT, async () => {
+const startServer = async () => {
   try {
     await connectToDatabase();
     await initRedis();
-    console.log(`🚀 Server + WebSocket running on port ${PORT}`);
+    server.listen(PORT, () => {
+      console.log(`🚀 Server + WebSocket running on port ${PORT}`);
+    });
   } catch (error) {
     console.error('❌ Error starting server:', error);
     process.exit(1);
   }
-});
+};
+
+startServer();

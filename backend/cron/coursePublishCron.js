@@ -1,10 +1,16 @@
 import cron from 'node-cron';
+import mongoose from 'mongoose';
 import Course from '../models/Course.js';
 
 // Auto-publish scheduled courses
 // Runs every minute to check if any course has reached its scheduled publishDate
 cron.schedule('* * * * *', async () => {
   try {
+    // Skip if MongoDB is not connected yet
+    if (mongoose.connection.readyState !== 1) {
+      return;
+    }
+
     const now = new Date();
     const result = await Course.updateMany(
       {

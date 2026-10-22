@@ -37,7 +37,11 @@ if (serviceAccount && !admin.apps.length) {
     console.error("❌ Error initializing Firebase Admin:", err.message);
   }
 } else if (!serviceAccount) {
-  console.warn("⚠️ Firebase credentials missing. Set FIREBASE_SERVICE_ACCOUNT env variable on Render or provide config/firebase-service-account.json");
+  if (process.env.NODE_ENV === "production") {
+    console.warn("⚠️ Firebase credentials missing. Set FIREBASE_SERVICE_ACCOUNT env variable on Render or provide config/firebase-service-account.json");
+  } else {
+    console.log("ℹ️ Firebase credentials missing (optional in local dev, push notifications disabled).");
+  }
 }
 
 export default admin;

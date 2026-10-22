@@ -8,7 +8,7 @@ const NewsSchema = new mongoose.Schema(
     en_articleTitle: { type: String, trim: true },
     coloredHeading: { type: String, trim: true },
     restHeading: { type: String, trim: true },
-    slug: { type: String, unique: true, index: true, sparse: true },
+    slug: { type: String, unique: true, sparse: true },
 
     // Content fields
     summary: String,

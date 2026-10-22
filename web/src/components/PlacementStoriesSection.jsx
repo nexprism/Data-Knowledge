@@ -15,25 +15,11 @@ const PlacementStoriesSection = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
 
-  // Inline playback state (video plays directly inside the card, no modal)
-  const [playingId, setPlayingId] = useState(null)
-
   const VITE_IMAGE_URL = getApiBaseUrl()
 
   useEffect(() => {
     dispatch(fetchPlacementStories())
   }, [dispatch])
-
-  // ESC key stops inline playback
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setPlayingId(null)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   // Fallback seed stories if API is still connecting
   const displayStories =
@@ -157,13 +143,6 @@ const PlacementStoriesSection = () => {
     }
   }
 
-  // Banner / cover image helper — COMMENTED OUT (stories render video only, no banner)
-  // const getStoryImageUrl = (thumbnail) => {
-  //   if (!thumbnail) return ''
-  //   if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail
-  //   if (thumbnail.startsWith('data:')) return thumbnail
-  //   return `${VITE_IMAGE_URL}/uploads/${thumbnail.replace(/^uploads\//, '')}`
-  // }
 
   const getStoryVideoUrl = (video) => {
     if (!video) return ''
@@ -181,12 +160,6 @@ const PlacementStoriesSection = () => {
     return ''
   }
 
-  const getStoryId = (story) => story._id || story.instagramUrl || story.studentName
-
-  const handleCardClick = (story) => {
-    const id = getStoryId(story)
-    setPlayingId((prev) => (prev === id ? null : id))
-  }
 
   return (
     <section
@@ -240,190 +213,40 @@ const PlacementStoriesSection = () => {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {displayStories.map((story, index) => {
-            // Banner / thumbnail url — COMMENTED OUT (video only, no banner)
-            // const imageUrl = getStoryImageUrl(story.thumbnail)
-            const isPlaying = playingId === getStoryId(story)
             const embedUrl = getInstagramEmbedUrl(story.instagramUrl)
 
             return (
               <div
                 key={story._id || index}
-                onClick={() => handleCardClick(story)}
-                className="story-card-item group relative flex-shrink-0 w-[290px] sm:w-[320px] md:w-[340px] aspect-[9/15] rounded-3xl bg-white border border-gray-200/90 hover:border-pink-400/80 overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_16px_40px_rgba(236,72,153,0.18)] transition-all duration-500 hover:-translate-y-2 snap-start flex flex-col cursor-pointer select-none"
+                className="story-card-item flex-shrink-0 w-[300px] sm:w-[325px] md:w-[340px] h-[520px] sm:h-[560px] rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-1.5 snap-start bg-slate-900 border border-gray-100"
               >
-                {/* 1. Top Instagram Header Bar */}
-                <div className="px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between z-20">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {/* Instagram Avatar Gradient Ring */}
-                    <div className="w-7 h-7 rounded-full p-[1.5px] bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shrink-0 shadow-sm">
-                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                        <svg className="w-3.5 h-3.5 text-pink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Handle & Subtitle */}
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-900 tracking-wide truncate group-hover:text-pink-600 transition-colors">
-                        @{story.handle || 'learn.with.rushikesh'}
-                      </p>
-                      <p className="text-[9px] text-gray-500 font-jetbrains tracking-wider">Original audio</p>
-                    </div>
-                  </div>
-
-                  {/* Play / Watch Badge */}
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-gradient-to-r from-pink-600 to-purple-600 group-hover:from-pink-500 group-hover:to-purple-500 transition-colors shrink-0 shadow-sm flex items-center gap-1">
-                    <svg className="w-2.5 h-2.5 fill-white" viewBox="0 0 24 24">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                    Play Video
-                  </span>
-                </div>
-
-                {/* 2. Visual Story / Reel Viewport */}
-                <div className="relative flex-1 w-full bg-slate-900 overflow-hidden">
-                  {story.video ? (
-                    /* Inline HTML5 player — video plays directly in the card, no modal.
-                       Banner / poster removed (poster={imageUrl} commented out) — video only. */
-                    <video
-                      src={getStoryVideoUrl(story.video)}
-                      controls
-                      autoPlay
-                      muted
-                      playsInline
-                      loop
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute inset-0 w-full h-full object-cover bg-black"
-                    />
-                  ) : isPlaying && embedUrl ? (
-                    /* Inline Instagram embed — no modal */
-                    <iframe
-                      src={embedUrl}
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute inset-0 w-full h-full border-0 bg-black"
-                      allowFullScreen
-                      scrolling="no"
-                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                      title={story.studentName}
-                    />
-                  ) : (
-                    <>
-                  {/* Banner / Thumbnail Image — COMMENTED OUT (stories show the video only, no banner) */}
-                  {/*
-                    imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={story.studentName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                      />
-                    ) : null
-                  */}
-
-                  {/* Fallback cover — only used when the story has no video */}
-                  <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-center">
-                    <div className="w-16 h-16 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3">
-                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                    </div>
-                    <h4 className="text-lg font-bold text-white">{story.studentName}</h4>
-                    <p className="text-xs text-pink-300 mt-1">{story.company}</p>
-                  </div>
-
-                  {/* Vignette Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/50 pointer-events-none" />
-
-                  {/* Top Overlay Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-1.5 z-10">
-                    {story.companyBadge && (
-                      <span className="text-[10px] font-bold font-jetbrains px-2.5 py-0.5 rounded-md bg-blue-600/90 text-white backdrop-blur-md shadow-sm">
-                        {story.companyBadge}
-                      </span>
-                    )}
-                    {story.badge && (
-                      <span className="text-[10px] font-bold font-jetbrains px-2.5 py-0.5 rounded-md bg-emerald-500/95 text-white backdrop-blur-md shadow-sm">
-                        {story.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Center Play Button Overlay (With Hover Glow Ripple) */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                    <div className="w-16 h-16 rounded-full bg-white/30 backdrop-blur-md border border-white/60 flex items-center justify-center text-white transition-all transform group-hover:scale-115 group-hover:bg-white/40 shadow-[0_0_30px_rgba(236,72,153,0.5)]">
-                      <svg className="w-7 h-7 fill-white ml-0.5" viewBox="0 0 24 24">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Inside Reel Student Placement Badge */}
-                  <div className="absolute bottom-3 left-3 right-3 z-10">
-                    <div className="p-3 rounded-2xl bg-black/65 backdrop-blur-md border border-white/15 group-hover:border-pink-500/40 transition-colors">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-extrabold font-jetbrains text-amber-300 uppercase tracking-wider">
-                          {story.company}
-                        </span>
-                        <span className="text-[9px] text-gray-200 font-jetbrains">
-                          {story.role}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-black text-white leading-tight">
-                        Congratulations {story.studentName}
-                      </h4>
-                      {story.caption && (
-                        <p className="text-[11px] text-gray-200 mt-1 line-clamp-2 font-jetbrains">
-                          "{story.caption}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                    </>
-                  )}
-                </div>
-
-                {/* 3. Bottom Instagram Action Bar */}
-                <div className="px-4 py-3 bg-white border-t border-gray-100 z-20">
-                  <div className="flex items-center justify-between mb-2">
-                    {/* Heart, Comment, Share */}
-                    <div className="flex items-center gap-3 text-gray-700">
-                      <svg className="w-5 h-5 text-rose-500 fill-rose-500/20 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                      </svg>
-                      <svg className="w-5 h-5 text-gray-700 hover:text-gray-900 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                      <svg className="w-5 h-5 text-gray-700 hover:text-gray-900 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="22" x2="11" y1="2" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                      </svg>
-                    </div>
-
-                    {/* Bookmark */}
-                    <svg className="w-5 h-5 text-gray-700 hover:text-gray-900 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-                    </svg>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] font-jetbrains">
-                    <span className="font-bold text-gray-900">{story.likesCount || '103 likes'}</span>
-                    <a
-                      href={story.instagramUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-pink-600 hover:text-pink-700 font-semibold flex items-center gap-1 z-30"
-                      title="Open in Instagram"
-                    >
-                      View on Instagram
-                      <svg className="w-3 h-3 hover:translate-x-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 17 17 7M7 7h10v10" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
+                {story.video ? (
+                  <video
+                    src={getStoryVideoUrl(story.video)}
+                    controls
+                    playsInline
+                    className="w-full h-full object-cover bg-black"
+                  />
+                ) : embedUrl ? (
+                  <iframe
+                    src={embedUrl}
+                    className="w-full h-full border-0 bg-black"
+                    allowFullScreen
+                    scrolling="no"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                    title={story.studentName || 'Instagram Story'}
+                  />
+                ) : (
+                  <a
+                    href={story.instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full h-full flex flex-col items-center justify-center p-6 text-white text-center bg-slate-900"
+                  >
+                    <p className="text-sm font-semibold">{story.studentName}</p>
+                    <span className="text-xs text-pink-400 mt-2">View on Instagram &rarr;</span>
+                  </a>
+                )}
               </div>
             )
           })}

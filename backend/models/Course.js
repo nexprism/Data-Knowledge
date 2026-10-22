@@ -356,7 +356,6 @@ courseSchema.set('toObject', { virtuals: true });
 courseSchema.set('toJSON', { virtuals: true });
 
 // Indexes
-courseSchema.index({ slug: 1 });
 courseSchema.index({ categoryId: 1 });
 courseSchema.index({ subCategoryId: 1 });
 courseSchema.index({ instructorId: 1 });

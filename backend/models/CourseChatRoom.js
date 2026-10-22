@@ -25,7 +25,6 @@ const courseChatRoomSchema = new mongoose.Schema({
   timestamps: true
 });
 
-courseChatRoomSchema.index({ courseId: 1 });
 courseChatRoomSchema.index({ participants: 1 });
 
 const CourseChatRoom = mongoose.model('CourseChatRoom', courseChatRoomSchema);

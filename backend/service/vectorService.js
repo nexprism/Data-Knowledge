@@ -6,7 +6,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const client = new QdrantClient({ url: process.env.QDRANT_URL || 'http://localhost:6333' });
+const client = new QdrantClient({
+    url: process.env.QDRANT_URL || 'http://localhost:6333',
+    checkCompatibility: false,
+});
 const COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'lms_knowledge';
 const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
 const VECTOR_SIZE = parseInt(process.env.OPENAI_EMBEDDING_DIMENSION) || 1536;

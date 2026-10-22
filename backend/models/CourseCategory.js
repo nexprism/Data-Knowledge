@@ -13,7 +13,4 @@ const courseCategorySchema = new mongoose.Schema({
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
-// Index for efficient querying by slug
-courseCategorySchema.index({ slug: 1 });
-
 export default mongoose.model('CourseCategory', courseCategorySchema);

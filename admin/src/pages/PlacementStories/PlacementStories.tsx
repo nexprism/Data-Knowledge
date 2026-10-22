@@ -766,10 +766,10 @@ const PlacementStoriesPage: React.FC = () => {
                         {previewUrl ? (
                           <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-white">
-                            <Instagram className="w-8 h-8 text-pink-400 mb-1 opacity-80" />
+                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-slate-900 text-white">
+                            <Instagram className="w-8 h-8 text-slate-400 mb-1 opacity-80" />
                             <p className="text-xs font-bold">{formData.studentName || 'Student Name'}</p>
-                            <p className="text-[10px] text-purple-300">{formData.company || 'Company'}</p>
+                            <p className="text-[10px] text-slate-400">{formData.company || 'Company'}</p>
                           </div>
                         )}
 
