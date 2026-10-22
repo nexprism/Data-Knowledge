@@ -664,51 +664,47 @@ const DashboardCoursePlayer = () => {
             }
         }
 
-        if (lesson.ismobileOnly && lesson.type !== 'quiz') {
-            setIsMobileModalOpen(true);
-        } else {
-            // Log lesson play event
-            trackEvent('play_lesson', {
-                lessonId: lesson._id || lesson.id,
-                title: lesson.title,
-                type: lesson.type || 'video',
-                courseId: currentCourse?._id || id,
-            });
+        // Log lesson play event
+        trackEvent('play_lesson', {
+            lessonId: lesson._id || lesson.id,
+            title: lesson.title,
+            type: lesson.type || 'video',
+            courseId: currentCourse?._id || id,
+        });
 
-            // notify server about last played video (include tokens)
-            try {
-                const videoId = lesson.videoLessons?.[0]?._id || lesson.videoLessons?.[0]?.id || lesson.videoLessonId || lesson.videoId || null;
-                if (videoId) {
-                    const body = JSON.stringify({ courseId: currentCourse._id || id, videoLessonId: videoId });
-                    const r = await authorizedFetch('/course-completion/update-last-video', { method: 'POST', body });
-                    if (r.status === 401) {
-                        console.warn('update-last-video returned 401');
-                    }
-                } else {
-                    console.warn('update-last-video skipped: no video id available for lesson', lesson._id || lesson.id);
+        // notify server about last played video (include tokens)
+        try {
+            const videoId = lesson.videoLessons?.[0]?._id || lesson.videoLessons?.[0]?.id || lesson.videoLessonId || lesson.videoId || null;
+            if (videoId) {
+                const body = JSON.stringify({ courseId: currentCourse._id || id, videoLessonId: videoId });
+                const r = await authorizedFetch('/course-completion/update-last-video', { method: 'POST', body });
+                if (r.status === 401) {
+                    console.warn('update-last-video returned 401');
                 }
-            } catch (e) {
-                console.warn('update-last-video error', e);
+            } else {
+                console.warn('update-last-video skipped: no video id available for lesson', lesson._id || lesson.id);
             }
-
-            if (lesson?.type === 'assignment') {
-                navigate(`/dashboard/assignment/${id}/${lesson._id || lesson.id}`);
-                return;
-            }
-
-            if (lesson?.type === 'text') {
-                navigate(`/dashboard/reading/${id}/${lesson._id || lesson.id}`);
-                return;
-            }
-
-            if (lesson?.type === 'quiz') {
-                navigate(`/dashboard/quiz/${id}/${lesson._id || lesson.id}`);
-                return;
-            }
-
-            setSelectedLesson(lesson);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) {
+            console.warn('update-last-video error', e);
         }
+
+        if (lesson?.type === 'assignment') {
+            navigate(`/dashboard/assignment/${id}/${lesson._id || lesson.id}`);
+            return;
+        }
+
+        if (lesson?.type === 'text') {
+            navigate(`/dashboard/reading/${id}/${lesson._id || lesson.id}`);
+            return;
+        }
+
+        if (lesson?.type === 'quiz') {
+            navigate(`/dashboard/quiz/${id}/${lesson._id || lesson.id}`);
+            return;
+        }
+
+        setSelectedLesson(lesson);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const extractYouTubeId = (url) => {

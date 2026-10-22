@@ -352,85 +352,146 @@ async handleVideoCypherUpload(videoFilePath, data, videoLessonId) {
     }
   }
 
- async updateVideoLesson(id, updateData, videoFilePath) {
-  try {
-    const videoLesson = await videoLessonRepository.findById(id);
-    if (!videoLesson) throw new Error("Video lesson not found");
-
-    // Handle VdoCipher video updates
-    if (videoLesson.sourcePlatform === "videocypher") {
-      // Check if updating with existing video ID
-      if (updateData.uploadMethod === 'existing_video_id' && updateData.videoId) {
-        //console.log(`🔗 Updating with existing VdoCipher video: ${updateData.videoId}`);
-        
-        const linkedVideoData = await VdoCipherService.linkExistingVideoSimple(updateData.videoId, {
-          lessonId: videoLesson.lessonId,
-          title: updateData.title || videoLesson.title,
-          description: updateData.description || videoLesson.description,
-          quality: updateData.quality || videoLesson.quality,
-          userId: updateData.uploadedBy || videoLesson.uploadedBy
-        });
-
-        updateData.secureUrl = linkedVideoData.secureUrl;
-        updateData.videoId = linkedVideoData.videoId;
-        updateData.thumbnail = linkedVideoData.thumbnail;
-        updateData.status = linkedVideoData.status;
-        updateData.uploadMethod = 'existing_video_id';
-        updateData.duration = linkedVideoData.duration;
-        updateData.size = linkedVideoData.size;
-        updateData.quality = linkedVideoData.quality;
+  async updateVideoLesson(id, updateData, videoFilePath) {
+    try {
+      let videoLesson = null;
+      if (mongoose.isValidObjectId(id)) {
+        videoLesson = await videoLessonRepository.findById(id);
       }
-      // Handle file replacement
-      else if (videoFilePath) {
-        if (!fs.existsSync(videoFilePath)) {
-          throw new Error(`Video file not found at path: ${videoFilePath}`);
+      if (!videoLesson && mongoose.isValidObjectId(id)) {
+        // Fallback: check if id is actually a lessonId
+        const byLesson = await videoLessonRepository.findByLessonId(id);
+        if (byLesson && byLesson.length > 0) {
+          videoLesson = byLesson[0];
         }
+      }
+      if (!videoLesson) throw new Error("Video lesson not found");
 
-        // Delete old video if it exists
-        if (videoLesson.videoId) {
-          try {
-            await videoCypherService.deleteVideo(videoLesson.videoId);
-          } catch (e) {
-            console.warn("Delete failed, continuing:", e.message);
+      const targetPlatform = updateData.sourcePlatform || videoLesson.sourcePlatform;
+      const resolvedFilePath = typeof videoFilePath === 'string'
+        ? videoFilePath
+        : (videoFilePath?.path || null);
+
+      // Handle VdoCipher video updates
+      if (targetPlatform === "videocypher") {
+        const vdoId = updateData.videoId || updateData.vdocipherVideoId;
+        // Check if updating with existing video ID
+        if ((updateData.uploadMethod === 'existing_video_id' || vdoId) && vdoId) {
+          const linkedVideoData = await VdoCipherService.linkExistingVideoSimple(vdoId.trim(), {
+            lessonId: videoLesson.lessonId,
+            title: updateData.title || videoLesson.title,
+            description: updateData.description || videoLesson.description,
+            quality: updateData.quality || videoLesson.quality,
+            userId: updateData.uploadedBy || videoLesson.uploadedBy
+          });
+
+          updateData.sourcePlatform = "videocypher";
+          updateData.secureUrl = linkedVideoData.secureUrl;
+          updateData.videoId = linkedVideoData.videoId;
+          updateData.thumbnail = linkedVideoData.thumbnail;
+          updateData.status = linkedVideoData.status;
+          updateData.uploadMethod = 'existing_video_id';
+          updateData.duration = linkedVideoData.duration;
+          updateData.size = linkedVideoData.size;
+          updateData.quality = linkedVideoData.quality;
+        }
+        // Handle file replacement
+        else if (resolvedFilePath) {
+          if (!fs.existsSync(resolvedFilePath)) {
+            throw new Error(`Video file not found at path: ${resolvedFilePath}`);
+          }
+
+          // Delete old video if it exists
+          if (videoLesson.videoId && videoLesson.sourcePlatform === 'videocypher') {
+            try {
+              await videoCypherService.deleteVideo(videoLesson.videoId);
+            } catch (e) {
+              console.warn("Delete failed, continuing:", e.message);
+            }
+          }
+
+          const uploadResult = await videoCypherService.uploadVideo({
+            file: { path: resolvedFilePath },
+            title: updateData.title || videoLesson.title,
+            description: updateData.description || videoLesson.description,
+            folderId: process.env.VIDEOCYPHER_FOLDER_ID,
+          });
+
+          updateData.sourcePlatform = "videocypher";
+          updateData.secureUrl = uploadResult.playbackUrl;
+          updateData.videoId = uploadResult.videoId;
+          updateData.thumbnail = uploadResult.thumbnail || "";
+          updateData.status = "ready";
+          updateData.uploadMethod = "file";
+        }
+      } else if (targetPlatform === "youtube") {
+        // Handle YouTube video updates
+        const ytUrl = updateData.youtubeUrl || updateData.secureUrl || updateData.originalUrl;
+        if (ytUrl) {
+          const urlPattern = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+          if (urlPattern.test(ytUrl.trim())) {
+            const urlResult = await youtubeService.processYouTubeUrl({
+              url: ytUrl.trim(),
+              title: updateData.title || videoLesson.title,
+              description: updateData.description || videoLesson.description,
+              videoLessonId: videoLesson._id,
+            });
+
+            if (urlResult) {
+              updateData.sourcePlatform = "youtube";
+              updateData.videoId = urlResult.videoId;
+              updateData.secureUrl = urlResult.embedUrl;
+              updateData.embedUrl = urlResult.embedUrl;
+              updateData.originalUrl = ytUrl.trim();
+              updateData.thumbnail = urlResult.thumbnail;
+              updateData.status = "ready";
+            }
           }
         }
-
-        const uploadResult = await videoCypherService.uploadVideo({
-          file: { path: videoFilePath },
-          title: updateData.title || videoLesson.title,
-          description: updateData.description || videoLesson.description,
-          folderId: process.env.VIDEOCYPHER_FOLDER_ID,
-        });
-
-        updateData.secureUrl = uploadResult.playbackUrl;
-        updateData.videoId = uploadResult.videoId;
-        updateData.thumbnail = uploadResult.thumbnail || "";
-        updateData.status = "ready";
-        updateData.uploadMethod = "file";
+      } else if (targetPlatform === "external_link") {
+        const extUrl = updateData.secureUrl || updateData.url || updateData.originalUrl;
+        if (extUrl) {
+          updateData.sourcePlatform = "external_link";
+          updateData.secureUrl = extUrl.trim();
+          updateData.status = "ready";
+        }
       }
-    } else {
-      //console.log(`ℹ️ No new video file provided for update`);
+
+      updateData.updatedAt = new Date();
+
+      const updatedVideoLesson = await videoLessonRepository.updateById(videoLesson._id, updateData);
+
+      // Keep parent Lesson metadata in sync
+      if (videoLesson.lessonId) {
+        try {
+          const Lesson = (await import('../models/Lesson.js')).default;
+          const lessonUpdates = {};
+          if (updateData.title) lessonUpdates.title = updateData.title;
+          if (updateData.description) lessonUpdates.description = updateData.description;
+          if (updateData.duration) {
+            lessonUpdates.duration = Math.round(Number(updateData.duration) / 60) || Number(updateData.duration);
+          }
+          if (Object.keys(lessonUpdates).length > 0) {
+            await Lesson.findByIdAndUpdate(videoLesson.lessonId, lessonUpdates);
+          }
+        } catch (syncErr) {
+          console.warn("Could not sync parent lesson title/duration:", syncErr.message);
+        }
+      }
+
+      return {
+        success: true,
+        data: updatedVideoLesson,
+        message: 'Video lesson updated successfully'
+      };
+    } catch (error) {
+      console.error('❌ Error in updateVideoLesson:', error.message, error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
-
-    updateData.updatedAt = new Date();
-
-    //console.log(`💾 Updating video lesson in repository with data:`, updateData);
-    const updatedVideoLesson = await videoLessonRepository.updateById(id, updateData);
-    //console.log(`✅ Video lesson updated successfully:`, updatedVideoLesson);
-
-    return {
-      success: true,
-      data: updatedVideoLesson,
-      message: 'Video lesson updated successfully'
-    };
-  } catch (error) {
-    console.error('❌ Error in updateVideoLesson:', error.message, error);
-    return {
-      success: false,
-      error: error.message
-    };
   }
-}
 
   async deleteVideoLesson(id) {
     try {

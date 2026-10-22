@@ -853,15 +853,15 @@ const LessonEditor = ({
         );
       }
       case "video-lesson": {
-        let videoLessonData = lesson.videoLessons;
-        let videoLessonId = lesson.videoLessons?.[0]?._id || lesson.videoLessonId;
+        let videoLessonData = Array.isArray(lesson.videoLessons) ? lesson.videoLessons[0] : lesson.videoLessons;
+        let videoLessonId = videoLessonData?._id || lesson.videoLessons?.[0]?._id || lesson.videoLessonId;
         if (!videoLessonData && courseData?.modules) {
           for (const mod of courseData.modules) {
             if (mod.lessons) {
               for (const l of mod.lessons) {
                 if (l._id === lesson._id && l.videoLessons) {
-                  videoLessonData = l.videoLessons?.[0];
-                  videoLessonId = l.videoLessons?.[0]?._id;
+                  videoLessonData = Array.isArray(l.videoLessons) ? l.videoLessons[0] : l.videoLessons;
+                  videoLessonId = videoLessonData?._id;
                 }
               }
             }
@@ -872,6 +872,15 @@ const LessonEditor = ({
             {...commonProps}
             fileId={videoLessonId}
             videoData={videoLessonData}
+            onSaveSuccess={(savedVideo) => {
+              if (onChange) {
+                onChange({
+                  ...lesson,
+                  videoLessons: [savedVideo],
+                  files: [savedVideo],
+                });
+              }
+            }}
             onClose={() => {
               setShowContentModal(false);
               setOpenLessonData(null);

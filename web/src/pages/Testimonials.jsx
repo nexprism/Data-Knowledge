@@ -467,55 +467,9 @@ const Testimonials = () => {
             Read real feedback and WhatsApp results from students who transitioned into Data Analytics, SQL, Excel, and Power BI roles with Data Knowledge mentorship.
           </p>
 
-          {/* Quick Metrics Bar */}
-          <div className="mt-8 flex items-center gap-3 sm:gap-6 flex-wrap">
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-              <span className="flex text-amber-500">★★★★★</span>
-              <span className="text-xs font-black text-slate-800">4.9 / 5 Rating</span>
-            </div>
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-              <CheckBadgeIcon className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs font-bold text-slate-700">Verified Alumni</span>
-            </div>
-            {totalCount > 0 && (
-              <div className="text-xs font-semibold text-slate-500">
-                {totalCount} Verified Stories
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Filter Controls */}
-        <div className="mt-10 sm:mt-12 flex items-center justify-between border-b border-slate-200/80 pb-4 flex-wrap gap-4">
-          <div className="inline-flex p-1 rounded-2xl bg-slate-200/60 border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setFilterMode('all')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                filterMode === 'all'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              All Reviews {totalCount > 0 && `(${totalCount})`}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterMode('proof')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                filterMode === 'proof'
-                  ? 'bg-white text-[#1b6294] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              With WhatsApp Proof
-            </button>
-          </div>
-
-          <p className="text-xs font-semibold text-slate-500">
-            Showing {displayTestimonials.length} stories
-          </p>
-        </div>
+        <div className="mt-8 border-b border-slate-200/80" />
 
         {/* Initial Error State */}
         {error && (
@@ -611,16 +565,26 @@ const Testimonials = () => {
           </div>
         )}
 
-        {/* End of Stream / All Items Loaded Indicator */}
+        {/* End of Stream / Call to Action */}
         {!loadingInitial && !hasMore && displayTestimonials.length > 0 && (
-          <div className="mt-16 flex flex-col items-center justify-center text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200/80 text-slate-600 text-xs font-bold">
-              <CheckBadgeIcon className="w-4 h-4 text-emerald-600" />
-              <span>You've viewed all {totalCount} verified student stories</span>
+          <div className="mt-16 mx-auto max-w-2xl bg-gradient-to-br from-[#08192b] via-[#0d2a4a] to-[#08192b] text-white p-8 sm:p-10 rounded-3xl shadow-xl text-center border border-white/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#3498db]/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 space-y-3">
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                Take the First Step Toward Your Dream Job!
+              </h3>
+              <p className="text-sm sm:text-base text-slate-300 font-normal max-w-lg mx-auto">
+                Explore our courses and start building your future in Data Analytics.
+              </p>
+              <div className="pt-3">
+                <Link
+                  to="/courses"
+                  className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-[#3498db] hover:bg-[#2980b9] text-white text-sm font-bold shadow-lg shadow-[#3498db]/30 transition-all hover:scale-105"
+                >
+                  Explore Courses →
+                </Link>
+              </div>
             </div>
-            <p className="mt-2 text-[11px] text-slate-400 font-medium">
-              Ready to start your data journey? Explore our courses above.
-            </p>
           </div>
         )}
       </div>

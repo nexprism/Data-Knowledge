@@ -6,9 +6,10 @@ import {
   createSlots,
   updateSlot,
   deleteSlot,
+  clearAllSlots,
 } from "../../store/slices/consultationSlice";
 import { toast } from "react-hot-toast";
-import { Pencil, X, Check, AlertCircle } from "lucide-react";
+import { Pencil, X, Check, AlertCircle, Trash2 } from "lucide-react";
 
 const ConsultationSlots = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -145,6 +146,33 @@ const ConsultationSlots = () => {
         toast.success("Slot deleted");
       } catch (err: any) {
         toast.error(err || "Failed to delete slot");
+      }
+    }
+  };
+
+  const [isClearingSlots, setIsClearingSlots] = useState(false);
+
+  const handleClearAllSlots = async () => {
+    const unbookedCount = (slots || []).filter((s) => !s.isBooked).length;
+    if (unbookedCount === 0) {
+      toast.error("No unbooked consultation slots found to clear");
+      return;
+    }
+
+    if (
+      window.confirm(
+        `Are you sure you want to remove ALL ${unbookedCount} unbooked consultation slot(s) at once? This action cannot be undone.`
+      )
+    ) {
+      try {
+        setIsClearingSlots(true);
+        const res = await dispatch(clearAllSlots()).unwrap();
+        toast.success(res?.message || `Successfully removed ${unbookedCount} slot(s)`);
+        dispatch(fetchAdminSlots());
+      } catch (err: any) {
+        toast.error(err || "Failed to clear slots");
+      } finally {
+        setIsClearingSlots(false);
       }
     }
   };
@@ -546,11 +574,23 @@ const ConsultationSlots = () => {
       {/* EXISTING SLOTS GRID */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 sm:p-6 border-b border-stroke dark:border-strokedark gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Existing Database Slots</h2>
             <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 py-1 px-3 rounded-full font-bold">
               Total: {slots.length} (Showing {filteredExistingSlots.length})
             </span>
+            {slots.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAllSlots}
+                disabled={isClearingSlots || loading}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs border border-red-200 dark:border-red-800"
+                title="Remove all unbooked consultation slots at once"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isClearingSlots ? "Clearing Slots..." : "Clear All Slots"}</span>
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
