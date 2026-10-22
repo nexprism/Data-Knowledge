@@ -510,13 +510,13 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
           response = await dispatch(
             updateVideo({
               videoId: (fileId || videoId)!,
-              lessonId: videoData.lessonId,
-              sourcePlatform: videoData.sourcePlatform,
-              title: videoData.title,
-              description: videoData.description,
-              uploadMethod: videoData.uploadMethod,
-              quality: videoData.quality,
-              vdocipherVideoId: videoData.videoId,
+              lessonId,
+              sourcePlatform: form.sourcePlatform,
+              title: form.title,
+              description: form.description,
+              uploadMethod: "existing_video_id",
+              quality: form.quality || "auto",
+              vdocipherVideoId: form.vdocipherVideoId.trim(),
               filePath: "", // No file path needed for video ID linking
               accessToken: "",
               refreshToken: "",
@@ -525,13 +525,13 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
         } else {
           response = await dispatch(
             uploadVideo({
-              lessonId: videoData.lessonId,
-              sourcePlatform: videoData.sourcePlatform,
-              title: videoData.title,
-              description: videoData.description,
-              uploadMethod: videoData.uploadMethod,
-              quality: videoData.quality,
-              videoId: videoData.videoId,
+              lessonId,
+              sourcePlatform: form.sourcePlatform,
+              title: form.title,
+              description: form.description,
+              uploadMethod: "existing_video_id",
+              quality: form.quality || "auto",
+              videoId: form.vdocipherVideoId.trim(),
               filePath: "", // No file path needed for video ID linking
               accessToken: "",
               refreshToken: "",
@@ -540,6 +540,7 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
         }
 
         if (response.payload?.success) {
+          if (onSaveSuccess) onSaveSuccess(response.payload.data || response.payload);
           setPopup({
             isVisible: true,
             message: "VdoCipher video linked successfully! 🎬 Your existing video is now available for streaming.",
@@ -643,6 +644,7 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
       // For YouTube, show immediate success without progress
       if (form.sourcePlatform === "youtube") {
         if (response.payload?.success) {
+          if (onSaveSuccess) onSaveSuccess(response.payload.data || response.payload);
           setPopup({
             isVisible: true,
             message: "YouTube video linked successfully! 🎬 Your video is now available for streaming.",
@@ -663,25 +665,43 @@ const VideoLesson: React.FC<VideoLessonProps> = ({
         }
       } else {
         if (form.sourcePlatform === "videocypher") {
-          // For VdoCipher, the success message is shown by showSuccessMessage after upload simulation
           if (response.payload?.success) {
+            if (onSaveSuccess) onSaveSuccess(response.payload.data || response.payload);
             showSuccessMessage();
-            // Close after a short delay to show success message
             setTimeout(() => {
               handleClose();
             }, 1500);
+          } else {
+            setUploadProgress(prev => ({ ...prev, isVisible: false }));
+            setPopup({
+              isVisible: true,
+              message: `Failed to ${isEditMode ? "update" : "upload"} video: ${
+                response.payload?.error || response.payload?.message || "Unknown error"
+              }`,
+              type: "error",
+            });
           }
-        }
-        // For VdoCipher, the success message is shown by showSuccessMessage after upload simulation
-        else if (!response.payload?.success) {
-          setUploadProgress(prev => ({ ...prev, isVisible: false }));
-          setPopup({
-            isVisible: true,
-            message: `Failed to ${isEditMode ? "update" : "upload"} video: ${
-              response.payload?.message || "Unknown error"
-            }`,
-            type: "error",
-          });
+        } else {
+          if (response.payload?.success) {
+            if (onSaveSuccess) onSaveSuccess(response.payload.data || response.payload);
+            setPopup({
+              isVisible: true,
+              message: "Video saved successfully!",
+              type: "success",
+            });
+            setTimeout(() => {
+              handleClose();
+            }, 1500);
+          } else {
+            setUploadProgress(prev => ({ ...prev, isVisible: false }));
+            setPopup({
+              isVisible: true,
+              message: `Failed to ${isEditMode ? "update" : "upload"} video: ${
+                response.payload?.error || response.payload?.message || "Unknown error"
+              }`,
+              type: "error",
+            });
+          }
         }
       }
     } catch (error: unknown) {

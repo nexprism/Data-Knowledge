@@ -68,6 +68,25 @@ export const deleteSlot = async (req, res) => {
     }
 };
 
+// Clear all unbooked slots (or all slots if includeBooked=true)
+export const clearAllSlots = async (req, res) => {
+    try {
+        const { includeBooked } = req.query;
+        const filter = includeBooked === 'true' ? {} : { isBooked: { $ne: true } };
+        
+        const result = await ConsultationSlot.deleteMany(filter);
+
+        return res.status(200).json({
+            success: true,
+            message: `Successfully cleared ${result.deletedCount} consultation slot(s)`,
+            deletedCount: result.deletedCount
+        });
+    } catch (error) {
+        console.error('Error clearing consultation slots:', error);
+        return res.status(500).json({ success: false, message: 'Failed to clear slots', error: error.message });
+    }
+};
+
 // Update an existing slot
 export const updateSlot = async (req, res) => {
     try {

@@ -1,6 +1,20 @@
 import videoLessonService from '../service/videoLessonService.js';
 import fs from "fs";
 import path from "path";
+import { initRedis } from '../config/redisClient.js';
+
+const flushVideoCaches = async () => {
+  try {
+    const redis = await initRedis();
+    await redis.del('lessons:all*');
+    const lessonKeys = await redis.keys('lesson:*');
+    if (lessonKeys && lessonKeys.length > 0) await redis.del(lessonKeys);
+    const courseKeys = await redis.keys('course*');
+    if (courseKeys && courseKeys.length > 0) await redis.del(courseKeys);
+  } catch (err) {
+    console.warn('Redis cache flush error:', err.message);
+  }
+};
 
 class VideoLessonController {
   // Create a new video lesson with file upload
@@ -28,6 +42,7 @@ class VideoLessonController {
       );
 
       if (result.success) {
+        await flushVideoCaches();
         return res.status(201).json({
           success: true,
           data: result.data,
@@ -78,6 +93,7 @@ class VideoLessonController {
       );
 
       if (result.success) {
+        await flushVideoCaches();
         return res.status(200).json({
           success: true,
           data: result.data,
@@ -212,38 +228,6 @@ class VideoLessonController {
     }
   }
 
-  // Update video lesson
-  async updateVideoLesson(req, res) {
-  try {
-    const { id } = req.params;
-    const videoFile = req.file;
-
-    //console.log('📥 Update Video Lesson Request:', req.body);
-    //console.log('📥 Uploaded Video File:', videoFile);
-    
-
-    const result = await videoLessonService.updateVideoLesson(id, req.body, videoFile);
-
-    if (result.success) {
-      return res.status(200).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: result.error
-      });
-    }
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error'
-    });
-  }
-}
-
 
   // Delete video lesson (soft delete)
   async deleteVideoLesson(req, res) {
@@ -252,6 +236,7 @@ class VideoLessonController {
       const result = await videoLessonService.deleteVideoLesson(id);
       
       if (result.success) {
+        await flushVideoCaches();
         return res.status(200).json({
           success: true,
           message: result.message

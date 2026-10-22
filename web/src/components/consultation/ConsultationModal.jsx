@@ -25,6 +25,30 @@ const getLocalDateString = (d = new Date()) => {
 // Official Data Knowledge WhatsApp Contact Number
 const WHATSAPP_PHONE = '917483741501';
 
+// Helper to dynamically ensure Razorpay checkout SDK is loaded
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      return resolve(true);
+    }
+    const existing = document.getElementById('razorpay-sdk-script');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true), { once: true });
+      existing.addEventListener('error', () => resolve(false), { once: true });
+      // If already loaded before listeners attached
+      if (window.Razorpay) return resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'razorpay-sdk-script';
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 const ConsultationModal = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -97,6 +121,7 @@ const ConsultationModal = ({ isOpen, onClose }) => {
   // Sync slots on modal open
   useEffect(() => {
     if (isOpen) {
+      loadRazorpayScript();
       dispatch(clearError());
       dispatch(fetchAllUpcomingSlots());
       const initialDate = selectedDate || getLocalDateString();
@@ -379,14 +404,19 @@ I have booked a session:
             theme: { color: '#3498db' },
           };
 
-          if (window.Razorpay) {
+          let isLoaded = typeof window !== 'undefined' && Boolean(window.Razorpay);
+          if (!isLoaded) {
+            isLoaded = await loadRazorpayScript();
+          }
+
+          if (isLoaded && window.Razorpay) {
             const rzp = new window.Razorpay(options);
             rzp.on('payment.failed', (response) => {
               handleBookingFailure(response?.error?.description || 'Payment failed. Please try again.');
             });
             rzp.open();
           } else {
-            setSubmitError('Payment gateway is still loading. Please wait a moment and try again.');
+            setSubmitError('Unable to load payment gateway. Please check your internet connection and try again.');
           }
         }
       } catch (err) {
@@ -448,12 +478,14 @@ I have booked a session:
             {/* Pill Badge */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 font-inter text-[11px] font-bold tracking-wider uppercase">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span>FREE 1-ON-1 TRIAL CLASS</span>
+              <span>
+                {selectedSlot?.price > 0 ? `${selectedSlot.duration}-MIN MENTORSHIP SESSION` : 'FREE 1-ON-1 TRIAL CLASS'}
+              </span>
             </div>
 
             {/* Modal Heading */}
             <h2 className="font-inter font-extrabold text-2xl sm:text-3xl text-white tracking-tight">
-              Book a Free Session
+              {selectedSlot?.price > 0 ? 'Book a Mentorship Session' : 'Book a Free Session'}
             </h2>
 
             {/* Modal Subtitle */}

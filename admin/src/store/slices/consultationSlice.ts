@@ -78,6 +78,18 @@ export const deleteSlot = createAsyncThunk(
   }
 );
 
+export const clearAllSlots = createAsyncThunk(
+  "consultation/clearAllSlots",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.delete("/consultations/slots/clear-all");
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to clear slots");
+    }
+  }
+);
+
 export const updateSlot = createAsyncThunk(
   "consultation/updateSlot",
   async ({ id, data }: { id: string; data: Partial<ConsultationSlot> }, { rejectWithValue }) => {
@@ -148,6 +160,19 @@ const consultationSlice = createSlice({
         state.slots = state.slots.filter((slot) => slot._id !== action.payload);
       })
       .addCase(deleteSlot.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Clear All Slots
+      .addCase(clearAllSlots.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(clearAllSlots.fulfilled, (state) => {
+        state.loading = false;
+        state.slots = state.slots.filter((slot) => slot.isBooked);
+      })
+      .addCase(clearAllSlots.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
