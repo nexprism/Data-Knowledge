@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { connectToDatabase } from '../db/connect.js';
 import LoginLog from '../models/LoginLog.js';
-import User from '../models/User.js';
+import User from '../models/user.js';
 
 const checkLogins = async () => {
     try {

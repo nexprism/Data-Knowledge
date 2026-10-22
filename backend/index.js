@@ -20,7 +20,7 @@ import GroupChatRoom from './models/GroupChatRoom.js';
 import CourseChatRoom from './models/CourseChatRoom.js';
 import CourseChatMessage from './models/CourseChatMessage.js';
 import ChatRoom from './models/ChatRoom.js';
-import User from './models/User.js';
+import User from './models/user.js';
 import mongoose from 'mongoose';
 import path from 'path';
 

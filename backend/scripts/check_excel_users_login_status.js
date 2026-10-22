@@ -3,7 +3,7 @@ import XLSX from 'xlsx';
 import path from 'path';
 import { connectToDatabase } from '../db/connect.js';
 import LoginLog from '../models/LoginLog.js';
-import User from '../models/User.js';
+import User from '../models/user.js';
 
 /**
  * Script to check the first login time for users provided in an Excel file.

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import XLSX from "xlsx";
 import dotenv from "dotenv";
 import { connectToDatabase } from "../db/connect.js";
-import User from "../models/User.js";
+import User from "../models/user.js";
 import LoginLog from "../models/LoginLog.js";
 
 dotenv.config();

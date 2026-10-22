@@ -1,4 +1,4 @@
-import SecurityService from '../.../../service/SecurityService.js';
+import SecurityService from '../service/SecurityService.js';
 import { getClientIP } from '../utils/helper.js';
 
 class SecurityController {
