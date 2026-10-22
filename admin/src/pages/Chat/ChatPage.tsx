@@ -69,8 +69,17 @@ const formatMessageTime = (dateString?: string) => {
 
 const ChatPage: React.FC = () => {
   console.log("ChatPage rendering...");
-  const currentUser = useSelector(selectCurrentUser);
-  const token = useSelector(selectToken);
+  const reduxUser = useSelector(selectCurrentUser);
+  const currentUser = reduxUser || (() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  const reduxToken = useSelector(selectToken);
+  const token = reduxToken || localStorage.getItem('token') || localStorage.getItem('accessToken') || localStorage.getItem('admin_token') || "";
 
   const resolveMediaUrl = (path: string | undefined) => {
     if (!path) return "";
@@ -285,11 +294,13 @@ const ChatPage: React.FC = () => {
 
       if (isRoomId) {
         fetchMessages(selectedChat.id);
+        chatService.joinRoom(selectedChat.id);
       } else {
         axiosInstance.post("/chat/room", { receiverId: selectedChat.participantId })
           .then(res => {
             const roomId = res.data.roomId;
             setSelectedChat(prev => prev ? { ...prev, id: roomId } : null);
+            chatService.joinRoom(roomId);
           });
       }
     }
@@ -337,38 +348,57 @@ const ChatPage: React.FC = () => {
       chatService.joinPersonalRoom(currentUser.id || (currentUser as any)._id);
 
       const handleIncomingMessage = (msg: any) => {
-        const roomId = msg.chatRoomId || msg.groupChatRoomId || msg.courseChatRoomId;
-        const currentUserId = currentUser?.id || (currentUser as any)?._id;
-        const senderId = msg.sender?._id || msg.sender;
-        const isCurrentChat = roomId === selectedChat?.id ||
-          selectedChat?.participantId === senderId;
+        const msgRoomId = String(msg.chatRoomId || msg.groupChatRoomId || msg.courseChatRoomId || msg.roomId || '');
+        const currentUserId = String(currentUser?.id || (currentUser as any)?._id || '');
+        const senderId = String(msg.sender?._id || msg.sender || '');
+        const receiverId = String(msg.receiver?._id || msg.receiver || '');
+        const currentChatId = String(selectedChat?.id || '');
+        const currentParticipantId = String(selectedChat?.participantId || '');
+
+        const isCurrentChat = Boolean(
+          (msgRoomId && currentChatId && msgRoomId === currentChatId) ||
+          (currentParticipantId && (currentParticipantId === senderId || currentParticipantId === receiverId))
+        );
         const isMe = senderId === currentUserId;
 
         if (isCurrentChat) {
           setMessages(prev => {
             if (msg._id && prev.some(m => m._id === msg._id)) return prev;
-            return [...prev, {
+            const newMsgObj: Message = {
               _id: msg._id,
               sender: senderId,
-              content: msg.message,
-              file: msg.fileUrl,
+              content: msg.message || msg.content,
+              file: msg.fileUrl || msg.file,
               fileType: msg.fileType || 'text',
               createdAt: msg.createdAt,
-              senderInfo: msg.sender, // Store sender info for multi-user chats (courses)
+              senderInfo: msg.sender,
               replyTo: msg.replyTo
-            }];
+            };
+            const tempIdx = prev.findIndex(m => m._id?.startsWith('temp-') && m.content === newMsgObj.content);
+            if (tempIdx !== -1) {
+              const updated = [...prev];
+              updated[tempIdx] = newMsgObj;
+              return updated;
+            }
+            return [...prev, newMsgObj];
           });
+
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+          }, 50);
 
           // Mark as read immediately if it's the current chat
           let readEndpoint = "/chat/message/read";
-          let payload: any = { roomId: msg.chatRoomId, senderId: senderId };
+          let payload: any = { roomId: msg.chatRoomId || msgRoomId, senderId: senderId };
 
           if (msg.courseChatRoomId) {
             readEndpoint = "/chat/course/message/read";
             payload = { courseChatRoomId: msg.courseChatRoomId };
           }
 
-          axiosInstance.patch(readEndpoint, payload);
+          axiosInstance.patch(readEndpoint, payload).catch(() => {});
         }
         updateLastMessage(msg, isCurrentChat, isMe);
       };
@@ -461,19 +491,49 @@ const ChatPage: React.FC = () => {
   };
 
   const handleSendMessage = () => {
-    if (!inputValue.trim() || !selectedChat) return;
+    const text = inputValue.trim();
+    if (!text || !selectedChat) return;
+
+    const currentUserId = String(currentUser?.id || (currentUser as any)?._id || '');
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      _id: tempId,
+      sender: currentUserId,
+      content: text,
+      file: undefined,
+      fileType: 'text',
+      createdAt: new Date().toISOString(),
+      senderInfo: currentUser,
+      replyTo: replyingTo || undefined
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    }, 50);
+
+    // Update sidebar last message immediately
+    updateLastMessage({
+      chatRoomId: selectedChat.id,
+      courseChatRoomId: selectedChat.type === 'course' ? selectedChat.id : undefined,
+      sender: currentUserId,
+      message: text,
+      createdAt: new Date().toISOString()
+    }, true, true);
 
     if (selectedChat.type === 'direct') {
       chatService.sendMessage({
         roomId: selectedChat.id,
         receiverId: selectedChat.participantId,
-        message: inputValue,
+        message: text,
         replyTo: replyingTo?._id
       });
     } else if (selectedChat.type === 'course') {
       chatService.sendCourseChatMessage({
         courseChatRoomId: selectedChat.id,
-        message: inputValue,
+        message: text,
         replyTo: replyingTo?._id
       });
     }
@@ -692,7 +752,18 @@ const ChatPage: React.FC = () => {
                 </div>
               ) : (
                 messages.map((msg, idx) => {
-                  const isMe = msg.sender === currentUser?.id || msg.sender === (currentUser as any)._id;
+                  const otherParticipantId = String(selectedChat?.participantId || '');
+                  const msgSenderId = String(
+                    (typeof msg.sender === 'object' && msg.sender !== null)
+                      ? (msg.sender._id || msg.sender.id || '')
+                      : (msg.sender || '')
+                  );
+                  const currentUserId = String(currentUser?._id || (currentUser as any)?.id || '');
+                  const isMe = Boolean(
+                    selectedChat?.type === 'direct' && otherParticipantId
+                      ? (msgSenderId ? msgSenderId !== otherParticipantId : (currentUserId && currentUserId === msgSenderId))
+                      : ((currentUserId && msgSenderId && currentUserId === msgSenderId) || msgSenderId === 'me')
+                  );
                   return (
                     <motion.div
                       key={msg._id || idx}

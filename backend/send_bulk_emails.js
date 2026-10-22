@@ -9,18 +9,7 @@ dotenv.config();
 
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/lms_backend';
 
-// SMTP Configuration
-const smtpConfig = {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-        user: process.env.SMTP_USER || 'support@edrilla.com',
-        pass: process.env.SMTP_PASS || 'vjbfuqityyfivvii',
-    },
-};
-
-const transporter = nodemailer.createTransport(smtpConfig);
+import emailService from './utils/emailService.js';
 
 const emailTemplate = `
 <!DOCTYPE html>
@@ -220,8 +209,8 @@ function nameFromEmail(email) {
 async function sendMail(to, name) {
     const html = emailTemplate.replace(/{{Name}}/g, name).replace(/{{Email}}/g, to);
 
-    await transporter.sendMail({
-        from: `"Team Lapaas" <${process.env.EMAIL_FROM || 'support@edrilla.com'}>`,
+    await emailService.sendMail('transactional', {
+        from: `"Team Data Knowledge" <${process.env.EMAIL_FROM || 'noreply@dataknowledge.in'}>`,
         to,
         subject: '🚀 Enrollment Confirmed: AI Live Cohort',
         html,

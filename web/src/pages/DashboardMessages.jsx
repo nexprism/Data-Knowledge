@@ -254,6 +254,11 @@ const DashboardMessages = () => {
         if (selectedChat && /^[0-9a-fA-F]{24}$/.test(selectedChat)) {
             dispatch(setActiveRoom(selectedChat));
             dispatch(fetchMessages(selectedChat));
+            import('../services/socketService').then(m => {
+                if (m.default?.socket) {
+                    m.default.socket.emit('joinRoom', { roomId: selectedChat });
+                }
+            }).catch(() => {});
         }
     }, [selectedChat, dispatch]);
 
@@ -889,9 +894,10 @@ const DashboardMessages = () => {
                                     };
                                     const senderId = getSenderId(msg);
                                     const currentUserId = getAuthUserId(authUser);
-                                    const isSent = !!(
-                                        msg.isSent === true ||
+                                    const isTemp = String(msg._id || msg.id || '').startsWith('temp-');
+                                    const isSent = Boolean(
                                         (currentUserId && senderId && String(senderId) === String(currentUserId)) ||
+                                        (isTemp && (senderId === 'me' || !senderId || String(senderId) === String(currentUserId))) ||
                                         senderId === 'me' ||
                                         (typeof senderId === 'string' && senderId.toLowerCase() === 'you')
                                     );

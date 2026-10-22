@@ -33,18 +33,41 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/login`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/login`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, platform: "web" }),
       });
-      const data = await res.json();
-      if (!res.ok) return rejectWithValue(data?.message || 'Login failed');
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {
+        // Fallback if response is non-JSON
+      }
+      if (!res.ok) {
+        const msg =
+          data?.message ||
+          data?.err?.message ||
+          (res.status === 401 ? 'Invalid email or password' : null) ||
+          (res.status === 400 ? 'Email and password are required' : null) ||
+          (res.status === 429 ? 'Too many login attempts. Please try again after 15 minutes.' : null) ||
+          'Invalid email or password';
+        return rejectWithValue(msg);
+      }
       persistAuth(data);
       return data;
     } catch (err) {
-      return rejectWithValue(err.message || 'Network error');
+      const isFetchError = err.message && (
+        err.message.includes('Failed to fetch') ||
+        err.message.includes('NetworkError') ||
+        err.message.includes('Load failed')
+      );
+      if (isFetchError) {
+        return rejectWithValue('Invalid email or password');
+      }
+      return rejectWithValue(err.message || 'Invalid email or password');
     }
   }
 );

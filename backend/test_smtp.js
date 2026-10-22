@@ -3,25 +3,30 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function run() {
-  console.log("Testing SMTP transporters for Data Knowledge...");
-  try {
-    const t = emailService.getTransporter("transactional");
-    await t.verify();
-    console.log("✅ Primary SMTP Port 465 (Transactional): VERIFIED");
-  } catch (err) {
-    console.warn("⚠️ Primary Port 465 failed:", err.message);
+  console.log("Testing SMTP transporters for Data Knowledge...\n");
+
+  const types = ["transactional", "founder", "support"];
+  for (const type of types) {
+    try {
+      console.log(`Checking [${type}] transporter...`);
+      const t = emailService.getTransporter(type);
+      await t.verify();
+      console.log(`✅ [${type}] Port 465 SSL verified successfully! From: ${emailService.getFrom(type)}`);
+    } catch (err) {
+      console.warn(`⚠️ [${type}] Port 465 failed: ${err.message}`);
+      try {
+        const creds = emailService._getCredentials(type);
+        const fallback = emailService._createTransporter(creds.user, creds.pass, 587, false);
+        await fallback.verify();
+        console.log(`✅ [${type}] Fallback Port 587 verified successfully!`);
+      } catch (fallbackErr) {
+        console.error(`❌ [${type}] Fallback Port 587 also failed: ${fallbackErr.message}`);
+      }
+    }
+    console.log("-----------------------------------------");
   }
 
-  try {
-    const creds = emailService._getCredentials("transactional");
-    const fallback = emailService._createTransporter(creds.user, creds.pass, 587, false);
-    await fallback.verify();
-    console.log("✅ Fallback SMTP Port 587 (Transactional): VERIFIED");
-  } catch (err) {
-    console.warn("⚠️ Fallback Port 587 failed:", err.message);
-  }
-
-  console.log("\nAll SMTP checks finished.");
+  console.log("All SMTP checks completed.");
 }
 
 run();

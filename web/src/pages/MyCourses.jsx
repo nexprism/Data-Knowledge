@@ -5,7 +5,7 @@ import { gsap } from 'gsap'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMyEnrollments } from '../redux/slices/enrollmentSlice'
 import { useLanguage } from '../context/LanguageContext'
-import { getImageBaseUrl } from '../utils/apiConfig'
+import { getMediaUrl } from '../utils/apiConfig'
 
 import DashboardLoading from '../components/dashboard/DashboardLoading'
 import socketService from '../services/socketService'
@@ -159,16 +159,11 @@ const MyCourses = () => {
                 <div key={item._id || i} className="course-card group bg-white border border-slate-200/80 transition-all duration-500 relative overflow-hidden opacity-0 invisible hover:border-amber-400 rounded-2xl shadow-sm hover:shadow-md flex flex-col min-h-[540px]">
                    
                    {/* 1. Image Section */}
-                   <div className="w-full aspect-[16/10] relative overflow-hidden border-b border-slate-100 shrink-0">
+                   <div className="w-full aspect-[16/10] relative overflow-hidden border-b border-slate-100 shrink-0 bg-slate-900">
                       <img 
-                        src={(() => {
-                            const thumb = item.course?.thumbnail;
-                            if (!thumb) return '/news_placeholder.png';
-                            if (thumb.startsWith('http')) return thumb;
-                            const baseUrl = getImageBaseUrl();
-                            return `${baseUrl}${thumb.startsWith('/') ? '' : '/'}${thumb}`;
-                        })()} 
-                        alt={item.course?.title} 
+                        src={getMediaUrl(item.course ? item.course.thumbnail : null, 'courses', '/courses/curator.png')} 
+                        alt={item.course ? item.course.title : 'Course'} 
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/courses/curator.png'; }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
                       />
                    </div>

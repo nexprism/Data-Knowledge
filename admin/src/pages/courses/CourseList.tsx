@@ -70,7 +70,13 @@ interface Course {
   isDeleted: boolean;
 }
 
-const VITE_IMAGE_URL = import.meta.env.VITE_BASE_URL;
+const VITE_IMAGE_URL = (import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL || '').replace(/\/+$/, '');
+
+const getCourseThumbnail = (thumbnail?: string) => {
+  if (!thumbnail) return '/images/cards/card-01.jpg';
+  if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail;
+  return `${VITE_IMAGE_URL}/${thumbnail.replace(/^\/+/, '')}`;
+};
 
 const CourseList: React.FC = () => {
   const navigate = useNavigate();
@@ -112,10 +118,6 @@ const CourseList: React.FC = () => {
   });
   const [duplicating, setDuplicating] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
-  const [imageError, setImageError] = useState<{ isVisible: boolean; url?: string }>(
-    { isVisible: false }
-  );
-  const [testPopup, setTestPopup] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -356,15 +358,13 @@ const CourseList: React.FC = () => {
     <div className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-300">
       <div className="relative">
         <img
-          src={VITE_IMAGE_URL + "/" + course.thumbnail}
+          src={getCourseThumbnail(course.thumbnail)}
           alt={course.title}
           className="w-full h-48 object-cover rounded-t-xl"
           onError={(e) => {
-              const src = e.currentTarget.src;
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = "https://tse2.mm.bing.net/th/id/OIP.z2HmY-oQPSmmDwR-MYmW6QAAAA?pid=Api&P=0&h=180";
-              setImageError({ isVisible: true, url: src });
-            }}
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = "/images/cards/card-01.jpg";
+          }}
         />
         <div className="absolute top-3 left-3">
           <StatusBadge isPublished={course.isPublished} publishDate={course.publishDate} />
@@ -509,12 +509,6 @@ const CourseList: React.FC = () => {
             >
               <Plus className="w-5 h-5" />
               Add Course
-            </button>
-            <button
-              onClick={() => setTestPopup(true)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-            >
-              Test popup
             </button>
           </div>
         </div>
@@ -693,14 +687,12 @@ const CourseList: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-4">
                               <img
-                                src={VITE_IMAGE_URL + "/" + course.thumbnail}
+                                src={getCourseThumbnail(course.thumbnail)}
                                 alt={course.title}
                                 className="w-16 h-12 rounded-lg object-cover border border-gray-200 dark:border-gray-600"
                                 onError={(e) => {
-                                  const src = e.currentTarget.src;
                                   e.currentTarget.onerror = null;
-                                  e.currentTarget.src = "https://tse2.mm.bing.net/th/id/OIP.z2HmY-oQPSmmDwR-MYmW6QAAAA?pid=Api&P=0&h=180";
-                                  setImageError({ isVisible: true, url: src });
+                                  e.currentTarget.src = "/images/cards/card-01.jpg";
                                 }}
                               />
                               <div>
@@ -1321,20 +1313,6 @@ const CourseList: React.FC = () => {
         type="success"
         message={successNotice || ""}
         onClose={() => setSuccessNotice(null)}
-      />
-
-      <PopupAlert
-        isVisible={imageError.isVisible}
-        type="error"
-        message={`Failed to load image: ${imageError.url || "unknown"}. This may be because the file is missing or blocked by cross-origin policy.`}
-        onClose={() => setImageError({ isVisible: false })}
-      />
-
-      <PopupAlert
-        isVisible={testPopup}
-        type="info"
-        message="This is a test popup. The popup component is working correctly."
-        onClose={() => setTestPopup(false)}
       />
     </div>
   );

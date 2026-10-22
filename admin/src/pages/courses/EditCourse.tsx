@@ -42,7 +42,26 @@ import QuillEditor from "../../components/QuillEditor";
 import Editor from "../../components/Editor";
 import LandingPageSections from "./LandingPageSections";
 import AddReview from "./AddReview";
+import PopupAlert from "../../components/popUpAlert";
 import { toNumber } from "../../utils/number";
+
+const FIELD_TO_TAB: Record<string, { tab: string; sectionName: string; fieldLabel: string }> = {
+  title: { tab: "basic", sectionName: "Basic Information", fieldLabel: "Course Title" },
+  description: { tab: "basic", sectionName: "Basic Information", fieldLabel: "Course Description" },
+  categoryId: { tab: "details", sectionName: "Course Details", fieldLabel: "Category" },
+  subCategoryId: { tab: "details", sectionName: "Course Details", fieldLabel: "Subcategory" },
+  duration: { tab: "details", sectionName: "Course Details", fieldLabel: "Duration" },
+  price: { tab: "pricing", sectionName: "Pricing", fieldLabel: "Course Price" },
+  salePrice: { tab: "pricing", sectionName: "Pricing", fieldLabel: "Sale Price" },
+  thumbnailFile: { tab: "media", sectionName: "Media Files", fieldLabel: "Thumbnail Image" },
+  coverImageFile: { tab: "media", sectionName: "Media Files", fieldLabel: "Cover Image" },
+  verticalCarouselImageFile: { tab: "media", sectionName: "Media Files", fieldLabel: "Vertical Carousel Image" },
+  featuredImageBannerFile: { tab: "media", sectionName: "Media Files", fieldLabel: "Banner Image" },
+  demoVideoUrl: { tab: "media", sectionName: "Media Files", fieldLabel: "Demo Video URL" },
+  tags: { tab: "tags", sectionName: "Tags", fieldLabel: "Course Tags" },
+  seoMetaDescription: { tab: "seo", sectionName: "SEO Content", fieldLabel: "Meta Description" },
+  seoContent: { tab: "seo", sectionName: "SEO Content", fieldLabel: "SEO Content" },
+};
 
 const baseUrl = (import.meta.env.VITE_BASE_URL || "https://api.dataknowledge.in/").replace(/\/+$/, '') + '/';
 
@@ -251,8 +270,14 @@ const EditCourse = () => {
   const [description, setDescription] = useState("");
   const [seoContent, setSeoContent] = useState("");
   const [modules, setModules] = useState([]);
-  const [popup, setPopup] = useState({
+  const [popup, setPopup] = useState<{
+    message: React.ReactNode | string;
+    title?: string;
+    type: "success" | "error" | "info" | string;
+    isVisible: boolean;
+  }>({
     message: "",
+    title: "",
     type: "success",
     isVisible: false,
   });
@@ -363,37 +388,49 @@ const EditCourse = () => {
     "Web Development",
   ];
 
-  // Validation schema (unchanged)
+  // Validation schema
   const validateForm = (
-    formData,
-    description,
-    seoContent,
-    selectedTags,
-    files,
-    demoVideoUrl
+    formData: any,
+    description: string,
+    seoContent: string,
+    selectedTags: any[],
+    files: any,
+    demoVideoUrl: string
   ) => {
-    const errors = {};
+    const errors: Record<string, string> = {};
 
-    if (!formData.title.trim()) {
+    if (!formData.title || !formData.title.trim()) {
       errors.title = "Course title is required";
     } else if (formData.title.length > 100) {
       errors.title = "Title must be less than 100 characters";
     }
 
-    if (!formData.price) {
-      errors.price = "Price is required";
-    } else if (isNaN(formData.price) || formData.price < 0) {
-      errors.price = "Price must be a non-negative number";
-    } else if (formData.price > 100000) {
-      errors.price = "Price cannot exceed 100,000";
+    // Validate price only if provided (allows free courses with price = 0 or empty)
+    if (formData.price !== undefined && formData.price !== null && String(formData.price).trim() !== "") {
+      const numPrice = Number(formData.price);
+      if (isNaN(numPrice) || numPrice < 0) {
+        errors.price = "Price must be a non-negative number";
+      } else if (numPrice > 100000) {
+        errors.price = "Price cannot exceed 100,000";
+      }
     }
 
-    if (formData.seoMetaDescription.length > 160) {
+    // Validate salePrice only if it's provided
+    if (formData.salePrice !== undefined && formData.salePrice !== null && String(formData.salePrice).trim() !== "") {
+      const numSale = Number(formData.salePrice);
+      if (isNaN(numSale) || numSale < 0) {
+        errors.salePrice = "Sale price must be a non-negative number";
+      } else if (numSale > 100000) {
+        errors.salePrice = "Sale price cannot exceed 100,000";
+      }
+    }
+
+    if ((formData.seoMetaDescription?.length || 0) > 160) {
       errors.seoMetaDescription =
         "Meta description must be less than 160 characters";
     }
 
-    if (seoContent.length > 10000) {
+    if ((seoContent?.length || 0) > 10000) {
       errors.seoContent = "SEO content must be less than 10,000 characters";
     }
 
@@ -410,7 +447,7 @@ const EditCourse = () => {
       errors.demoVideoUrl = "Please enter a valid YouTube URL";
     }
 
-    if (selectedTags.length === 0) {
+    if (!selectedTags || selectedTags.length === 0) {
       errors.tags = "At least one tag is required";
     } else if (selectedTags.length > 5) {
       errors.tags = "Maximum 5 tags allowed";
@@ -792,12 +829,53 @@ const EditCourse = () => {
       demoVideoUrl
     );
 
-    console?.log('Validation errors:', errors);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
+      console.log('Validation errors:', errors);
+
+      // Auto switch to the tab that contains the first error
+      const errorKeys = Object.keys(errors);
+      const firstTab = errorKeys.map((k) => FIELD_TO_TAB[k]?.tab).find(Boolean);
+      if (firstTab) {
+        setActiveTab(firstTab);
+      }
+
+      // Group errors by section for structured display
+      const errorLines = Object.entries(errors).map(([key, msg]) => {
+        const info = FIELD_TO_TAB[key];
+        return {
+          section: info?.sectionName || "General",
+          tab: info?.tab || "basic",
+          message: msg,
+        };
+      });
+
       setPopup({
         isVisible: true,
-        message: "Please fix the errors in the form",
+        title: "Please complete required fields",
+        message: (
+          <div className="space-y-3">
+            <p className="text-gray-700 dark:text-gray-200 font-medium text-sm">
+              Form mein kuch zaroori details missing ya incomplete hain:
+            </p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-3.5 space-y-2 text-xs sm:text-sm text-red-700 dark:text-red-300">
+              {errorLines.map((item, idx) => (
+                <div key={idx} className="flex items-start gap-2">
+                  <span className="font-bold text-red-500 mt-0.5">•</span>
+                  <div>
+                    <span className="font-semibold text-red-900 dark:text-red-200">[{item.section}]:</span>{" "}
+                    <span>{item.message}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {firstTab && (
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                👉 Switched to <strong>{FIELD_TO_TAB[errorKeys[0]]?.sectionName || firstTab}</strong> section so you can fill it directly.
+              </p>
+            )}
+          </div>
+        ),
         type: "error",
       });
       return;
@@ -1056,9 +1134,10 @@ const EditCourse = () => {
 
   return (
     <>
-      <SuccessPopup
+      <PopupAlert
         message={popup.message}
-        type={popup.type}
+        title={popup.title}
+        type={popup.type as any}
         isVisible={popup.isVisible}
         onClose={() => setPopup({ ...popup, isVisible: false })}
       />
@@ -1080,26 +1159,42 @@ const EditCourse = () => {
             </button>
           </div>
           <nav className="p-4 space-y-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  setIsSidebarOpen(false); // Close sidebar on mobile after selection
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === tab.key
-                  ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 shadow-sm"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            {tabs.map((tab) => {
+              const tabHasError = Object.keys(formErrors).some(
+                (k) => FIELD_TO_TAB[k]?.tab === tab.key && Boolean((formErrors as any)[k])
+              );
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    setIsSidebarOpen(false); // Close sidebar on mobile after selection
+                  }}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    activeTab === tab.key
+                      ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 shadow-sm"
+                      : tabHasError
+                      ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
+                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   }`}
-              >
-                <tab.icon className="w-5 h-5" />
-                <span>{tab.title}</span>
-                {tab.isRequired && (
-                  <span className="text-red-500 text-xs">*</span>
-                )}
-              </button>
-            ))}
+                >
+                  <div className="flex items-center gap-3">
+                    <tab.icon className={`w-5 h-5 ${tabHasError ? "text-red-500" : ""}`} />
+                    <span>{tab.title}</span>
+                    {tab.isRequired && (
+                      <span className="text-red-500 text-xs">*</span>
+                    )}
+                  </div>
+                  {tabHasError && (
+                    <span className="px-2 py-0.5 text-xs bg-red-100 text-red-600 dark:bg-red-900/60 dark:text-red-300 rounded-full font-bold flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                      Fix
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
         </aside>
 

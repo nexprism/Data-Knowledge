@@ -56,12 +56,32 @@ const DashboardCoursePlayer = () => {
     // Video Progress & Socket.IO State
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(300);
-    const [isPlaying, setIsPlaying] = useState(true);
+    const [isPlaying, setIsPlaying] = useState(false);
     const [socketConnected, setSocketConnected] = useState(false);
     const [currentLessonProgress, setCurrentLessonProgress] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
     const videoRef = useRef(null);
+    const iframeRef = useRef(null);
+    const playerWrapperRef = useRef(null);
     const lastEmitTimeRef = useRef(0);
+
+    // Prevent developer tool shortcuts and right clicks to deter link extraction
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (
+                e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) ||
+                (e.ctrlKey && ['U', 'u', 'S', 's'].includes(e.key))
+            ) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const formatTime = (seconds) => {
         const s = Math.max(0, Math.floor(seconds || 0));
@@ -202,37 +222,100 @@ const DashboardCoursePlayer = () => {
         setDuration(d);
         const startingTime = (initialProgress / 100) * d;
         setCurrentTime(startingTime);
-        setIsPlaying(true);
+        // DO NOT auto-play or start ticker before video is actually played
+        setIsPlaying(false);
     }, [selectedLesson]);
 
-    // Periodic ticker while video is playing
+    // Listen to iframe postMessage events (YouTube and VdoCipher)
     useEffect(() => {
-        if (!selectedLesson || !isPlaying) return;
+        const handleMessage = (event) => {
+            if (!event.data) return;
 
-        const interval = setInterval(() => {
-            setCurrentTime((prev) => {
-                const next = Math.min(duration, prev + 1);
-                const nextProg = duration > 0 ? Math.min(100, Math.round((next / duration) * 100)) : 0;
-                setCurrentLessonProgress(nextProg);
-
-                // Emit progress every 3 seconds to socket.io
-                const now = Date.now();
-                if (now - lastEmitTimeRef.current >= 3000) {
-                    lastEmitTimeRef.current = now;
-                    emitProgress(next, duration);
+            try {
+                let data = event.data;
+                if (typeof data === 'string') {
+                    try {
+                        data = JSON.parse(data);
+                    } catch (_) {
+                        return;
+                    }
                 }
 
-                if (next >= duration) {
+                // 1. YouTube Player API events
+                if (data.event === 'onStateChange') {
+                    // -1: unstarted, 0: ended, 1: playing, 2: paused, 3: buffering, 5: cued
+                    if (data.info === 1) {
+                        setIsPlaying(true);
+                    } else if (data.info === 2 || data.info === -1 || data.info === 5) {
+                        setIsPlaying(false);
+                    } else if (data.info === 0) {
+                        setIsPlaying(false);
+                        handleMarkComplete();
+                    }
+                }
+
+                if (data.event === 'infoDelivery' && data.info) {
+                    if (typeof data.info.playerState === 'number') {
+                        if (data.info.playerState === 1) {
+                            setIsPlaying(true);
+                        } else if (data.info.playerState === 2 || data.info.playerState === 0) {
+                            setIsPlaying(false);
+                        }
+                    }
+
+                    if (typeof data.info.currentTime === 'number') {
+                        const cur = data.info.currentTime;
+                        const dur = (typeof data.info.duration === 'number' && data.info.duration > 0)
+                            ? data.info.duration
+                            : duration;
+
+                        setCurrentTime(cur);
+                        if (dur && dur > 0 && dur !== duration) {
+                            setDuration(dur);
+                        }
+                        const p = dur > 0 ? Math.min(100, Math.round((cur / dur) * 100)) : 0;
+                        setCurrentLessonProgress(p);
+
+                        const now = Date.now();
+                        if (now - lastEmitTimeRef.current >= 3000) {
+                            lastEmitTimeRef.current = now;
+                            emitProgress(cur, dur);
+                        }
+                    }
+                }
+
+                // 2. VdoCipher Player API events
+                if (data.event === 'playing' || data.type === 'play' || data.event === 'play') {
+                    setIsPlaying(true);
+                } else if (data.event === 'pause' || data.type === 'pause') {
+                    setIsPlaying(false);
+                } else if (data.event === 'ended' || data.type === 'ended') {
                     setIsPlaying(false);
                     handleMarkComplete();
+                } else if (data.event === 'timeupdate' || data.type === 'timeupdate') {
+                    const cur = data.currentTime ?? data.data?.currentTime;
+                    const dur = data.duration ?? data.data?.duration ?? duration;
+                    if (typeof cur === 'number') {
+                        setCurrentTime(cur);
+                        if (dur && dur > 0 && dur !== duration) {
+                            setDuration(dur);
+                        }
+                        const p = dur > 0 ? Math.min(100, Math.round((cur / dur) * 100)) : 0;
+                        setCurrentLessonProgress(p);
+
+                        const now = Date.now();
+                        if (now - lastEmitTimeRef.current >= 3000) {
+                            lastEmitTimeRef.current = now;
+                            emitProgress(cur, dur);
+                        }
+                    }
                 }
+            } catch (_) {}
+        };
 
-                return next;
-            });
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [selectedLesson, isPlaying, duration]);
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [duration, selectedLesson]);
 
     // Handle manual seek from the progress scrubber
     const handleSeek = (percentage) => {
@@ -242,8 +325,66 @@ const DashboardCoursePlayer = () => {
         setCurrentLessonProgress(Math.round(clamped));
         if (videoRef.current) {
             videoRef.current.currentTime = newTime;
+        } else if (iframeRef.current && iframeRef.current.contentWindow) {
+            try {
+                iframeRef.current.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: 'seekTo', args: [newTime, true] }),
+                    '*'
+                );
+            } catch (_) {}
         }
         emitProgress(newTime, duration);
+    };
+
+    // Toggle Play/Pause on the active video/iframe
+    const handleTogglePlay = () => {
+        if (videoRef.current) {
+            if (isPlaying) {
+                videoRef.current.pause();
+            } else {
+                videoRef.current.play().catch(() => {});
+            }
+        } else if (iframeRef.current && iframeRef.current.contentWindow) {
+            try {
+                const cmd = isPlaying ? 'pauseVideo' : 'playVideo';
+                iframeRef.current.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: cmd, args: [] }),
+                    '*'
+                );
+                iframeRef.current.contentWindow.postMessage(
+                    JSON.stringify({ event: 'listening' }),
+                    '*'
+                );
+            } catch (_) {}
+            setIsPlaying((prev) => !prev);
+        } else {
+            setIsPlaying((prev) => !prev);
+        }
+    };
+
+    const handleToggleMute = () => {
+        const nextMuted = !isMuted;
+        setIsMuted(nextMuted);
+        if (videoRef.current) {
+            videoRef.current.muted = nextMuted;
+        } else if (iframeRef.current && iframeRef.current.contentWindow) {
+            try {
+                const cmd = nextMuted ? 'mute' : 'unMute';
+                iframeRef.current.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: cmd, args: [] }),
+                    '*'
+                );
+            } catch (_) {}
+        }
+    };
+
+    const handleToggleFullscreen = () => {
+        if (!playerWrapperRef.current) return;
+        if (!document.fullscreenElement) {
+            playerWrapperRef.current.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen().catch(() => {});
+        }
     };
 
     console.log('Current Course Data:', currentCourse);
@@ -484,6 +625,20 @@ const DashboardCoursePlayer = () => {
         }
     };
 
+    const extractYouTubeId = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+        if (match) return match[1];
+        if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+        return '';
+    };
+
+    const buildYouTubeEmbedUrl = (ytId) => {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        return `https://www.youtube-nocookie.com/embed/${ytId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&controls=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&fs=0&playsinline=1&showinfo=0`;
+    };
+
     const getVideoSrc = (lesson) => {
         if (!lesson) return '';
 
@@ -504,15 +659,25 @@ const DashboardCoursePlayer = () => {
             if (video.sourcePlatform === 'videocypher' && video.vdoCipherPlayback) {
                 return `https://player.vdocipher.com/v2/?otp=${video.vdoCipherPlayback.otp}&playbackInfo=${video.vdoCipherPlayback.playbackInfo}`;
             }
-            if (video.sourcePlatform === 'youtube') {
-                return `https://www.youtube.com/embed/${decVideoId || decVideoUrl?.split('v=')[1] || decSecureUrl?.split('v=')[1]}?modestbranding=1&rel=0&controls=1&showinfo=0&fs=1`;
+
+            const ytId = extractYouTubeId(decVideoUrl) ||
+                extractYouTubeId(decSecureUrl) ||
+                (video.sourcePlatform === 'youtube' ? extractYouTubeId(decVideoId) : '');
+
+            if (ytId) {
+                return buildYouTubeEmbedUrl(ytId);
             }
+
             if (decVideoUrl) return decVideoUrl;
             if (decSecureUrl) return decSecureUrl;
         }
 
         // Handle legacy schema
         if (lesson.video && lesson.video.url) {
+            const ytId = extractYouTubeId(lesson.video.url);
+            if (ytId) {
+                return buildYouTubeEmbedUrl(ytId);
+            }
             return lesson.video.url;
         }
 
@@ -520,6 +685,10 @@ const DashboardCoursePlayer = () => {
     };
 
     const videoSrc = getVideoSrc(selectedLesson);
+    const isYouTube = Boolean(
+        selectedLesson?.videoLessons?.[0]?.sourcePlatform === 'youtube' ||
+        (videoSrc && (videoSrc.includes('youtube.com') || videoSrc.includes('youtu.be') || videoSrc.includes('youtube-nocookie.com')))
+    );
 
     if (detailLoading) {
         return (
@@ -582,8 +751,13 @@ const DashboardCoursePlayer = () => {
                     {selectedLesson && (
                         <div className="space-y-4 mb-8">
                             <div
-                                className="animate-in fade-in duration-700 w-full aspect-video bg-[#0d0d0d] border border-white/5 relative overflow-hidden flex items-center justify-center group shadow-2xl rounded-2xl"
-                                onContextMenu={(e) => e.preventDefault()}
+                                ref={playerWrapperRef}
+                                className="animate-in fade-in duration-700 w-full aspect-video bg-[#0d0d0d] border border-white/5 relative overflow-hidden flex items-center justify-center group shadow-2xl rounded-2xl select-none"
+                                onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    return false;
+                                }}
                             >
                                 <div className="w-full h-full bg-black relative flex items-center justify-center overflow-hidden">
                                     {selectedLesson.type === 'video' || (selectedLesson.videoLessons?.length > 0) ? (
@@ -610,18 +784,85 @@ const DashboardCoursePlayer = () => {
                                                     }}
                                                 />
                                             ) : (
-                                                <iframe
-                                                    src={videoSrc}
-                                                    className={`w-full h-full border-0 absolute inset-0 z-0 transition-all duration-300 ${isObscured ? 'opacity-0 pointer-events-none filter blur-xl' : 'opacity-100'}`}
-                                                    allowFullScreen
-                                                    allow="autoplay; encrypted-media"
-                                                    title={selectedLesson.title}
-                                                    onError={() => {
-                                                        if (reportIncidentRef.current) {
-                                                            reportIncidentRef.current('VDOCIPHER_PLAYER_ERROR', { error: 'Failed to initialize VdoPlayer' });
-                                                        }
-                                                    }}
-                                                />
+                                                <div className="relative w-full h-full overflow-hidden bg-black select-none">
+                                                    <iframe
+                                                        ref={iframeRef}
+                                                        id="course-video-iframe"
+                                                        src={videoSrc}
+                                                        className={`w-full h-full border-0 absolute inset-0 z-0 transition-all duration-300 pointer-events-none ${
+                                                            isYouTube ? 'scale-[1.16] origin-center' : ''
+                                                        } ${isObscured ? 'opacity-0 filter blur-xl' : 'opacity-100'}`}
+                                                        allowFullScreen
+                                                        allow="autoplay; encrypted-media"
+                                                        title={selectedLesson.title}
+                                                        onLoad={() => {
+                                                            if (iframeRef.current?.contentWindow) {
+                                                                try {
+                                                                    iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'listening' }), '*');
+                                                                } catch (_) {}
+                                                            }
+                                                        }}
+                                                        onError={() => {
+                                                            if (reportIncidentRef.current) {
+                                                                reportIncidentRef.current('VDOCIPHER_PLAYER_ERROR', { error: 'Failed to initialize VdoPlayer' });
+                                                            }
+                                                        }}
+                                                    />
+
+                                                    {/* Top Anti-Share Shield Bar - Masks and blocks YouTube Share & Title */}
+                                                    <div
+                                                        className="absolute top-0 left-0 right-0 h-14 z-20 pointer-events-auto bg-gradient-to-b from-[#090d16] via-[#090d16]/95 to-transparent flex items-center justify-between px-5 select-none"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleTogglePlay();
+                                                        }}
+                                                        onContextMenu={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-2 max-w-[70%]">
+                                                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                                                            <span className="font-jetbrains text-[11px] font-bold text-white/90 truncate tracking-wide">
+                                                                {selectedLesson.title}
+                                                            </span>
+                                                        </div>
+                                                        <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                                            SECURE FEED
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Full Interactive Play/Pause Shield Overlay - Covers entire video so user only has play and pause options */}
+                                                    <div
+                                                        className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center select-none group/video-overlay"
+                                                        onClick={handleTogglePlay}
+                                                        onContextMenu={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                        }}
+                                                    >
+                                                        {!isPlaying ? (
+                                                            <div className="flex flex-col items-center gap-3">
+                                                                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center shadow-[0_0_35px_rgba(59,130,246,0.7)] transform group-hover/video-overlay:scale-110 transition-all duration-300">
+                                                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="ml-1">
+                                                                        <path d="M5 3l14 9-14 9V3z" />
+                                                                    </svg>
+                                                                </div>
+                                                                <span className="font-jetbrains text-[10px] uppercase tracking-widest text-white/90 bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                                                                    Click to Play
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md text-white/90 border border-white/10 flex items-center justify-center opacity-0 group-hover/video-overlay:opacity-100 transform group-hover/video-overlay:scale-105 transition-all duration-200 shadow-2xl">
+                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                                                                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                                                                </svg>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             )
                                         ) : (
                                             <div className="text-center space-y-4 z-10 relative">
@@ -694,7 +935,7 @@ const DashboardCoursePlayer = () => {
                                     <div className="flex items-center gap-3 self-end sm:self-auto">
                                         <button
                                             type="button"
-                                            onClick={() => setIsPlaying((p) => !p)}
+                                            onClick={handleTogglePlay}
                                             className={`px-4 py-2 rounded-xl text-xs font-jetbrains font-bold uppercase tracking-wider transition-all flex items-center gap-2 border ${isPlaying
                                                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
                                                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
@@ -703,14 +944,45 @@ const DashboardCoursePlayer = () => {
                                             {isPlaying ? (
                                                 <>
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                                                    Pause Progress
+                                                    Pause Video
                                                 </>
                                             ) : (
                                                 <>
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 9-14 9V3z" /></svg>
-                                                    Resume Progress
+                                                    Play Video
                                                 </>
                                             )}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleToggleMute}
+                                            title={isMuted ? "Unmute" : "Mute"}
+                                            className="p-2.5 rounded-xl text-xs font-jetbrains text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-all flex items-center justify-center"
+                                        >
+                                            {isMuted ? (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <line x1="1" y1="1" x2="23" y2="23" />
+                                                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                                                    <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+                                                </svg>
+                                            ) : (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                                </svg>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleToggleFullscreen}
+                                            title="Toggle Fullscreen"
+                                            className="p-2.5 rounded-xl text-xs font-jetbrains text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-all flex items-center justify-center"
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                                            </svg>
                                         </button>
 
                                         <button

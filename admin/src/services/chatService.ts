@@ -11,7 +11,7 @@ class ChatService {
 
     this.socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket']
+      transports: ['websocket', 'polling']
     });
 
     this.socket.on("connect", () => {
@@ -29,6 +29,12 @@ class ChatService {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+    }
+  }
+
+  joinRoom(roomId: string) {
+    if (this.socket && roomId) {
+      this.socket.emit("joinRoom", { roomId });
     }
   }
 

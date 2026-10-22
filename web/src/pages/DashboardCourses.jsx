@@ -7,7 +7,7 @@ import RollingText from '../components/RollingText'
 import CourseCard from '../components/CourseCard'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import { useLanguage } from '../context/LanguageContext'
-import { getImageBaseUrl } from '../utils/apiConfig'
+import { getMediaUrl } from '../utils/apiConfig'
 
 const DashboardCourses = () => {
   const dispatch = useDispatch()
@@ -213,13 +213,7 @@ const DashboardCourses = () => {
                   category: item.category?.name || item.category || 'COURSE',
                   description: item.shortDescription || item.description,
                   price: item.salePrice ? `₹${item.salePrice}` : item.price ? `₹${item.price}` : 'FREE',
-                  image: (() => {
-                      const thumb = item.thumbnail;
-                      if (!thumb) return '/herocard.png';
-                      if (thumb.startsWith('http')) return thumb;
-                      const baseUrl = getImageBaseUrl();
-                      return `${baseUrl}${thumb.startsWith('/') ? '' : '/'}${thumb}`;
-                  })(),
+                  image: getMediaUrl(item.thumbnail, 'courses', '/herocard.png'),
                   isNew: true,
                 }} 
               />

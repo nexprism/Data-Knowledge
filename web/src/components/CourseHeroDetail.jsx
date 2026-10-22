@@ -4,7 +4,7 @@ import { gsap } from 'gsap'
 import sanitizeDisplay, { extractEditorBlocks, sanitizeParagraph, getDisplayPrice } from '../utils/textSanitize'
 import { useLanguage } from '../context/LanguageContext'
 import authorizedFetch from '../utils/apiClient'
-import { getApiBaseUrl } from '../utils/apiConfig.js'
+import { getApiBaseUrl, getMediaUrl } from '../utils/apiConfig.js'
 
 const CourseHeroDetail = ({ course = {}, section = {} }) => {
   const heroRef = useRef(null)
@@ -129,11 +129,7 @@ const CourseHeroDetail = ({ course = {}, section = {} }) => {
 
   // Cover image helper
   const rawImage = course.coverImage || course.thumbnail
-  const imageSrc = rawImage
-    ? rawImage.startsWith('http') || rawImage.startsWith('/')
-      ? rawImage
-      : `${getApiBaseUrl()}/${rawImage.replace(/^\/+/, '')}`
-    : null
+  const imageSrc = getMediaUrl(rawImage, 'courses', '/banner.png')
 
   return (
     <section ref={heroRef} className="relative w-full mb-16 md:mb-24 pt-4">
@@ -252,7 +248,8 @@ const CourseHeroDetail = ({ course = {}, section = {} }) => {
                   alt={displayTitle}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.currentTarget.style.display = 'none'
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/banner.png';
                   }}
                 />
                 <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">

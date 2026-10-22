@@ -39,12 +39,17 @@ const accessTokenAutoRefresh = async (req, res, next) => {
     if (accessToken && decodedUser) {
       const isBlacklisted = await Token.isAccessTokenBlacklisted(accessToken, decodedUser);
       if (isBlacklisted) {
-        return res.status(401).json({
-          success: false,
-          error: "Unauthorized",
-          isNewDeviceLogin: true,
-          message: "Session expired. Please log in again.",
-        });
+        const hasRefreshToken = req.cookies?.refreshToken || req.headers["x-refresh-token"];
+        if (!hasRefreshToken) {
+          return res.status(401).json({
+            success: false,
+            error: "Unauthorized",
+            isNewDeviceLogin: true,
+            message: "Session expired. Please log in again.",
+          });
+        }
+        // Token was rotated/blacklisted but client provided refresh token: allow refresh flow below
+        decodedUser = null;
       }
     }
 
@@ -142,13 +147,7 @@ const accessTokenAutoRefresh = async (req, res, next) => {
     }
 
     try {
-      // Blacklist old access token if it had not already expired
-      if (accessToken && decodedUser) {
-        const exp = decodedUser?.exp ? decodedUser.exp * 1000 : Date.now();
-        if (!(decodedUser?.role === "admin" || decodedUser?.roles?.includes("admin"))) {
-          await Token.blacklistAccessToken(accessToken, exp);
-        }
-      }
+
 
       // Refresh the access token using the refresh token
       const tokenData = await Token.refreshAccessToken(req, res);

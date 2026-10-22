@@ -472,11 +472,13 @@ export const sendMessage = async (req, res) => {
 
     console.log("✅ Message populated successfully");
 
-    // Emit to receiver and sender so clients update realtime.
+    // Emit to room, receiver and sender so clients update realtime.
     try {
       const io = req?.app?.locals?.io;
       if (io) {
+        io.to(roomId.toString()).emit("newMessage", populatedMessage);
         io.to(receiverId.toString()).emit("newMessage", populatedMessage);
+        io.to(senderId.toString()).emit("newMessage", populatedMessage);
         io.to(senderId.toString()).emit("messageSent", populatedMessage);
       }
     } catch (emitErr) {
@@ -1748,6 +1750,10 @@ export const sendCourseChatMessage = async (req, res) => {
       const io = req?.app?.locals?.io;
       if (io && courseChatRoomId) {
         io.to(`course_${courseChatRoomId.toString()}`).emit(
+          "newCourseChatMessage",
+          populatedMessage
+        );
+        io.to(courseChatRoomId.toString()).emit(
           "newCourseChatMessage",
           populatedMessage
         );

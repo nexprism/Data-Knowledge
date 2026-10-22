@@ -59,46 +59,48 @@ const Editor: React.FC<EditorProps> = ({
   uploadEndpoint = "/images",
 }) => {
   const editorRef = useRef<EditorJS | null>(null);
-  const isInitializedRef = useRef(false);
-  const holderRef = useRef<string>(holder);
-  // Generate a stable unique ID for this editor instance
-  const actualHolderId = useMemo(() => `${holder}-${Math.random().toString(36).substr(2, 9)}`, []);
-
-  // Use a ref for onChange to avoid re-initializing editor when it changes
   const onChangeRef = useRef(onChange);
+  const dataRef = useRef(data);
+
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
+  // Generate a stable unique ID for this editor instance based on holder
+  const actualHolderId = useMemo(() => `${holder}-${Math.random().toString(36).substr(2, 9)}`, [holder]);
+
   useEffect(() => {
     let isMounted = true;
+    let editorInstance: EditorJS | null = null;
 
     const initEditor = async () => {
-      // Check if editor already exists for this holder
+      // 1. Give React StrictMode or DOM mounting a tick to settle
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      if (!isMounted) return;
+
       const holderElement = document.getElementById(actualHolderId);
-      
-      // Prevent double initialization
-      if (isInitializedRef.current || !isMounted) {
-        return;
-      }
-      
-      // Check if editor already exists in DOM
-      if (holderElement) {
-        const existingEditor = holderElement.querySelector('.codex-editor');
-        if (existingEditor) {
-          console.warn(`Editor already exists for holder: ${actualHolderId}`);
-          return;
-        }
+      if (!holderElement) return;
+
+      // 2. Clean out any previous editor DOM nodes to ensure NO duplicate editors can exist
+      holderElement.innerHTML = "";
+
+      // 3. Destroy previous editor instance if it existed
+      if (editorRef.current) {
+        try {
+          if (typeof editorRef.current.destroy === 'function') {
+            await editorRef.current.isReady;
+            editorRef.current.destroy();
+          }
+        } catch (_) {}
+        editorRef.current = null;
       }
 
-      // Mark as initializing to prevent concurrent initialization
-      isInitializedRef.current = true;
-      holderRef.current = holder;
+      if (!isMounted) return;
 
       try {
         const editor = new EditorJS({
           holder: actualHolderId,
-          data: data && typeof data === 'object' ? data : undefined,
+          data: dataRef.current && typeof dataRef.current === 'object' ? dataRef.current : undefined,
           onReady: () => {
             if (isMounted) {
               // Editor is ready
@@ -189,48 +191,46 @@ const Editor: React.FC<EditorProps> = ({
           },
         });
 
+        editorInstance = editor;
         editorRef.current = editor;
+
+        await editor.isReady;
+
+        // If component unmounted while isReady was resolving, destroy it immediately
+        if (!isMounted) {
+          try {
+            editor.destroy();
+          } catch (_) {}
+          editorRef.current = null;
+          editorInstance = null;
+          if (holderElement) holderElement.innerHTML = "";
+        }
       } catch (err) {
         console.error("Editor initialization error:", err);
-        // Reset flag on error so it can retry
-        if (isMounted) {
-          isInitializedRef.current = false;
-        }
       }
     };
 
-    // Only initialize if holder matches and not already initialized
-    if (holderRef.current === holder && !isInitializedRef.current) {
-      initEditor();
-    } else if (holderRef.current !== holder) {
-      // Holder changed, reset and reinitialize
-      isInitializedRef.current = false;
-      holderRef.current = holder;
-      initEditor();
-    }
+    initEditor();
 
     return () => {
       isMounted = false;
-      if (editorRef.current && typeof editorRef.current.destroy === 'function') {
-        editorRef.current.isReady.then(() => {
-          if (editorRef.current) {
-            try {
-              editorRef.current.destroy();
-            } catch (e) {
-              console.warn("Error destroying editor:", e);
-            }
-            editorRef.current = null;
-          }
-          isInitializedRef.current = false;
-        }).catch(e => {
-          console.warn("Editor cleanup error:", e);
-          isInitializedRef.current = false;
+      const inst = editorInstance || editorRef.current;
+      if (inst && typeof inst.destroy === 'function') {
+        inst.isReady.then(() => {
+          try {
+            inst.destroy();
+          } catch (_) {}
+          const holderEl = document.getElementById(actualHolderId);
+          if (holderEl) holderEl.innerHTML = "";
+        }).catch(() => {
+          const holderEl = document.getElementById(actualHolderId);
+          if (holderEl) holderEl.innerHTML = "";
         });
-      } else {
-        isInitializedRef.current = false;
       }
+      editorRef.current = null;
+      editorInstance = null;
     };
-  }, [holder]);
+  }, [actualHolderId, uploadEndpoint]);
 
   return (
     <div className="editor-container" style={{ minHeight: '300px' }}>

@@ -1,6 +1,11 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import dns from 'dns';
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (_) {}
+
 import http from 'http';
 import { Server } from 'socket.io';
 import app from './app.js';
@@ -14,6 +19,8 @@ import GroupMessage from './models/GroupMessage.js';
 import GroupChatRoom from './models/GroupChatRoom.js';
 import CourseChatRoom from './models/CourseChatRoom.js';
 import CourseChatMessage from './models/CourseChatMessage.js';
+import ChatRoom from './models/ChatRoom.js';
+import User from './models/User.js';
 import mongoose from 'mongoose';
 import path from 'path';
 
@@ -47,46 +54,45 @@ app.use('/uploads', async (req, res, next) => {
     const cleanPath = decodeURIComponent(req.path).replace(/^\/+/, '');
     const key = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
 
-    const r2Config = getR2Config();
-    if (r2Config.publicUrl) {
-      return res.redirect(302, `${r2Config.publicUrl.replace(/\/+$/, '')}/${key}`);
+    let r2File = null;
+    try {
+      r2File = await getFromR2(key, req.headers.range);
+    } catch (_) {}
+
+    if (r2File) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      if (r2File.contentType) {
+        res.setHeader('Content-Type', r2File.contentType);
+      }
+      if (r2File.contentLength) {
+        res.setHeader('Content-Length', r2File.contentLength);
+      }
+      if (r2File.contentRange) {
+        res.setHeader('Content-Range', r2File.contentRange);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.status(206);
+      } else {
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.status(200);
+      }
+
+      if (req.method === 'HEAD') {
+        return res.end();
+      }
+
+      return r2File.body.pipe(res);
     }
 
-    const r2File = await getFromR2(key, req.headers.range);
-    if (!r2File) {
-      return next();
-    }
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    if (r2File.contentType) {
-      res.setHeader('Content-Type', r2File.contentType);
-    }
-    if (r2File.contentLength) {
-      res.setHeader('Content-Length', r2File.contentLength);
-    }
-    if (r2File.contentRange) {
-      res.setHeader('Content-Range', r2File.contentRange);
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.status(206);
-    } else {
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.status(200);
-    }
-
-    if (req.method === 'HEAD') {
-      return res.end();
-    }
-
-    r2File.body.pipe(res);
+    // 3) Fallback: If not found on local disk and not in R2, redirect to live server
+    const encoded = cleanPath.split('/').map(s => encodeURIComponent(s)).join('/');
+    return res.redirect(302, `https://api.dataknowledge.in/uploads/${encoded}`);
   } catch (err) {
-    if (err.name === 'NoSuchKey' || err.Code === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
-      return next();
-    }
-    console.error('Error fetching file from R2:', err);
-    return next(err);
+    const cleanPath = decodeURIComponent(req.path).replace(/^\/+/, '');
+    const encoded = cleanPath.split('/').map(s => encodeURIComponent(s)).join('/');
+    return res.redirect(302, `https://api.dataknowledge.in/uploads/${encoded}`);
   }
 });
 
@@ -151,9 +157,16 @@ const onlineUsers = new Map(); // Map userId to socketId
 
 io.use((socket, next) => {
   try {
+    let token = socket.handshake.auth?.token || socket.handshake.query?.token || socket.handshake.headers?.authorization;
+    if (token && typeof token === 'string' && token.startsWith('Bearer ')) {
+      token = token.slice(7).trim();
+    }
+    if (!token) {
+      return next(new Error("Authentication error: Token missing"));
+    }
     const decoded = jwt.verify(
-      socket.handshake.auth.token,
-      process.env.JWT_ACCESS_TOKEN_SECRET_KEY
+      token,
+      process.env.JWT_ACCESS_TOKEN_SECRET_KEY || process.env.JWT_ACCESS_SECRET
     );
     socket.user = decoded;
     socket.emit("authenticated", { userId: decoded._id });
@@ -168,30 +181,69 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   //console.log(`✅ Socket connected: ${socket.id}, User: ${socket.user._id}`);
 
-  onlineUsers.set(socket.user?._id?.toString(), socket.id);
+  const userId = socket.user?._id?.toString() || socket.user?.id?.toString();
+  if (userId) {
+    onlineUsers.set(userId, socket.id);
+    socket.join(userId);
+  }
 
-  socket.join(socket.user?._id?.toString());
-
-  // Join all group chat rooms the user is part of
+  // Join all chat rooms (direct, group, course) the user is part of
   (async () => {
     try {
-      const userGroupRooms = await GroupChatRoom.find({ participants: socket.user._id }).select('_id');
-      userGroupRooms.forEach((groupRoom) => {
-        socket.join(groupRoom._id.toString());
-        //console.log(`User ${socket.user._id} joined group room ${groupRoom._id}`);
-      });
+      if (socket.user?._id) {
+        // Direct chat rooms
+        const userChatRooms = await ChatRoom.find({ participants: socket.user._id }).select('_id');
+        userChatRooms.forEach((r) => {
+          socket.join(r._id.toString());
+        });
 
-      // Join all course chat rooms the user is part of
-      const userCourseRooms = await CourseChatRoom.find({ participants: socket.user._id }).select('_id');
-      userCourseRooms.forEach((courseRoom) => {
-        socket.join(`course_${courseRoom._id.toString()}`);
-      });
+        // Group chat rooms
+        const userGroupRooms = await GroupChatRoom.find({ participants: socket.user._id }).select('_id');
+        userGroupRooms.forEach((groupRoom) => {
+          socket.join(groupRoom._id.toString());
+        });
+
+        // Course chat rooms
+        const userCourseRooms = await CourseChatRoom.find({ participants: socket.user._id }).select('_id');
+        userCourseRooms.forEach((courseRoom) => {
+          socket.join(`course_${courseRoom._id.toString()}`);
+          socket.join(courseRoom._id.toString());
+        });
+      }
     } catch (err) {
-      console.error('Error joining rooms for user:', socket.user._id, err);
+      console.error('Error joining rooms for user:', socket.user?._id, err);
     }
   })();
 
-  io.emit('userOnline', { userId: socket.user._id });
+  io.emit('userOnline', { userId: socket.user?._id });
+
+  // Handle explicit room joining from clients
+  socket.on('joinRoom', (data) => {
+    if (!data) return;
+    const target = data.roomId || data.userId || (typeof data === 'string' ? data : null);
+    if (target) socket.join(target.toString());
+    if (data.userId) socket.join(data.userId.toString());
+    if (data.roomId) socket.join(data.roomId.toString());
+  });
+
+  socket.on('joinDirectChat', (data) => {
+    if (!data) return;
+    const target = data.roomId || data.userId || data.studentId || (typeof data === 'string' ? data : null);
+    if (target) socket.join(target.toString());
+  });
+
+  socket.on('joinGroup', (data) => {
+    const groupId = data?.groupId || data?.groupRoomId || data;
+    if (groupId) socket.join(groupId.toString());
+  });
+
+  socket.on('joinCourseChat', (data) => {
+    const courseId = data?.courseId || data?.courseChatRoomId || data;
+    if (courseId) {
+      socket.join(`course_${courseId.toString()}`);
+      socket.join(courseId.toString());
+    }
+  });
 
   videoSocketHandler(socket);
 
@@ -239,9 +291,10 @@ io.on('connection', (socket) => {
       // Populate sender and receiver for response
       await newMessage.populate('sender receiver', 'fullName email profilePicture role');
 
-      // Emit newMessage to receiver
+      // Emit newMessage to room, receiver, and sender
+      io.to(roomId.toString()).emit('newMessage', newMessage);
       io.to(receiverId.toString()).emit('newMessage', newMessage);
-
+      io.to(socket.user._id.toString()).emit('newMessage', newMessage);
       socket.emit('messageSent', newMessage);
 
       // If receiver is admin, broadcast to all admins so Support Team stays in sync
@@ -450,8 +503,9 @@ io.on('connection', (socket) => {
         hasFile: !!populatedMessage.fileUrl
       });
 
-      // Send to course room participants only once
+      // Send to course room participants
       io.to(`course_${courseChatRoomId.toString()}`).emit('newCourseChatMessage', populatedMessage);
+      io.to(courseChatRoomId.toString()).emit('newCourseChatMessage', populatedMessage);
 
       // Send confirmation to sender
       socket.emit('courseChatMessageSent', {

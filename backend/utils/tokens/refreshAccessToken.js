@@ -19,7 +19,7 @@ setInterval(() => {
 
 const refreshAccessToken = async (req, res) => {
   try {
-    let oldRefreshToken = req.cookies?.refreshToken || req.headers["x-refresh-token"];
+    let oldRefreshToken = req.cookies?.refreshToken || req.headers["x-refresh-token"] || req.body?.refreshToken;
 
     // Handle JSON parsing for headers if needed
     if (typeof oldRefreshToken === 'string' && oldRefreshToken.startsWith('{')) {
@@ -80,11 +80,12 @@ const refreshAccessToken = async (req, res) => {
           throw new Error("Refresh token not found in database or is blacklisted");
         }
 
-        // Generate new access and refresh tokens
+        // Generate new access and refresh tokens (isRefresh = true to preserve session without aggressive blacklisting)
         const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } = await generateTokens(
           user,
           userRefreshToken.platform || "web",
-          userRefreshToken.deviceId
+          userRefreshToken.deviceId,
+          true
         );
 
         const tokenData = {

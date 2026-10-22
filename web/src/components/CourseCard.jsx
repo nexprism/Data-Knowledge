@@ -13,6 +13,10 @@ const CourseCard = ({ item, className = '', variant = 'course' }) => {
         <img
           src={item.image}
           alt={sanitizeDisplay(item.title)}
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = '/banner.png';
+          }}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
         {item.isNew && (

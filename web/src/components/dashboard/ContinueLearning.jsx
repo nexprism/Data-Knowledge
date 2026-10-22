@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import bannerImg from '../../assets/images/banner.png'
 import { useLanguage } from '../../context/LanguageContext'
+import { getMediaUrl } from '../../utils/apiConfig'
 
 const ContinueLearning = () => {
   const navigate = useNavigate()
@@ -15,7 +16,7 @@ const ContinueLearning = () => {
   // Find thumbnail from activeCourses
   const activeCourse = dashData?.activeCourses?.find(c => c.courseId === lastSession.courseId)
   const thumbnail = activeCourse?.thumbnail 
-    ? `${import.meta.env.VITE_IMAGE_URL || 'https://api.dataknowledge.in'}/${activeCourse.thumbnail}` 
+    ? getMediaUrl(activeCourse.thumbnail, 'courses', '') || bannerImg
     : bannerImg
 
   const percentage = Math.round(lastSession.completionPercentage || 0)
@@ -23,8 +24,22 @@ const ContinueLearning = () => {
   return (
     <div className="relative w-full h-full min-h-[360px] rounded-3xl overflow-hidden group border border-card-border shadow-card flex flex-col justify-end">
       {/* Full Background Image */}
-      <div className="absolute inset-0 w-full h-full">
-         <img src={thumbnail} alt="Course Artwork" className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-1000" />
+      <div className="absolute inset-0 w-full h-full bg-slate-900">
+         <img 
+           src={thumbnail} 
+           alt="Course Artwork" 
+           onError={(e) => {
+             const currentSrc = e.currentTarget.src;
+             if (!currentSrc.includes('api.dataknowledge.in') && activeCourse?.thumbnail) {
+               const clean = activeCourse.thumbnail.replace(/^\/+/, '');
+               const encoded = clean.split('/').map(s => encodeURIComponent(decodeURIComponent(s))).join('/');
+               e.currentTarget.src = `https://api.dataknowledge.in/${encoded}`;
+             } else {
+               e.currentTarget.src = bannerImg;
+             }
+           }}
+           className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-1000" 
+         />
       </div>
       
       {/* Heavy Gradient Overlay */}

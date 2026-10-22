@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchCourses } from '../redux/slices/courseSlice'
 import sanitizeDisplay from '../utils/textSanitize'
 import { useLanguage } from '../context/LanguageContext'
-import { getImageBaseUrl } from '../utils/apiConfig'
+import { getMediaUrl } from '../utils/apiConfig'
 
 const SwimlaneRow = ({ category, courses, navigate }) => {
   const rowRef = useRef(null)
@@ -74,12 +74,7 @@ const SwimlaneRow = ({ category, courses, navigate }) => {
                 {/* Image Container (Horizontal Aspect Ratio - Increased Height & Width) */}
                 <div className="relative aspect-[16/9.5] rounded-[1.25rem] overflow-hidden bg-slate-100 border border-slate-100">
                   <img
-                    src={(() => {
-                      const imgPath = course.thumbnail || course.horizontalCarouselImage || course.verticalCarouselImage;
-                      if (!imgPath) return "/banner.png";
-                      const baseUrl = getImageBaseUrl();
-                      return `${baseUrl}${imgPath.startsWith('/') ? '' : '/'}${imgPath}`;
-                    })()}
+                    src={getMediaUrl(course.thumbnail || course.horizontalCarouselImage || course.verticalCarouselImage, 'courses', '/banner.png')}
                     alt={sanitizeDisplay(course.title)}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />

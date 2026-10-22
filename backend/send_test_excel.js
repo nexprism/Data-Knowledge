@@ -1,5 +1,5 @@
 import XLSX from 'xlsx';
-import nodemailer from 'nodemailer';
+import emailService from './utils/emailService.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,18 +19,8 @@ XLSX.utils.book_append_sheet(wb, ws, 'Students');
 const filePath = path.join(__dirname, 'test_certificates.xlsx');
 XLSX.writeFile(wb, filePath);
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER || 'support@edrilla.com',
-    pass: process.env.SMTP_PASS || 'vjbfuqityyfivvii',
-  },
-});
-
-const info = await transporter.sendMail({
-  from: `"Edrilla" <${process.env.SMTP_USER || 'support@edrilla.com'}>`,
+const info = await emailService.sendMail('transactional', {
+  from: emailService.getFrom('transactional'),
   to: 'anshuljha1149@gmail.com',
   subject: 'Test Excel File - Certificate Report',
   text: 'Please find attached the test Excel file.',

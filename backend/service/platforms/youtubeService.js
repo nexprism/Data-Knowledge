@@ -11,8 +11,8 @@ class YouTubeService {
         throw new Error('Invalid YouTube video ID');
       }
 
-      // Construct URLs
-      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+      // Construct URLs with clean controls (no share, no external branding, JS API enabled)
+      const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&controls=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&fs=0&playsinline=1&showinfo=0`;
       const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
       
       // Optionally fetch thumbnail or metadata using YouTube API

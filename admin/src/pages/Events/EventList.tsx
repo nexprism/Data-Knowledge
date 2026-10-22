@@ -47,7 +47,7 @@ interface Event {
   tags: string[];
 }
 
-const VITE_IMAGE_URL = import.meta.env.VITE_BASE_URL;
+const VITE_IMAGE_URL = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL;
 
 const EventList: React.FC = () => {
   const dispatch = useAppDispatch();

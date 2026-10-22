@@ -168,7 +168,11 @@ const Login = () => {
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <span>{displayError}</span>
+                <span>
+                  {displayError === 'Failed to fetch' || (typeof displayError === 'string' && displayError.toLowerCase().includes('failed to fetch'))
+                    ? 'Invalid email or password'
+                    : displayError}
+                </span>
               </div>
             )}
 

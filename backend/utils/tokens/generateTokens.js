@@ -91,6 +91,16 @@ const blacklistAccessToken = async (token, exp) => {
 };
 
 const isAccessTokenBlacklisted = async (token, user) => {
+  if (user) {
+    const isAdmin =
+      user?.role === "admin" ||
+      user?.role === "super_admin" ||
+      (Array.isArray(user?.roles) &&
+        (user?.roles.includes("admin") || user?.roles.includes("super_admin"))) ||
+      user?.roles === "admin" ||
+      user?.roles === "super_admin";
+    if (isAdmin) return false;
+  }
   const redis = await getRedis();
   if (redis) {
     const result = await redis.get(`${ACCESS_TOKEN_BLACKLIST_PREFIX}${token}`);
@@ -110,7 +120,7 @@ const getTokenExp = (token) => {
   }
 };
 
-const generateTokens = async (user, platform = "web", deviceId = null) => {
+const generateTokens = async (user, platform = "web", deviceId = null, isRefresh = false) => {
   try {
     if (!user || !user._id) {
       throw new Error("User object is missing or invalid");
@@ -126,23 +136,24 @@ const generateTokens = async (user, platform = "web", deviceId = null) => {
       throw new Error("JWT secrets are not defined in environment variables");
     }
 
-    // Generate tokens
-    const accessToken = jwt.sign(payload, accessSecret, { expiresIn: '1h' });
+    // Generate tokens — 7-day access token prevents frequent hourly expiration issues
+    const accessToken = jwt.sign(payload, accessSecret, { expiresIn: '7d' });
     const refreshToken = jwt.sign(payload, refreshSecret, { expiresIn: '30d' });
 
     // Calculate expiration times
     const decodedAccess = jwt.decode(accessToken);
     const decodedRefresh = jwt.decode(refreshToken);
 
-    const accessTokenExp = decodedAccess?.exp ? decodedAccess.exp * 1000 : Date.now() + 1000 * 60 * 60; // 1 hour
+    const accessTokenExp = decodedAccess?.exp ? decodedAccess.exp * 1000 : Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days
     const refreshTokenExp = decodedRefresh?.exp ? decodedRefresh.exp * 1000 : Date.now() + 1000 * 60 * 60 * 24 * 30; // 30 days
 
-    // Invalidate previous refresh tokens for the SAME platform only
-    // This allows web + app to coexist, but only 1 device per platform
-    await UserRefreshToken.deleteMany({ 
-      userId: user._id, 
-      platform: platform === "web" ? "web" : { $in: ["app", "android", "ios"] }
-    });
+    // If new login (not a background refresh), invalidate previous refresh tokens for the platform
+    if (!isRefresh) {
+      await UserRefreshToken.deleteMany({ 
+        userId: user._id, 
+        platform: platform === "web" ? "web" : { $in: ["app", "android", "ios"] }
+      });
+    }
 
     // Save new refresh token
     const newRefreshToken = new UserRefreshToken({
@@ -154,8 +165,8 @@ const generateTokens = async (user, platform = "web", deviceId = null) => {
     });
     await newRefreshToken.save();
 
-    // Blacklist previous tokens (if not admin) ONLY for the current platform
-    // This allows web + one app device to coexist
+    // Blacklist previous tokens ONLY during a brand-new login (not token refresh)
+    // This allows active tabs and in-flight requests to complete during refresh
     const isAdmin =
       user?.role === "admin" ||
       user?.role === "super_admin" ||
@@ -163,7 +174,7 @@ const generateTokens = async (user, platform = "web", deviceId = null) => {
         (user?.roles.includes("admin") || user?.roles.includes("super_admin"))) ||
       user?.roles === "admin" ||
       user?.roles === "super_admin";
-    if (!isAdmin) {
+    if (!isAdmin && !isRefresh) {
       await cleanupExpiredAccessTokensForUser(user._id, platform);
       const previousTokens = await getAllAccessTokensForUser(user._id, platform);
 

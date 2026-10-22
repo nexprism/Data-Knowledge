@@ -39,7 +39,7 @@ interface Bundle {
   __v: number;
 }
 
-const VITE_IMAGE_URL = import.meta.env.VITE_BASE_URL;
+const VITE_IMAGE_URL = import.meta.env.VITE_IMAGE_URL || import.meta.env.VITE_BASE_URL;
 
 const BundleList: React.FC = () => {
   const dispatch = useAppDispatch();

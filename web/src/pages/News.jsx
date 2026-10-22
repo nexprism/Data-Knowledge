@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchNews } from '../redux/slices/newsSlice'
 import { useLanguage } from '../context/LanguageContext'
-import { getImageBaseUrl } from '../utils/apiConfig'
+import { getMediaUrl } from '../utils/apiConfig'
 
 const NewsCard = ({ article, variant = 'standard' }) => {
   const cardRef = useRef(null)
@@ -139,13 +139,7 @@ const News = () => {
     date: new Date(n.publishedAt || n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase(),
     views: n.stats?.views >= 1000 ? (n.stats.views / 1000).toFixed(1) + 'K' : n.stats?.views || '0',
     likes: n.stats?.likes || '0',
-    image: (() => {
-        const url = n.imageUrl || n.coverImage || n.image;
-        if (!url) return '/news_placeholder.png';
-        const baseUrl = getImageBaseUrl();
-        const finalUrl = url.startsWith('http') ? url : `${baseUrl}/uploads/news/${url}`;
-        return encodeURI(finalUrl);
-    })()
+    image: getMediaUrl(n.imageUrl || n.coverImage || n.image, 'news', '/news_placeholder.png')
   }))
 
   const featuredMain = formattedArticles[0]

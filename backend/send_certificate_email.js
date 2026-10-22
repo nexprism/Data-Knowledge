@@ -13,15 +13,7 @@ dotenv.config();
 
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/lms_backend';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER || 'support@edrilla.com',
-    pass: process.env.SMTP_PASS || 'vjbfuqityyfivvii',
-  },
-});
+import emailService from './utils/emailService.js';
 
 async function sendCertificateEmail(certificateId) {
   try {
@@ -87,11 +79,11 @@ async function sendCertificateEmail(certificateId) {
     const completionDate = cert.completion_date
       ? new Date(cert.completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 
-    await transporter.sendMail({
-      from: `"Edrilla" <${process.env.SMTP_USER || 'support@edrilla.com'}>`,
+    await emailService.sendMail('transactional', {
+      from: emailService.getFrom('transactional'),
       to: studentEmail,
-      subject: `Your Certificate for ${courseName} - Edrilla`,
-      html: `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;background:#f4f7fa;padding:40px 10px}.container{max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden}.header{background:#0d1b2a;padding:50px 30px;text-align:center;border-bottom:5px solid #B1E346}.header h1{color:#fff;margin:0;font-size:32px;letter-spacing:6px}.content{padding:40px 35px}.content h2{color:#0d1b2a}.footer{background:#0d1b2a;padding:40px;text-align:center;color:#94a3b8}</style></head><body><div class="container"><div class="header"><h1>EDRILLA</h1></div><div class="content"><h2>Congratulations, ${studentName}!</h2><p>You have successfully completed <strong>${courseName}</strong>${completionDate ? ` on <strong>${completionDate}</strong>` : ''}.</p><p>Your certificate is attached.</p></div><div class="footer"><p style="color:#fff;font-size:18px;font-weight:bold">EDRILLA</p><p>Warm Regards,<br>Team Lapaas</p></div></div></body></html>`,
+      subject: `Your Certificate for ${courseName} - Data Knowledge`,
+      html: `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;background:#f4f7fa;padding:40px 10px}.container{max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden}.header{background:#0d1b2a;padding:50px 30px;text-align:center;border-bottom:5px solid #B1E346}.header h1{color:#fff;margin:0;font-size:32px;letter-spacing:6px}.content{padding:40px 35px}.content h2{color:#0d1b2a}.footer{background:#0d1b2a;padding:40px;text-align:center;color:#94a3b8}</style></head><body><div class="container"><div class="header"><h1>DATA KNOWLEDGE</h1></div><div class="content"><h2>Congratulations, ${studentName}!</h2><p>You have successfully completed <strong>${courseName}</strong>${completionDate ? ` on <strong>${completionDate}</strong>` : ''}.</p><p>Your certificate is attached.</p></div><div class="footer"><p style="color:#fff;font-size:18px;font-weight:bold">DATA KNOWLEDGE</p><p>Warm Regards,<br>Team Data Knowledge</p></div></div></body></html>`,
       attachments: [{ filename: `Certificate_${courseName.replace(/\s+/g, '_')}.pdf`, path: pdfPath }],
     });
 

@@ -22,6 +22,15 @@ class CrudRepository {
     }
   }
 
+  async findOne(filter = {}) {
+    try {
+      const result = await this.model.findOne(filter);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async get(id, populateFields = []) {
     try {
       let query = this.model.findById(id);

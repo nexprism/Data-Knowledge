@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchNewsBySlug } from '../redux/slices/newsSlice'
 import { gsap } from 'gsap'
 import { useLanguage } from '../context/LanguageContext'
-import { getImageBaseUrl } from '../utils/apiConfig'
+import { getMediaUrl } from '../utils/apiConfig'
 
 // Escape plain text for safe embedding into generated HTML
 const escapeHtml = (text = '') =>
@@ -14,13 +14,7 @@ const escapeHtml = (text = '') =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
 
-// Resolve possible relative upload paths to full image URLs
-const getContentImageUrl = (path) => {
-  if (!path) return ''
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
-  const baseUrl = getImageBaseUrl()
-  return encodeURI(`${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`)
-}
+const getContentImageUrl = (path) => getMediaUrl(path, '', '')
 
 // Render EditorJS blocks into plain HTML
 const renderEditorJSBlocks = (blocks) => {
@@ -210,12 +204,7 @@ const NewsDetail = () => {
     time: new Date(articleData.publishedAt || articleData.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }).toUpperCase(),
     views: articleData.stats?.views >= 1000 ? (articleData.stats.views / 1000).toFixed(1) + 'K' : articleData.stats?.views || '0',
     commentsCount: articleData.comments?.length || 0,
-    image: (() => {
-        const url = articleData.imageUrl || articleData.coverImage || articleData.image;
-        if (!url) return '/news_placeholder.png';
-        const baseUrl = getImageBaseUrl();
-        return encodeURI(url.startsWith('http') ? url : `${baseUrl}/uploads/news/${url}`);
-    })(),
+    image: getMediaUrl(articleData.imageUrl || articleData.coverImage || articleData.image, 'news', '/news_placeholder.png'),
     intro: articleData.summary?.replace(/<[^>]*>?/gm, '')?.replace('[&hellip;]', '...'),
     content: renderContentToHtml(articleData.content)
   }

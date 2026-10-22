@@ -8,7 +8,7 @@ import CourseCard from '../components/CourseCard'
 import EventHero from '../components/EventHero'
 import { fetchEvents } from '../redux/slices/eventSlice'
 import { useLanguage } from '../context/LanguageContext'
-import { getImageBaseUrl } from '../utils/apiConfig'
+import { getMediaUrl } from '../utils/apiConfig'
 
 const Courses = () => {
   const dispatch = useDispatch()
@@ -153,12 +153,7 @@ const Courses = () => {
     return () => ctx.revert()
   }, [])
 
-  const getImageUrl = (thumb) => {
-    if (!thumb) return '/herocard.png'
-    if (/^https?:\/\//i.test(thumb)) return thumb
-    const baseUrl = getImageBaseUrl()
-    return thumb.startsWith('/') ? `${baseUrl}${thumb}` : `${baseUrl}/${thumb}`
-  }
+  const getImageUrl = (thumb) => getMediaUrl(thumb, 'courses', '/herocard.png')
 
   const hasActiveEvents = eventList && eventList.length > 0
 
