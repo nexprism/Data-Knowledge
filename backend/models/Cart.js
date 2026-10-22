@@ -31,9 +31,12 @@ const cartSchema = new Schema({
     items: [cartItemSchema],
     couponCode: { type: String },
     subTotal: { type: mongoose.Types.Decimal128, default: 0 },
+    basePrice: { type: mongoose.Types.Decimal128, default: 0 },
     discount: { type: mongoose.Types.Decimal128, default: 0 },
     tax: { type: mongoose.Types.Decimal128, default: 0 },
+    paymentGatewayFee: { type: mongoose.Types.Decimal128, default: 0 },
     grandTotal: { type: mongoose.Types.Decimal128, default: 0 },
+    pricingBreakdown: { type: Schema.Types.Mixed },
     isCheckedOut: { type: Boolean, default: false },
 }, { timestamps: true });
 

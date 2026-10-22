@@ -16,7 +16,7 @@ import {
   UserCircleIcon,
   VideoIcon,
 } from "../icons";
-import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare, ShieldCheck, Mail } from "lucide-react";
+import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare, ShieldCheck, Mail, Receipt } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../hooks/redux";
 import { getAllQueries } from "../store/slices/query";
 import { fetchContactRequests } from "../store/slices/contactSlice";
@@ -205,6 +205,12 @@ const navItems: NavItem[] = [
     icon: <PieChartIcon />,
     name: "Leaderboard Settings",
     path: "/leaderboard-setting",
+  },
+  {
+    icon: <Receipt className="w-5 h-5" />,
+    name: "GST & Payment Charges",
+    path: "/settings/tax-payment",
+    keywords: ["gst", "tax", "payment", "gateway", "charges", "fees", "inclusive", "exclusive"],
   },
   {
     icon: <PageIcon />,

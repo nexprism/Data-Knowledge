@@ -1,12 +1,15 @@
 @import "tailwindcss";
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
 }
 
 /* Enable selection in forms for usability */
-input, textarea, [contenteditable="true"] {
+input,
+textarea,
+[contenteditable="true"] {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
@@ -19,6 +22,7 @@ input, textarea, [contenteditable="true"] {
   body * {
     visibility: hidden !important;
   }
+
   body::after {
     content: "Security Policy: Printing is strictly prohibited for this protected content.";
     visibility: visible !important;
@@ -36,21 +40,30 @@ input, textarea, [contenteditable="true"] {
 
 @theme {
   --font-inter: "Inter", sans-serif;
-  --font-montserrat: "Inter", sans-serif; /* Overriding for global update */
+  --font-montserrat: "Inter", sans-serif;
+  /* Overriding for global update */
   --font-inter: "Inter", sans-serif;
   --font-Montserrat: "Inter", sans-serif;
   --font-anton: "Inter", sans-serif;
   --font-signature: "Mrs Saint Delafield", cursive;
 
   /* Data Knowledge Brand Palette centered on #3498db */
-  --color-accent: #3498db; /* Vivid Brand Blue Accent */
-  --color-accent-secondary: #2980b9; /* Deep Brand Blue */
-  --color-dark: #f5f9fd; /* Crisp light bg with soft blue tint */
-  --color-normal: #0F172A; /* Slate 900 High Contrast Text */
-  --color-description: #475569; /* Slate 600 Body Description Text */
-  --color-border: rgba(52, 152, 219, 0.12); /* Subtle brand border */
-  --color-card: #FFFFFF; /* Pure White Elevated Card */
-  --color-card-border: rgba(52, 152, 219, 0.1); /* Subtle card edge matching the new palette */
+  --color-accent: #3498db;
+  /* Vivid Brand Blue Accent */
+  --color-accent-secondary: #2980b9;
+  /* Deep Brand Blue */
+  --color-dark: #f5f9fd;
+  /* Crisp light bg with soft blue tint */
+  --color-normal: #0F172A;
+  /* Slate 900 High Contrast Text */
+  --color-description: #475569;
+  /* Slate 600 Body Description Text */
+  --color-border: rgba(52, 152, 219, 0.12);
+  /* Subtle brand border */
+  --color-card: #FFFFFF;
+  /* Pure White Elevated Card */
+  --color-card-border: rgba(52, 152, 219, 0.1);
+  /* Subtle card edge matching the new palette */
 
   --shadow-accent-large: 0 10px 30px -10px rgba(52, 152, 219, 0.35);
   --shadow-accent-soft: 0 4px 20px -2px rgba(52, 152, 219, 0.25);
@@ -136,6 +149,7 @@ input, textarea, [contenteditable="true"] {
 @utility scrollbar-hide {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
+
   &::-webkit-scrollbar {
     display: none !important;
   }
@@ -152,7 +166,7 @@ input, textarea, [contenteditable="true"] {
 
 .scrollbar-thin {
   scrollbar-width: thin !important;
-  scrollbar-color: rgba(255,255,255,0.15) transparent !important;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent !important;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -165,12 +179,12 @@ input, textarea, [contenteditable="true"] {
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   border-radius: 0 !important;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.25) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
 @utility ease-memo {
@@ -184,8 +198,8 @@ html.lenis body {
 }
 
 
-button{
-  text-align:center!important;
+button {
+  text-align: center !important;
   cursor: pointer;
 }
 
@@ -288,10 +302,12 @@ button{
   scrollbar-width: thin;
   scrollbar-color: var(--color-accent) transparent;
 }
+
 .scrollbar-hide {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
@@ -299,8 +315,13 @@ button{
 }
 
 @keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin-slow {
@@ -312,10 +333,23 @@ button{
 }
 
 @keyframes scan {
-  0% { top: 0%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 @utility animate-scan {
@@ -328,11 +362,25 @@ button{
 
 
 @keyframes float-slow {
-  0% { transform: translate(5%, 5%); }
-  25% { transform: translate(75%, 20%); }
-  50% { transform: translate(20%, 75%); }
-  75% { transform: translate(65%, 45%); }
-  100% { transform: translate(5%, 5%); }
+  0% {
+    transform: translate(5%, 5%);
+  }
+
+  25% {
+    transform: translate(75%, 20%);
+  }
+
+  50% {
+    transform: translate(20%, 75%);
+  }
+
+  75% {
+    transform: translate(65%, 45%);
+  }
+
+  100% {
+    transform: translate(5%, 5%);
+  }
 }
 
 @utility animate-float-slow {
@@ -348,7 +396,8 @@ button{
   @apply leading-[1.8] text-description tracking-wide mb-6;
 }
 
-.news-content-html h3, .news-content-html h2 {
+.news-content-html h3,
+.news-content-html h2 {
   @apply font-inter italic text-3xl text-normal mt-12 mb-6;
 }
 
@@ -356,7 +405,8 @@ button{
   @apply border-white/5 my-12;
 }
 
-.news-content-html ul, .news-content-html ol {
+.news-content-html ul,
+.news-content-html ol {
   @apply flex flex-col gap-4 mb-8 pl-6;
 }
 
@@ -376,7 +426,8 @@ button{
   @apply w-full border-collapse border border-white/5 bg-white/[0.01];
 }
 
-.news-content-html th, .news-content-html td {
+.news-content-html th,
+.news-content-html td {
   @apply border border-white/5 p-4 text-[10px] uppercase tracking-wider text-left;
 }
 
@@ -389,24 +440,24 @@ button{
 }
 
 /* Custom contrast helper overrides for the deep blue theme */
-.bg-accent, 
+.bg-accent,
 .bg-amber-400,
 .bg-yellow-400,
-.hover\:bg-accent:hover, 
-.hover\:bg-amber-400:hover, 
+.hover\:bg-accent:hover,
+.hover\:bg-amber-400:hover,
 .hover\:bg-yellow-400:hover,
-.group:hover .group-hover\:bg-accent, 
+.group:hover .group-hover\:bg-accent,
 .group:hover .group-hover\:bg-amber-400,
 .group:hover .group-hover\:bg-yellow-400 {
   color: #ffffff !important;
 }
 
 /* Ensure text children inside deep blue buttons/components also inherit or display as white */
-.bg-accent *, 
-.bg-amber-400 *, 
+.bg-accent *,
+.bg-amber-400 *,
 .bg-yellow-400 *,
-.hover\:bg-accent:hover *, 
-.hover\:bg-amber-400:hover *, 
+.hover\:bg-accent:hover *,
+.hover\:bg-amber-400:hover *,
 .hover\:bg-yellow-400:hover *,
 .group:hover .group-hover\:bg-accent *,
 .group:hover .group-hover\:bg-amber-400 * {
@@ -424,7 +475,9 @@ button{
 }
 
 /* Specific button and input focus outlines to use brand blue */
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   border-color: #3498db !important;
 }
 
@@ -433,6 +486,7 @@ input:focus, textarea:focus, select:focus {
   0% {
     transform: translateX(0%);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -442,6 +496,7 @@ input:focus, textarea:focus, select:focus {
   0% {
     transform: translateX(-50%);
   }
+
   100% {
     transform: translateX(0%);
   }

@@ -61,6 +61,7 @@ const DashboardCoursePlayer = () => {
     const [currentLessonProgress, setCurrentLessonProgress] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
+    const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
     const videoRef = useRef(null);
     const iframeRef = useRef(null);
     const playerWrapperRef = useRef(null);
@@ -379,13 +380,98 @@ const DashboardCoursePlayer = () => {
     };
 
     const handleToggleFullscreen = () => {
-        if (!playerWrapperRef.current) return;
-        if (!document.fullscreenElement) {
-            playerWrapperRef.current.requestFullscreen().catch(() => {});
+        const elem = playerWrapperRef.current;
+        if (!elem) return;
+
+        const isNativeFs = Boolean(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement
+        );
+
+        if (isPseudoFullscreen) {
+            setIsPseudoFullscreen(false);
+            try { document.body.style.overflow = ''; } catch (_) {}
+            return;
+        }
+
+        if (isNativeFs) {
+            try {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            } catch (_) {}
+            return;
+        }
+
+        // Try standard or prefixed element fullscreen
+        const requestFs =
+            elem.requestFullscreen ||
+            elem.webkitRequestFullscreen ||
+            elem.mozRequestFullScreen ||
+            elem.msRequestFullscreen;
+
+        if (typeof requestFs === 'function') {
+            try {
+                const res = requestFs.call(elem);
+                if (res && typeof res.catch === 'function') {
+                    res.catch(() => {
+                        // Fallback to CSS pseudo-fullscreen on mobile browsers (like iOS Safari)
+                        setIsPseudoFullscreen(true);
+                        try { document.body.style.overflow = 'hidden'; } catch (_) {}
+                    });
+                }
+            } catch (_) {
+                setIsPseudoFullscreen(true);
+                try { document.body.style.overflow = 'hidden'; } catch (_) {}
+            }
         } else {
-            document.exitFullscreen().catch(() => {});
+            // Element fullscreen unsupported (e.g., iPhone / iOS Safari)
+            setIsPseudoFullscreen(true);
+            try { document.body.style.overflow = 'hidden'; } catch (_) {}
         }
     };
+
+    // Listen to native fullscreen changes and Escape key to sync pseudo-fullscreen
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            const isNativeFs = Boolean(
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement
+            );
+            if (!isNativeFs && isPseudoFullscreen) {
+                setIsPseudoFullscreen(false);
+                try { document.body.style.overflow = ''; } catch (_) {}
+            }
+        };
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isPseudoFullscreen) {
+                setIsPseudoFullscreen(false);
+                try { document.body.style.overflow = ''; } catch (_) {}
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            window.removeEventListener('keydown', handleKeyDown);
+            try { document.body.style.overflow = ''; } catch (_) {}
+        };
+    }, [isPseudoFullscreen]);
 
     console.log('Current Course Data:', currentCourse);
     console.log('Selected Lesson:', selectedLesson);
@@ -721,7 +807,7 @@ const DashboardCoursePlayer = () => {
         <div ref={containerRef} className="min-h-screen bg-dark text-white selection:bg-accent/40 relative overflow-x-hidden">
             <DashboardHeader />
 
-            <main className="pt-20 pb-4 px-4">
+            <main className="pt-20 pb-28 sm:pb-36 px-4">
                 <div className="space-y-12">
                     {/* Header Section */}
                     <div className="flex flex-col md:flex-row md:items-end justify-between items-start gap-8 player-reveal opacity-0">
@@ -752,13 +838,31 @@ const DashboardCoursePlayer = () => {
                         <div className="space-y-4 mb-8">
                             <div
                                 ref={playerWrapperRef}
-                                className="animate-in fade-in duration-700 w-full aspect-video bg-[#0d0d0d] border border-white/5 relative overflow-hidden flex items-center justify-center group shadow-2xl rounded-2xl select-none"
+                                className={`animate-in fade-in duration-700 w-full aspect-video bg-[#0d0d0d] border border-white/5 relative overflow-hidden flex items-center justify-center group shadow-2xl rounded-2xl select-none ${
+                                    isPseudoFullscreen
+                                        ? '!fixed !inset-0 !z-[999999] !w-screen !h-screen !max-w-none !max-h-none !rounded-none !border-0 !aspect-auto bg-black'
+                                        : ''
+                                }`}
                                 onContextMenu={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     return false;
                                 }}
                             >
+                                {isPseudoFullscreen && (
+                                    <button
+                                        type="button"
+                                        onClick={handleToggleFullscreen}
+                                        className="absolute top-4 right-4 z-[9999999] p-2.5 rounded-full bg-black/80 text-white/90 hover:bg-black border border-white/20 shadow-2xl transition-all"
+                                        title="Exit Fullscreen"
+                                        aria-label="Exit Fullscreen"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <line x1="18" y1="6" x2="6" y2="18" />
+                                            <line x1="6" y1="6" x2="18" y2="18" />
+                                        </svg>
+                                    </button>
+                                )}
                                 <div className="w-full h-full bg-black relative flex items-center justify-center overflow-hidden">
                                     {selectedLesson.type === 'video' || (selectedLesson.videoLessons?.length > 0) ? (
                                         videoSrc ? (
@@ -790,10 +894,10 @@ const DashboardCoursePlayer = () => {
                                                         id="course-video-iframe"
                                                         src={videoSrc}
                                                         className={`w-full h-full border-0 absolute inset-0 z-0 transition-all duration-300 pointer-events-none ${
-                                                            isYouTube ? 'scale-[1.16] origin-center' : ''
+                                                            isYouTube ? 'scale-[1.28] sm:scale-[1.16] origin-center' : ''
                                                         } ${isObscured ? 'opacity-0 filter blur-xl' : 'opacity-100'}`}
                                                         allowFullScreen
-                                                        allow="autoplay; encrypted-media"
+                                                        allow="autoplay; encrypted-media; fullscreen"
                                                         title={selectedLesson.title}
                                                         onLoad={() => {
                                                             if (iframeRef.current?.contentWindow) {
@@ -832,6 +936,21 @@ const DashboardCoursePlayer = () => {
                                                             SECURE FEED
                                                         </span>
                                                     </div>
+
+                                                    {/* Bottom Anti-Share Shield Bar - Masks YouTube Copy Link & YouTube Logo on Mobile */}
+                                                    {isYouTube && (
+                                                        <div
+                                                            className="absolute bottom-0 left-0 right-0 h-14 z-20 pointer-events-auto bg-gradient-to-t from-[#090d16] via-[#090d16]/90 to-transparent flex items-center justify-between px-5 select-none cursor-pointer"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleTogglePlay();
+                                                            }}
+                                                            onContextMenu={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                            }}
+                                                        />
+                                                    )}
 
                                                     {/* Full Interactive Play/Pause Shield Overlay - Covers entire video so user only has play and pause options */}
                                                     <div
@@ -977,12 +1096,20 @@ const DashboardCoursePlayer = () => {
                                         <button
                                             type="button"
                                             onClick={handleToggleFullscreen}
-                                            title="Toggle Fullscreen"
-                                            className="p-2.5 rounded-xl text-xs font-jetbrains text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-all flex items-center justify-center"
+                                            title={isPseudoFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen"}
+                                            className={`p-2.5 rounded-xl text-xs font-jetbrains text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-all flex items-center justify-center ${
+                                                isPseudoFullscreen ? 'text-blue-400 border-blue-500/50 bg-blue-500/10' : ''
+                                            }`}
                                         >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                                            </svg>
+                                            {isPseudoFullscreen ? (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7" />
+                                                </svg>
+                                            ) : (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                                                </svg>
+                                            )}
                                         </button>
 
                                         <button
@@ -1093,25 +1220,34 @@ const DashboardCoursePlayer = () => {
                                         </div>
                                     </button>
 
-                                    <div className={`transition-all duration-700 ease-in-out ${activeAccordion === (module._id || i) ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                                        <div className="border-t border-slate-200 divide-y divide-slate-100">
-                                            {module.lessons?.map((lesson, li) => {
-                                                const lid = lesson._id || lesson.id || li;
-                                                const status = dripStatuses[lid] || {};
-                                                const progress = status.progress ?? lesson.progress ?? 0;
-                                                const unlocked = typeof status.unlocked === 'boolean' ? status.unlocked : true;
-                                                return (
-                                                    <LessonTrackItem
-                                                        key={lesson._id || li}
-                                                        title={lesson.title}
-                                                        type={lesson.type}
-                                                        progress={progress}
-                                                        unlocked={unlocked}
-                                                        isActive={selectedLesson?._id === lesson._id}
-                                                        onPlay={() => handleLessonPlay(lesson)}
-                                                    />
-                                                );
-                                            })}
+                                    <div
+                                        style={{
+                                            display: 'grid',
+                                            gridTemplateRows: activeAccordion === (module._id || i) ? '1fr' : '0fr',
+                                            transition: 'grid-template-rows 0.4s ease-in-out, opacity 0.4s ease-in-out',
+                                            opacity: activeAccordion === (module._id || i) ? 1 : 0
+                                        }}
+                                    >
+                                        <div className="overflow-hidden">
+                                            <div className="border-t border-slate-200 divide-y divide-slate-100">
+                                                {module.lessons?.map((lesson, li) => {
+                                                    const lid = lesson._id || lesson.id || li;
+                                                    const status = dripStatuses[lid] || {};
+                                                    const progress = status.progress ?? lesson.progress ?? 0;
+                                                    const unlocked = typeof status.unlocked === 'boolean' ? status.unlocked : true;
+                                                    return (
+                                                        <LessonTrackItem
+                                                            key={lesson._id || li}
+                                                            title={lesson.title}
+                                                            type={lesson.type}
+                                                            progress={progress}
+                                                            unlocked={unlocked}
+                                                            isActive={selectedLesson?._id === lesson._id}
+                                                            onPlay={() => handleLessonPlay(lesson)}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

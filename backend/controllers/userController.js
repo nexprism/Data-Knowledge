@@ -340,6 +340,7 @@ export const getMyProfile = async (req, res) => {
           documentation: user.documentation,
           bio: user.bio,
           phone: user.phone,
+          location: user.location || user.address?.city || '',
           address: user.address,
           company: user.company, // <-- add company object
           skills: user.skills, // ✅ Correctly added here
@@ -606,6 +607,7 @@ export const updateProfile = async (req, res) => {
       "fullName",
       "bio",
       "phone",
+      "location",
       "address",
       "education",
       "skills",
@@ -704,6 +706,35 @@ export const updateProfile = async (req, res) => {
       }
     }
 
+    if (req.body.education) {
+      try {
+        const rawEdu = typeof req.body.education === 'string'
+          ? JSON.parse(req.body.education)
+          : req.body.education;
+        if (Array.isArray(rawEdu)) {
+          updateData.education = rawEdu.map(item => {
+            const entry = {
+              institution: item.institution ? String(item.institution).trim() : '',
+              degree: item.degree ? String(item.degree).trim() : '',
+              fieldOfStudy: item.fieldOfStudy ? String(item.fieldOfStudy).trim() : '',
+            };
+            if (item._id && mongoose.Types.ObjectId.isValid(item._id)) {
+              entry._id = item._id;
+            }
+            if (item.startDate && !isNaN(new Date(item.startDate).getTime())) {
+              entry.startDate = new Date(item.startDate);
+            }
+            if (item.endDate && !isNaN(new Date(item.endDate).getTime())) {
+              entry.endDate = new Date(item.endDate);
+            }
+            return entry;
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing education array:", e);
+      }
+    }
+
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
@@ -742,6 +773,7 @@ export const updateProfile = async (req, res) => {
       profilePicture: updatedUser.profilePicture,
       bio: updatedUser.bio,
       phone: updatedUser.phone,
+      location: updatedUser.location || '',
       address: updatedUser.address,
       company: updatedUser.company, // <-- add company object
       education: updatedUser.education,
@@ -1358,25 +1390,35 @@ export const forgotPassword = async (req, res) => {
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
-    //console.log("🔑 Generated reset token for user:", user.email);
-
-    // Save reset token to database
+    // Save hashed reset token to database
     await userService.savePasswordResetToken(
       user._id,
-      resetToken,
+      hashedToken,
       resetTokenExpiry
     );
 
-    // Send reset email
+    // Determine client origin to construct matching reset link (local vs live)
+    let clientOrigin = null;
+    try {
+      if (req.headers.origin) {
+        clientOrigin = req.headers.origin;
+      } else if (req.headers.referer) {
+        clientOrigin = new URL(req.headers.referer).origin;
+      }
+    } catch (_) {}
+
+    // Send reset email with plain token
     try {
       await emailService.sendPasswordResetEmail(
         email,
         resetToken,
-        user.fullName || "User"
+        user.fullName || "User",
+        clientOrigin
       );
-      console.log(`✅ Password reset email sent successfully to ${email}`);
+      console.log(`✅ Password reset email sent successfully to ${email} (origin: ${clientOrigin || 'default'})`);
     } catch (emailError) {
       console.error("❌ Email sending failed:", emailError);
       return res.status(500).json({

@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema({
   profilePicture: { type: String, default: 'default-profile.png' },
   bio: { type: String, trim: true },
   phone: { type: String, trim: true },
+  location: { type: String, trim: true },
 
   // Student-specific
   enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],

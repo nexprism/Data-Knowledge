@@ -8,7 +8,15 @@ const coursePlanSchema = new mongoose.Schema({
   description: { type: String, trim: true },
   durationType: { type: String, enum: ["Month", "Year", "Day"], required: true },
   duration: { type: Number, required: true },
-  status: { type: String, enum: ["active", "inactive"], default: "active" }
+  status: { type: String, enum: ["active", "inactive"], default: "active" },
+
+  // GST & Transaction Charges Module for Course Plans
+  overrideGst: { type: Boolean, default: false },
+  gstType: { type: String, enum: ["inclusive", "exclusive"], default: "exclusive" },
+  gstRate: { type: Number, default: 18 },
+  overridePaymentGatewayFee: { type: Boolean, default: false },
+  paymentGatewayFeeRate: { type: Number, default: 2 },
+  collectPaymentGatewayFeeFromStudent: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export default mongoose.model("CoursePlan", coursePlanSchema);

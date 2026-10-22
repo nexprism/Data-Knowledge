@@ -45,7 +45,6 @@ const DashboardHeader = () => {
   const navItems = [
     { key: 'dashboard', name: (t('dashboard') || 'DASHBOARD').toUpperCase(), path: '/dashboard' },
     { key: 'liveClasses', name: (t('liveClasses') || 'LIVE CLASSES').toUpperCase(), path: '/dashboard/live-classes' },
-    { key: 'profile', name: (t('profile') || 'PROFILE').toUpperCase(), path: '/dashboard/profile' },
     {
       key: 'myActivity',
       name: (t('myActivity') || 'MY ACTIVITY').toUpperCase(),
@@ -55,13 +54,11 @@ const DashboardHeader = () => {
         { key: 'mySubmissions', name: (t('mySubmissions') || 'MY SUBMISSIONS').toUpperCase(), path: '/dashboard/my-submissions' },
       ]
     },
-    { key: 'mySubmissions', name: (t('mySubmissions') || 'MY SUBMISSIONS').toUpperCase(), path: '/dashboard/my-submissions' },
     { key: 'myPurchases', name: (t('myPurchases') || 'MY PURCHASES').toUpperCase(), path: '/dashboard/purchases' },
     { key: 'myCourses', name: (t('myCourses') || 'MY COURSES').toUpperCase(), path: '/dashboard/my-courses' },
     { key: 'allCourses', name: (t('allCourses') || 'ALL COURSES').toUpperCase(), path: '/dashboard/courses' },
-    // { key: 'forum', name: (t('forum') || 'FORUM').toUpperCase(), path: '/dashboard/forum' },
     { key: 'blogs', name: (t('blogs') || 'BLOGS').toUpperCase(), path: '/dashboard/blogs' },
-    // { key: 'jobPostings', name: (t('jobPostings') || 'JOB POSTINGS').toUpperCase(), path: '/dashboard/job-posts' },
+    { key: 'profile', name: (t('profile') || 'PROFILE').toUpperCase(), path: '/dashboard/profile' },
   ]
 
   const menuRef = useRef(null)

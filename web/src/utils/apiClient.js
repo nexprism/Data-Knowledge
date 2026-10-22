@@ -27,7 +27,8 @@ export async function parseApiResponse(res) {
 }
 
 export async function authorizedFetch(path, opts = {}) {
-  const url = path.startsWith('http') ? path : `${BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  const base = getApiBaseUrl();
+  const url = path.startsWith('http') ? path : `${base}${path.startsWith('/') ? path : `/${path}`}`;
   const token = localStorage.getItem('edrilla_token') || null;
   const refreshToken = localStorage.getItem('edrilla_refresh') || null;
 

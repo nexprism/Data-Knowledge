@@ -7,9 +7,9 @@ export default class LessonService {
 
   async createLesson(data) {
     try {
-      // Ensure ismobileOnly is true unless explicitly set to false
+      // Ensure ismobileOnly is false unless explicitly set to true
       if (typeof data.ismobileOnly === 'undefined') {
-        data.ismobileOnly = true;
+        data.ismobileOnly = false;
       }
       const createdLesson = await this.lessonRepository.create(data);
       if (!createdLesson) {

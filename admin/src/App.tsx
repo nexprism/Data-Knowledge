@@ -116,6 +116,7 @@ const CreateCertificateTemplate = lazy(
 );
 const ConsultationSlots = lazy(() => import("./pages/Consultations/ConsultationSlots"));
 const ConsultationBookings = lazy(() => import("./pages/Consultations/ConsultationBookings"));
+const TaxPaymentSettings = lazy(() => import("./pages/settings/TaxPaymentSettings"));
 
 
 export default function App() {
@@ -324,6 +325,7 @@ export default function App() {
                 <Route path="/why-choose-us" element={<WhyChooseUsPage />} />
                 <Route path="/about-snapshot" element={<AboutSnapshotPage />} />
                 <Route path="/admin-users" element={<AdminUsersPage />} />
+                <Route path="/settings/tax-payment" element={<TaxPaymentSettings />} />
                 <Route path="/contact-management" element={<ContactManagement />} />
                 <Route path="/contact" element={<Navigate to="/contact-management" replace />} />
               </Route>

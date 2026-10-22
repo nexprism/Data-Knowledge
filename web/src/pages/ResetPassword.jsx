@@ -24,18 +24,36 @@ const ResetPassword = () => {
     if (error) dispatch(clearAuthError())
   }, [newPassword, confirmPassword])
 
+  useEffect(() => {
+    if (!token) {
+      setLocalError('Reset token is missing or invalid. Please request a new password reset link from the sign in page.')
+    }
+  }, [token])
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setLocalError('')
     setSuccessMessage('')
 
     if (!token) {
-      setLocalError('Reset token is missing from the link.')
+      setLocalError('Reset token is missing from the link. Please request a new password reset link.')
       return
     }
 
     if (newPassword.length < 6) {
       setLocalError('Password must be at least 6 characters long.')
+      return
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/
+    if (!passwordRegex.test(newPassword)) {
+      setLocalError('Password must contain at least one uppercase letter, one lowercase letter, and one number.')
+      return
+    }
+
+    const commonPasswords = ['password', '123456', 'password123', 'admin', 'qwerty']
+    if (commonPasswords.includes(newPassword.toLowerCase())) {
+      setLocalError('Please choose a stronger password.')
       return
     }
 
@@ -53,7 +71,7 @@ const ResetPassword = () => {
         navigate('/login', { replace: true })
       }, 1800)
     } catch (err) {
-      setLocalError(err || 'Unable to reset password.')
+      setLocalError(typeof err === 'string' ? err : (err?.message || 'Unable to reset password.'))
     }
   }
 
@@ -69,7 +87,7 @@ const ResetPassword = () => {
         <p className="reset-page__eyebrow">{t('resetPasswordTitle')}</p>
         <h1 className="reset-page__title">Set a new password</h1>
         <p className="reset-page__copy">
-          Use the token from your email link to complete the password change.
+          Enter your new password below to complete the password change.
         </p>
 
         {displayError && <div className="reset-page__notice reset-page__notice--error">{displayError}</div>}
@@ -124,12 +142,7 @@ const ResetPassword = () => {
             </div>
           </div>
 
-          <div className="reset-page__meta">
-            <span className="reset-page__token-label">{t('token')}</span>
-            <span className="reset-page__token-value">{token ? `${token.slice(0, 8)}...${token.slice(-8)}` : 'Missing'}</span>
-          </div>
-
-          <button type="submit" className="reset-page__submit" disabled={loading}>
+          <button type="submit" className="reset-page__submit" disabled={loading || !token}>
             {loading ? 'UPDATING...' : t('resetPasswordTitle')}
           </button>
         </form>

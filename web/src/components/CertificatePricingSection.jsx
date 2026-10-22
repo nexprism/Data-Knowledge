@@ -56,12 +56,31 @@ const CertificatePricingSection = ({ course }) => {
 
    // Use API plans if available, otherwise fallback
    const apiPlans = course?.plans?.length > 0 ? course.plans.map(p => ({
+      ...p,
       id: p._id || p.id,
+      _id: p._id || p.id,
       title: p.name || `${p.duration || ''} ${p.durationType || ''}`.trim() || 'Standard Plan',
       price: formatPrice(p.salePrice ?? p.price),
-      subtitle: p.description || 'Full Access Protocol'
+      subtitle: p.description || 'Full Access Protocol',
+      overrideGst: p.overrideGst,
+      gstType: p.gstType,
+      gstRate: p.gstRate,
+      overridePaymentGatewayFee: p.overridePaymentGatewayFee,
+      paymentGatewayFeeRate: p.paymentGatewayFeeRate,
+      collectPaymentGatewayFeeFromStudent: p.collectPaymentGatewayFeeFromStudent,
    })) : [
-      { id: '1year', title: 'Full Access', price: formatPrice(course?.salePrice ?? course?.price ?? 3499), subtitle: 'Complete Course Access' }
+      {
+         id: '1year',
+         title: 'Full Access',
+         price: formatPrice(course?.salePrice ?? course?.price ?? 3499),
+         subtitle: 'Complete Course Access',
+         overrideGst: course?.overrideGst,
+         gstType: course?.gstType,
+         gstRate: course?.gstRate,
+         overridePaymentGatewayFee: course?.overridePaymentGatewayFee,
+         paymentGatewayFeeRate: course?.paymentGatewayFeeRate,
+         collectPaymentGatewayFeeFromStudent: course?.collectPaymentGatewayFeeFromStudent,
+      }
    ];
 
    useEffect(() => {
@@ -156,7 +175,24 @@ const CertificatePricingSection = ({ course }) => {
                             <div className="flex items-center gap-8">
                                <div className="flex flex-col items-end">
                                   <span className="font-inter text-3xl md:text-5xl text-amber-700 font-normal">₹{getDisplayPrice(plan.price)}</span>
-                                  <span className="font-jetbrains text-[7px] text-slate-400 uppercase tracking-widest">Single Access</span>
+                                  <div className="flex items-center gap-1.5 mt-1.5">
+                                     <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                        (plan.overrideGst ? plan.gstType : course?.gstType) === 'inclusive'
+                                           ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                                           : 'bg-slate-100 text-slate-700'
+                                     }`}>
+                                        {(plan.overrideGst ? plan.gstType : course?.gstType) === 'inclusive' ? 'Inc. GST' : `+ ${plan.overrideGst && plan.gstRate !== undefined ? plan.gstRate : (course?.gstRate ?? 18)}% GST`}
+                                     </span>
+                                     {(plan.overridePaymentGatewayFee ? Boolean(plan.collectPaymentGatewayFeeFromStudent) : Boolean(course?.collectPaymentGatewayFeeFromStudent)) ? (
+                                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                           + {plan.overridePaymentGatewayFee && plan.paymentGatewayFeeRate !== undefined ? plan.paymentGatewayFeeRate : (course?.paymentGatewayFeeRate ?? 2)}% Fee
+                                        </span>
+                                     ) : (
+                                        <span className="text-[8px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                           0% Fee
+                                        </span>
+                                     )}
+                                  </div>
                                </div>
 
                                {/* Custom Selection Circle */}

@@ -44,6 +44,8 @@ import LandingPageSections from "./LandingPageSections";
 import AddReview from "./AddReview";
 import PopupAlert from "../../components/popUpAlert";
 import { toNumber } from "../../utils/number";
+import CoursePricingGstSection from "./components/CoursePricingGstSection";
+import CoursePlansManager, { PlanItem } from "./components/CoursePlansManager";
 
 const FIELD_TO_TAB: Record<string, { tab: string; sectionName: string; fieldLabel: string }> = {
   title: { tab: "basic", sectionName: "Basic Information", fieldLabel: "Course Title" },
@@ -308,6 +310,13 @@ const EditCourse = () => {
     isFeatured: false,
     enableWaitlist: false,
     coursePosition: "",
+    // GST & Payment Gateway settings
+    gstType: "exclusive",
+    gstRate: 18,
+    overrideGst: false,
+    paymentGatewayFeeRate: 2,
+    overridePaymentGatewayFee: false,
+    collectPaymentGatewayFeeFromStudent: false,
     // Mentor fields
     mentorName: "",
     mentorTitle: "",
@@ -354,9 +363,7 @@ const EditCourse = () => {
   });
 
   // Plans state
-  const [plans, setPlans] = useState<
-    { name: string; price: string; description: string; durationType: string; duration: string; salePrice: string; status: string; _id?: string }[]
-  >([]);
+  const [plans, setPlans] = useState<PlanItem[]>([]);
 
   // Plan form state
   const [planForm, setPlanForm] = useState({
@@ -533,6 +540,13 @@ const EditCourse = () => {
         isFeatured: course.isFeatured || false,
         enableWaitlist: course.enableWaitlist || false,
         coursePosition: course.coursePosition || "",
+        // GST & Payment Gateway settings
+        gstType: course.gstType || "exclusive",
+        gstRate: course.gstRate !== undefined ? course.gstRate : 18,
+        overrideGst: Boolean(course.overrideGst),
+        paymentGatewayFeeRate: course.paymentGatewayFeeRate !== undefined ? course.paymentGatewayFeeRate : 2,
+        overridePaymentGatewayFee: Boolean(course.overridePaymentGatewayFee),
+        collectPaymentGatewayFeeFromStudent: Boolean(course.collectPaymentGatewayFeeFromStudent),
         // Mentor fields
         mentorName: course.mentorName || "",
         mentorTitle: course.mentorTitle || "",
@@ -677,6 +691,12 @@ const EditCourse = () => {
             duration: String(toNumber(p.duration) || p.duration || ""),
             salePrice: String(toNumber(p.salePrice) || (p.salePrice?.$numberDecimal ?? p.salePrice ?? "")),
             status: p.status || "active",
+            overrideGst: Boolean(p.overrideGst),
+            gstType: p.gstType || "exclusive",
+            gstRate: p.gstRate !== undefined ? p.gstRate : 18,
+            overridePaymentGatewayFee: Boolean(p.overridePaymentGatewayFee),
+            paymentGatewayFeeRate: p.paymentGatewayFeeRate !== undefined ? p.paymentGatewayFeeRate : 2,
+            collectPaymentGatewayFeeFromStudent: Boolean(p.collectPaymentGatewayFeeFromStudent),
             _id: p._id,
           }))
         );
@@ -1579,231 +1599,22 @@ const EditCourse = () => {
 
                 {activeTab === "pricing" && (
                   <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Pricing</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
-                          <DollarSign className="w-4 h-4" />
-                          Price *
-                        </label>
-                        <input
-                          type="number"
-                          name="price"
-                          value={formData.price}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (
-                              value === "" ||
-                              /^\d+(\.\d{0,2})?$/.test(value)
-                            ) {
-                              handleInputChange(e);
-                            }
-                          }}
-                          className={`w-full border rounded-lg px-4 py-3 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.price ? "border-red-400" : "border-gray-300 dark:border-gray-600"
-                            }`}
-                          placeholder="Enter price"
-                          required
-                          step="0.01"
-                          min="0"
-                          onWheel={(e) => e.currentTarget.blur()}
-                        />
-                        {formErrors.price && (
-                          <p className="mt-1 text-xs text-red-600">
-                            {formErrors.price}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
-                          <DollarSign className="w-4 h-4" />
-                          Sale Price
-                        </label>
-                        <input
-                          type="number"
-                          name="salePrice"
-                          value={formData.salePrice}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (
-                              value === "" ||
-                              /^\d+(\.\d{0,2})?$/.test(value)
-                            ) {
-                              handleInputChange(e);
-                            }
-                          }}
-                          className={`w-full border rounded-lg px-4 py-3 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.salePrice ? "border-red-400" : "border-gray-300 dark:border-gray-600"
-                            }`}
-                          placeholder="Enter Sale price"
-                          required
-                          step="0.01"
-                          min="0"
-                          onWheel={(e) => e.currentTarget.blur()}
-                        />
-                        {formErrors.salePrice && (
-                          <p className="mt-1 text-xs text-red-600">
-                            {formErrors.salePrice}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                          Currency
-                        </label>
-                        <select
-                          name="currency"
-                          value={formData.currency}
-                          onChange={handleInputChange}
-                          className="w-full border dark:text-gray-200 border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option className="dark:text-black" value="INR">
-                            INR (₹)
-                          </option>
-                        </select>
-                      </div>
-                    </div>
+                    <CoursePricingGstSection
+                      formData={formData}
+                      setFormData={setFormData}
+                      formErrors={formErrors}
+                      handleInputChange={handleInputChange}
+                    />
                     {/* --- Plans Section --- */}
-                    <div className="mt-8">
-                      <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                        Course Plans
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-7 gap-3 mb-2">
-                        <input
-                          type="text"
-                          placeholder="Plan Name"
-                          value={planForm.name}
-                          onChange={e => setPlanForm({ ...planForm, name: e.target.value })}
-                          className="border rounded px-2 py-2 text-sm"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Price"
-                          value={planForm.price}
-                          onChange={e => setPlanForm({ ...planForm, price: e.target.value })}
-                          className="border rounded px-2 py-2 text-sm"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Description"
-                          value={planForm.description}
-                          onChange={e => setPlanForm({ ...planForm, description: e.target.value })}
-                          className="border rounded px-2 py-2 text-sm"
-                        />
-                        <select
-                          value={planForm.durationType}
-                          onChange={e => setPlanForm({ ...planForm, durationType: e.target.value })}
-                          className="border rounded px-2 py-2 text-sm"
-                        >
-                          <option value="Month">Month</option>
-                          <option value="Year">Year</option>
-                          <option value="Day">Day</option>
-                        </select>
-                        <input
-                          type="number"
-                          placeholder="Duration"
-                          value={planForm.duration}
-                          onChange={e => setPlanForm({ ...planForm, duration: e.target.value })}
-                          className="border rounded px-2 py-2 text-sm"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Sale Price"
-                          value={planForm.salePrice}
-                          onChange={e => setPlanForm({ ...planForm, salePrice: e.target.value })}
-                          className="border rounded px-2 py-2 text-sm"
-                        />
-                        <select
-                          value={planForm.status}
-                          onChange={e => setPlanForm({ ...planForm, status: e.target.value })}
-                          className="border rounded px-2 py-2 text-sm"
-                        >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleAddOrUpdatePlan}
-                          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium transition cursor-pointer"
-                        >
-                          {editingPlanIdx !== null ? "Update Plan" : "Add Plan"}
-                        </button>
-                        {editingPlanIdx !== null && (
-                          <button
-                            type="button"
-                            onClick={handleCancelEdit}
-                            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm font-medium transition cursor-pointer"
-                          >
-                            Cancel Edit
-                          </button>
-                        )}
-                      </div>
-                      {planFormError && (
-                        <div className="text-xs text-red-600 mt-1">{planFormError}</div>
-                      )}
-                      {plans.length > 0 && (
-                        <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-                                <th className="p-2.5 text-left font-semibold">Name</th>
-                                <th className="p-2.5 text-left font-semibold">Price</th>
-                                <th className="p-2.5 text-left font-semibold">Description</th>
-                                <th className="p-2.5 text-left font-semibold">Duration Type</th>
-                                <th className="p-2.5 text-left font-semibold">Duration</th>
-                                <th className="p-2.5 text-left font-semibold">Sale Price</th>
-                                <th className="p-2.5 text-left font-semibold">Status</th>
-                                <th className="p-2.5 text-center font-semibold">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                              {plans.map((plan, idx) => (
-                                <tr
-                                  key={plan._id || idx}
-                                  className={`transition-colors ${
-                                    idx === editingPlanIdx
-                                      ? "bg-blue-50 dark:bg-blue-950/40 border-l-4 border-blue-500"
-                                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                                  }`}
-                                >
-                                  <td className="p-2.5 font-medium text-gray-900 dark:text-gray-100">{plan.name}</td>
-                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">₹{plan.price}</td>
-                                  <td className="p-2.5 text-gray-600 dark:text-gray-400 max-w-xs truncate" title={plan.description}>{plan.description || "-"}</td>
-                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">{plan.durationType}</td>
-                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">{plan.duration}</td>
-                                  <td className="p-2.5 text-gray-700 dark:text-gray-300">{plan.salePrice ? `₹${plan.salePrice}` : "-"}</td>
-                                  <td className="p-2.5">
-                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                      plan.status === "active"
-                                        ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
-                                        : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
-                                    }`}>
-                                      {plan.status || "active"}
-                                    </span>
-                                  </td>
-                                  <td className="p-2.5 text-center whitespace-nowrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleEditPlan(idx)}
-                                      className="px-2.5 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded mr-2 transition cursor-pointer"
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemovePlan(idx)}
-                                      className="px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition cursor-pointer"
-                                    >
-                                      Remove
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
+                    <CoursePlansManager
+                      plans={plans}
+                      setPlans={setPlans}
+                      courseGstType={formData.gstType}
+                      courseGstRate={formData.gstRate}
+                      coursePgRate={formData.paymentGatewayFeeRate}
+                      courseCollectPg={formData.collectPaymentGatewayFeeFromStudent}
+                    />
+                    {/* --- End Plans Section --- */}
                     {/* --- End Plans Section --- */}
                   </div>
                 )}

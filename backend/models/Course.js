@@ -65,6 +65,37 @@ const courseSchema = new mongoose.Schema({
   },
   discountExpiry: { type: Date },
 
+  // GST & Payment Gateway Charges Configuration
+  gstType: {
+    type: String,
+    enum: ['inclusive', 'exclusive'],
+    default: 'exclusive',
+  },
+  gstRate: {
+    type: Number,
+    default: 18, // GST rate in percentage, e.g. 18 for 18%
+    min: 0,
+    max: 100,
+  },
+  overrideGst: {
+    type: Boolean,
+    default: false,
+  },
+  paymentGatewayFeeRate: {
+    type: Number,
+    default: 2, // Gateway fee rate in percentage, e.g. 2 for 2%
+    min: 0,
+    max: 100,
+  },
+  overridePaymentGatewayFee: {
+    type: Boolean,
+    default: false,
+  },
+  collectPaymentGatewayFeeFromStudent: {
+    type: Boolean,
+    default: false, // Whether fee is passed to student at checkout
+  },
+
   // Course Details
   duration: { type: Number }, // in minutes
   totalLessons: { type: Number, default: 0 },

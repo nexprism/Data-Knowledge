@@ -23,20 +23,31 @@ export const createTextLesson = async (req, res) => {
 
     const lessonData = {
       ...req.body,
+      lesson: req.body.lesson || req.body.lessonId,
+      course: req.body.course || req.body.courseId,
       attachments,
     };
 
     const lesson = await TextLessonService.createTextLesson(lessonData);
 
-    const redis = await initRedis();
-    await redis.del("textlessons:all*");
+    try {
+      const redis = await initRedis();
+      if (redis) await redis.del("textlessons:all*");
+    } catch (_) {}
 
-    // Notify enrolled students
-    const notificationData = {
-      title: 'New File Available',
-      body: `A new file titled "${lesson.title}" has been added to your course.`,
-    };
-    await NotificationService.notifyEnrolledUsers(lesson.courseId, notificationData);
+    // Notify enrolled students safely (non-blocking)
+    try {
+      const courseIdToNotify = lesson.course || lessonData.course;
+      if (courseIdToNotify) {
+        const notificationData = {
+          title: 'New File Available',
+          body: `A new file titled "${lesson.title}" has been added to your course.`,
+        };
+        await NotificationService.notifyEnrolledUsers(courseIdToNotify, notificationData);
+      }
+    } catch (notifErr) {
+      console.warn("Notification error during text lesson creation:", notifErr.message);
+    }
 
     res
       .status(201)

@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getApiBaseUrl } from '../../utils/apiConfig.js';
 
-const BASE_URL = getApiBaseUrl();
-
 // ── Helper: persist auth data ────────────────────────────────────────────────
 const persistAuth = (response) => {
   const data = response?.data || response;
@@ -76,7 +74,8 @@ export const googleLoginUser = createAsyncThunk(
   'auth/googleLoginUser',
   async ({ googleAccessToken, deviceId, platform }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/google-login`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/google-login`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -86,7 +85,10 @@ export const googleLoginUser = createAsyncThunk(
           platform: platform || 'web'
         }),
       });
-      const data = await res.json();
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
       if (!res.ok) return rejectWithValue(data?.message || 'Google login failed');
       persistAuth(data);
       return data;
@@ -100,78 +102,130 @@ export const sendOtp = createAsyncThunk(
   'auth/sendOtp',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/sendotp`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/sendotp`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
-      const data = await res.json()
-      if (!res.ok) return rejectWithValue(data?.message || 'Send OTP failed')
-      return data
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok) return rejectWithValue(data?.message || 'Send OTP failed');
+      return data;
     } catch (err) {
-      return rejectWithValue(err.message || 'Network error')
+      return rejectWithValue(err.message || 'Network error');
     }
   }
-)
+);
 
 export const verifyOtp = createAsyncThunk(
   'auth/verifyOtp',
   async ({ email, otp }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/verifyotp`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/verifyotp`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
       })
-      const data = await res.json()
-      if (!res.ok) return rejectWithValue(data?.message || 'Verify OTP failed')
-      return data
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok) return rejectWithValue(data?.message || 'Verify OTP failed');
+      return data;
     } catch (err) {
-      return rejectWithValue(err.message || 'Network error')
+      return rejectWithValue(err.message || 'Network error');
     }
   }
-)
+);
 
 export const requestPasswordReset = createAsyncThunk(
   'auth/requestPasswordReset',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/forgot-password`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/forgot-password`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
-      })
-      const data = await res.json()
-      if (!res.ok) return rejectWithValue(data?.message || 'Unable to send reset link')
-      return data
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok) {
+        return rejectWithValue(
+          data?.message ||
+          data?.err?.message ||
+          data?.err ||
+          'Unable to send reset link. Please try again.'
+        );
+      }
+      return data;
     } catch (err) {
-      return rejectWithValue(err.message || 'Network error')
+      const isFetchError = err.message && (
+        err.message.includes('Failed to fetch') ||
+        err.message.includes('NetworkError') ||
+        err.message.includes('Load failed')
+      );
+      if (isFetchError) {
+        return rejectWithValue('Unable to connect to server. Please check your network or try again.');
+      }
+      return rejectWithValue(err.message || 'Network error');
     }
   }
-)
+);
 
 export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
   async ({ token, newPassword, confirmPassword }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/reset-password`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/reset-password`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword, confirmPassword }),
-      })
-      const data = await res.json()
-      if (!res.ok) return rejectWithValue(data?.message || 'Unable to reset password')
-      return data
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok) {
+        return rejectWithValue(
+          data?.message ||
+          data?.err?.message ||
+          data?.err ||
+          (res.status === 400 ? 'Reset token is invalid or has expired. Please request a new password reset.' : null) ||
+          'Unable to reset password'
+        );
+      }
+      return data;
     } catch (err) {
-      return rejectWithValue(err.message || 'Network error')
+      const isFetchError = err.message && (
+        err.message.includes('Failed to fetch') ||
+        err.message.includes('NetworkError') ||
+        err.message.includes('Load failed')
+      );
+      if (isFetchError) {
+        return rejectWithValue('Unable to reach server. Please check your internet connection and try again.');
+      }
+      return rejectWithValue(err.message || 'Unable to reset password');
     }
   }
-)
+);
 
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async ({ name, email, password, fullName, role, is_verify, phone }, { rejectWithValue }) => {
     try {
+      const baseUrl = getApiBaseUrl();
       // API expects signup payload (some endpoints use /signup)
       const payload = { name, email, password }
       if (fullName) payload.fullName = fullName
@@ -179,18 +233,21 @@ export const registerUser = createAsyncThunk(
       if (phone) payload.phone = phone
       // include OTP verified flag if provided
       if (typeof is_verify !== 'undefined') payload.is_verify = !!is_verify
-      const res = await fetch(`${BASE_URL}/signup`, {
+      const res = await fetch(`${baseUrl}/signup`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const data = await res.json()
-      if (!res.ok) return rejectWithValue(data?.message || 'Registration failed')
-      persistAuth(data)
-      return data
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok) return rejectWithValue(data?.message || 'Registration failed');
+      persistAuth(data);
+      return data;
     } catch (err) {
-      return rejectWithValue(err.message || 'Network error')
+      return rejectWithValue(err.message || 'Network error');
     }
   }
 );

@@ -33,6 +33,7 @@ import QuizSubmission from "../models/QuizSubmission.js";
 import AssignmentSubmission from "../models/assignmentSubmission.js";
 import CourseChatRoom from "../models/CourseChatRoom.js"; // Added import for CourseChatRoom
 import { runInTransaction } from "../utils/db/runInTransaction.js";
+import { calculatePricingBreakdown } from "../utils/pricingCalculator.js";
 
 
 const userService = new UserService();
@@ -483,8 +484,9 @@ function renderInvoiceHtml(order, guestUser, company) {
       <header class="invoice-header">
         <div class="header-content">
           <div class="company-info">
-            <h1>Lapaas</h1>
-            <p class="company-tagline">Educational Excellence Platform</p>
+            <h1>${(company && company.name) || "Data Knowledge"}</h1>
+            <p class="company-tagline">Practical Learning Ecosystem</p>
+            ${company && company.gstNumber ? `<p style="font-size: 11px; color: #374151; font-weight: 600; margin-top: 2px;">GSTIN: ${company.gstNumber}</p>` : ""}
           </div>
           <div class="invoice-details">
             <div class="invoice-number">Invoice #${order.orderNo}</div>
@@ -513,7 +515,7 @@ function renderInvoiceHtml(order, guestUser, company) {
           
           ${company && (company.name || company.gstNumber) ? `
           <div class="billing-card">
-            <h3>Company Details</h3>
+            <h3>Billing / Company</h3>
             ${company.name ? `
             <div class="billing-item">
               <span class="billing-label">Company:</span>
@@ -592,20 +594,33 @@ function renderInvoiceHtml(order, guestUser, company) {
           <div class="summary-card">
             <h3 class="summary-title">Payment Summary</h3>
             <div class="summary-row">
-              <span class="summary-label">Subtotal</span>
-              <span class="summary-value">₹${parseFloat(order.subTotal).toFixed(2)}</span>
+              <span class="summary-label">Course Base Price</span>
+              <span class="summary-value">₹${parseFloat(order.basePrice || order.subTotal || 0).toFixed(2)}</span>
             </div>
+            ${parseFloat(order.discount || 0) > 0 ? `
             <div class="summary-row">
-              <span class="summary-label">Discount</span>
-              <span class="summary-value">-₹${parseFloat(order.discount).toFixed(2)}</span>
+              <span class="summary-label">Coupon Discount</span>
+              <span class="summary-value" style="color: #15803d;">-₹${parseFloat(order.discount).toFixed(2)}</span>
             </div>
+            ` : ""}
             <div class="summary-row">
-              <span class="summary-label">GST (${parseFloat(order.gstRate) * 100}%)</span>
-              <span class="summary-value">₹${parseFloat(order.tax).toFixed(2)}</span>
+              <span class="summary-label">GST (${(parseFloat(order.gstRate || 0) * 100).toFixed(0)}%${order.gstType === 'inclusive' ? ' - Incl.' : ''})</span>
+              <span class="summary-value">₹${parseFloat(order.tax || 0).toFixed(2)}</span>
             </div>
+            ${parseFloat(order.paymentGatewayFee || 0) > 0 ? `
             <div class="summary-row">
-              <span class="summary-label">Total Amount</span>
-              <span class="summary-value">₹${parseFloat(order.grandTotal).toFixed(2)}</span>
+              <span class="summary-label">Payment Gateway Charges</span>
+              <span class="summary-value">₹${parseFloat(order.paymentGatewayFee).toFixed(2)}</span>
+            </div>
+            ` : (order.pricingBreakdown?.platformAbsorbedGatewayFee ? `
+            <div class="summary-row">
+              <span class="summary-label">Payment Gateway Charges</span>
+              <span class="summary-value" style="color: #15803d; font-size: 11px;">₹0.00 (Waived)</span>
+            </div>
+            ` : "")}
+            <div class="summary-row" style="border-top: 1.5px solid #e2e8f0; margin-top: 4px; padding-top: 8px;">
+              <span class="summary-label" style="font-weight: 700;">Final Amount Paid</span>
+              <span class="summary-value" style="font-weight: 800; font-size: 1.05rem; color: #1e293b;">₹${parseFloat(order.grandTotal).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -733,17 +748,54 @@ export const checkout = async (req, res) => {
       couponToRedeem = validationResult.coupon._id;
     }
 
-    // Step 4: Fetch GST rate
-    let GST_RATE;
-    try {
-      GST_RATE = await Setting.getGstRate(); // Get GST rate (defaults to 0.18)
-    } catch (err) {
-      console.error("Error fetching GST rate:", err);
-      return res.status(500).json({ message: "Failed to fetch GST rate", error: err.message });
+    const globalSettings = await Setting.getTaxAndPaymentSettings();
+    let targetCourse = null;
+    let targetPlan = null;
+    const firstCourseItem = items.find(it => it.type === 'course' && it.courseId);
+    if (firstCourseItem) {
+      targetCourse = await Course.findById(firstCourseItem.courseId);
+      if (firstCourseItem.coursePlanId) {
+        const CoursePlan = (await import('../models/CoursePlan.js')).default;
+        targetPlan = await CoursePlan.findById(firstCourseItem.coursePlanId);
+      }
     }
-    const taxableAmount = subTotal - discount;
-    const tax = parseFloat((taxableAmount * GST_RATE).toFixed(2)); // Calculate GST
-    const grandTotal = parseFloat((taxableAmount + tax).toFixed(2)); // Add GST to grand total
+    const gstType = targetPlan && targetPlan.overrideGst
+      ? (targetPlan.gstType || 'exclusive')
+      : (targetCourse && targetCourse.overrideGst
+        ? (targetCourse.gstType || 'exclusive')
+        : (targetPlan?.gstType || targetCourse?.gstType || globalSettings.gstType || 'exclusive'));
+
+    const gstRate = targetPlan && targetPlan.overrideGst && targetPlan.gstRate !== undefined
+      ? targetPlan.gstRate
+      : (targetCourse && targetCourse.overrideGst && targetCourse.gstRate !== undefined
+        ? targetCourse.gstRate
+        : (targetPlan?.gstRate !== undefined ? targetPlan.gstRate : (targetCourse?.gstRate !== undefined ? targetCourse.gstRate : globalSettings.gstRatePercent)));
+
+    const paymentGatewayFeeRate = targetPlan && targetPlan.overridePaymentGatewayFee && targetPlan.paymentGatewayFeeRate !== undefined
+      ? targetPlan.paymentGatewayFeeRate
+      : (targetCourse && targetCourse.overridePaymentGatewayFee && targetCourse.paymentGatewayFeeRate !== undefined
+        ? targetCourse.paymentGatewayFeeRate
+        : (targetPlan?.paymentGatewayFeeRate !== undefined ? targetPlan.paymentGatewayFeeRate : (targetCourse?.paymentGatewayFeeRate !== undefined ? targetCourse.paymentGatewayFeeRate : globalSettings.paymentGatewayFeeRatePercent)));
+
+    const collectGatewayFee = targetPlan && targetPlan.overridePaymentGatewayFee && targetPlan.collectPaymentGatewayFeeFromStudent !== undefined
+      ? targetPlan.collectPaymentGatewayFeeFromStudent
+      : (targetCourse && targetCourse.overridePaymentGatewayFee && targetCourse.collectPaymentGatewayFeeFromStudent !== undefined
+        ? targetCourse.collectPaymentGatewayFeeFromStudent
+        : (targetPlan?.collectPaymentGatewayFeeFromStudent !== undefined ? targetPlan.collectPaymentGatewayFeeFromStudent : (targetCourse?.collectPaymentGatewayFeeFromStudent !== undefined ? targetCourse.collectPaymentGatewayFeeFromStudent : globalSettings.collectPaymentGatewayFeeFromStudent)));
+
+    const breakdown = calculatePricingBreakdown({
+      listedPrice: subTotal,
+      discount,
+      gstType,
+      gstRate,
+      paymentGatewayFeeRate,
+      collectGatewayFee,
+    });
+
+    const GST_RATE = breakdown.gstRateDecimal;
+    const tax = breakdown.gstAmount;
+    const basePrice = breakdown.basePrice;
+    const grandTotal = breakdown.grandTotal;
 
     // Step 4.5: SECURITY — verify the Razorpay payment server-side BEFORE creating
     // the order or granting any enrollment. Previously this handler hard-coded
@@ -820,10 +872,16 @@ export const checkout = async (req, res) => {
         userId,
         items,
         subTotal,
+        basePrice,
         discount,
         tax,
         gstRate: GST_RATE, // Save the applied GST rate
+        gstType,
+        paymentGatewayFee: breakdown.paymentGatewayFee,
+        paymentGatewayFeeRate: breakdown.paymentGatewayFeeRateDecimal,
+        collectGatewayFeeFromStudent: collectGatewayFee,
         grandTotal,
+        pricingBreakdown: breakdown,
         payment: {
           paymentIntent: paymentId || null,
           provider: paymentProvider,
@@ -1733,10 +1791,53 @@ export const checkOrder = async (req, res) => {
         return res.status(400).json({ message: err.message, is_valid: false });
       }
     }
-    const GST_RATE = await Setting.getGstRate();
-    const taxableAmount = parseFloat(amount) - parseFloat(discount);
-    const tax = parseFloat((taxableAmount * GST_RATE).toFixed(2));
-    amount = parseFloat((taxableAmount + tax).toFixed(2));
+    let targetCourse = null;
+    if (validPlan && validPlan.courseId) {
+      targetCourse = await Course.findById(validPlan.courseId);
+    } else if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+      targetCourse = await Course.findById(courseId);
+    }
+
+    const globalSettings = await Setting.getTaxAndPaymentSettings();
+
+    // Determine GST Type: check plan override first, then course override, then global default
+    const gstType = validPlan && validPlan.overrideGst
+      ? (validPlan.gstType || 'exclusive')
+      : (targetCourse && targetCourse.overrideGst
+        ? (targetCourse.gstType || 'exclusive')
+        : (validPlan?.gstType || targetCourse?.gstType || globalSettings.gstType || 'exclusive'));
+
+    // Determine GST Rate: check plan rate if overridden, then course rate, else global default
+    const gstRate = validPlan && validPlan.overrideGst && validPlan.gstRate !== undefined
+      ? validPlan.gstRate
+      : (targetCourse && targetCourse.overrideGst && targetCourse.gstRate !== undefined
+        ? targetCourse.gstRate
+        : (validPlan?.gstRate !== undefined ? validPlan.gstRate : (targetCourse?.gstRate !== undefined ? targetCourse.gstRate : globalSettings.gstRatePercent)));
+
+    // Determine Payment Gateway Fee Rate
+    const paymentGatewayFeeRate = validPlan && validPlan.overridePaymentGatewayFee && validPlan.paymentGatewayFeeRate !== undefined
+      ? validPlan.paymentGatewayFeeRate
+      : (targetCourse && targetCourse.overridePaymentGatewayFee && targetCourse.paymentGatewayFeeRate !== undefined
+        ? targetCourse.paymentGatewayFeeRate
+        : (validPlan?.paymentGatewayFeeRate !== undefined ? validPlan.paymentGatewayFeeRate : (targetCourse?.paymentGatewayFeeRate !== undefined ? targetCourse.paymentGatewayFeeRate : globalSettings.paymentGatewayFeeRatePercent)));
+
+    // Determine whether to collect PG fee from student
+    const collectGatewayFee = validPlan && validPlan.overridePaymentGatewayFee && validPlan.collectPaymentGatewayFeeFromStudent !== undefined
+      ? validPlan.collectPaymentGatewayFeeFromStudent
+      : (targetCourse && targetCourse.overridePaymentGatewayFee && targetCourse.collectPaymentGatewayFeeFromStudent !== undefined
+        ? targetCourse.collectPaymentGatewayFeeFromStudent
+        : (validPlan?.collectPaymentGatewayFeeFromStudent !== undefined ? validPlan.collectPaymentGatewayFeeFromStudent : (targetCourse?.collectPaymentGatewayFeeFromStudent !== undefined ? targetCourse.collectPaymentGatewayFeeFromStudent : globalSettings.collectPaymentGatewayFeeFromStudent)));
+
+    const breakdown = calculatePricingBreakdown({
+      listedPrice: amount,
+      discount,
+      gstType,
+      gstRate,
+      paymentGatewayFeeRate,
+      collectGatewayFee,
+    });
+
+    amount = breakdown.grandTotal;
 
     if (amount > 0) {
       const currency = "INR";
@@ -1761,20 +1862,22 @@ export const checkOrder = async (req, res) => {
       return res.status(200).json({
         success: true,
         is_valid: true,
+        breakdown,
         razorpay: {
           key: razorpayKey,
           order: order,
           amount: amount, // amount in rupees
           currency: currency,
         },
-        data: { message: "Order can be placed" },
+        data: { message: "Order can be placed", breakdown },
       });
     } else {
       return res.status(200).json({
         success: true,
         is_valid: true,
+        breakdown,
         razorpay: null,
-        data: { message: "Order can be placed for free course" },
+        data: { message: "Order can be placed for free course", breakdown },
       });
     }
   } catch (error) {
@@ -2518,17 +2621,58 @@ export const buyNow = async (req, res) => {
       }
     }
 
-    // Step 4: Fetch GST rate
-    let GST_RATE;
-    try {
-      GST_RATE = await Setting.getGstRate(); // Get GST rate (defaults to 0.18)
-    } catch (err) {
-      console.error("Error fetching GST rate:", err);
-      return res.status(500).json({ message: "Failed to fetch GST rate", error: err.message });
+    // Step 4: Calculate accurate pricing breakdown (GST & PG Charges)
+    let targetCourse = null;
+    let targetPlan = null;
+    if (coursePlanId) {
+      const CoursePlan = (await import('../models/CoursePlan.js')).default;
+      targetPlan = await CoursePlan.findById(coursePlanId);
+      if (targetPlan && targetPlan.courseId) {
+        targetCourse = await Course.findById(targetPlan.courseId);
+      }
+    } else if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+      targetCourse = await Course.findById(courseId);
     }
-    const taxableAmount = subTotal - discount;
-    const tax = parseFloat((taxableAmount * GST_RATE).toFixed(2)); // Calculate GST
-    const grandTotal = parseFloat((taxableAmount + tax).toFixed(2)); // Add GST to grand total
+
+    const globalSettings = await Setting.getTaxAndPaymentSettings();
+
+    const gstType = targetPlan && targetPlan.overrideGst
+      ? (targetPlan.gstType || 'exclusive')
+      : (targetCourse && targetCourse.overrideGst
+        ? (targetCourse.gstType || 'exclusive')
+        : (targetPlan?.gstType || targetCourse?.gstType || globalSettings.gstType || 'exclusive'));
+
+    const gstRate = targetPlan && targetPlan.overrideGst && targetPlan.gstRate !== undefined
+      ? targetPlan.gstRate
+      : (targetCourse && targetCourse.overrideGst && targetCourse.gstRate !== undefined
+        ? targetCourse.gstRate
+        : (targetPlan?.gstRate !== undefined ? targetPlan.gstRate : (targetCourse?.gstRate !== undefined ? targetCourse.gstRate : globalSettings.gstRatePercent)));
+
+    const paymentGatewayFeeRate = targetPlan && targetPlan.overridePaymentGatewayFee && targetPlan.paymentGatewayFeeRate !== undefined
+      ? targetPlan.paymentGatewayFeeRate
+      : (targetCourse && targetCourse.overridePaymentGatewayFee && targetCourse.paymentGatewayFeeRate !== undefined
+        ? targetCourse.paymentGatewayFeeRate
+        : (targetPlan?.paymentGatewayFeeRate !== undefined ? targetPlan.paymentGatewayFeeRate : (targetCourse?.paymentGatewayFeeRate !== undefined ? targetCourse.paymentGatewayFeeRate : globalSettings.paymentGatewayFeeRatePercent)));
+
+    const collectGatewayFee = targetPlan && targetPlan.overridePaymentGatewayFee && targetPlan.collectPaymentGatewayFeeFromStudent !== undefined
+      ? targetPlan.collectPaymentGatewayFeeFromStudent
+      : (targetCourse && targetCourse.overridePaymentGatewayFee && targetCourse.collectPaymentGatewayFeeFromStudent !== undefined
+        ? targetCourse.collectPaymentGatewayFeeFromStudent
+        : (targetPlan?.collectPaymentGatewayFeeFromStudent !== undefined ? targetPlan.collectPaymentGatewayFeeFromStudent : (targetCourse?.collectPaymentGatewayFeeFromStudent !== undefined ? targetCourse.collectPaymentGatewayFeeFromStudent : globalSettings.collectPaymentGatewayFeeFromStudent)));
+
+    const breakdown = calculatePricingBreakdown({
+      listedPrice: subTotal,
+      discount,
+      gstType,
+      gstRate,
+      paymentGatewayFeeRate,
+      collectGatewayFee,
+    });
+
+    const GST_RATE = breakdown.gstRateDecimal;
+    const tax = breakdown.gstAmount;
+    const basePrice = breakdown.basePrice;
+    const grandTotal = breakdown.grandTotal;
 
     // Razorpay payment verification + capture logic.
     // SECURITY: verify against the post-coupon, post-GST grandTotal — NOT the raw
@@ -2632,10 +2776,16 @@ export const buyNow = async (req, res) => {
         userId,
         items,
         subTotal,
+        basePrice,
         discount,
         tax,
         gstRate: GST_RATE,
+        gstType,
+        paymentGatewayFee: breakdown.paymentGatewayFee,
+        paymentGatewayFeeRate: breakdown.paymentGatewayFeeRateDecimal,
+        collectGatewayFeeFromStudent: collectGatewayFee,
         grandTotal,
+        pricingBreakdown: breakdown,
         payment: {
           paymentIntent: paymentId || null,
           provider: paymentProvider,
@@ -2972,8 +3122,12 @@ export const buyNow = async (req, res) => {
         tax: newOrder.tax.toString(),
         gstRate: newOrder.gstRate.toString(),
         subTotal: newOrder.subTotal.toString(),
+        basePrice: (newOrder.basePrice || newOrder.subTotal).toString(),
+        gstType: newOrder.gstType,
+        paymentGatewayFee: (newOrder.paymentGatewayFee || 0).toString(),
         discount: newOrder.discount.toString(),
         grandTotal: newOrder.grandTotal.toString(),
+        pricingBreakdown: newOrder.pricingBreakdown,
         invoice_url: newOrder.invoice_url
       },
       guestUser,

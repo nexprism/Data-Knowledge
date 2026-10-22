@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { updateUserProfile, deleteDocument, deleteEducation } from '../../redux/slices/profileSlice'
 import ConfirmModal from './ConfirmModal'
+import EducationModal from './EducationModal'
 import { useLanguage } from '../../context/LanguageContext'
 import { getImageBaseUrl } from '../../utils/apiConfig'
 
@@ -13,7 +14,17 @@ const AcademicInfo = () => {
   const education = user?.education || []
   const documentation = user?.documentation || []
 
-  // Modal State
+  // Feedback states
+  const [statusMessage, setStatusMessage] = useState(null)
+  const [errorMessage, setErrorMessage] = useState(null)
+
+  // Education Modal state
+  const [eduModal, setEduModal] = useState({
+    isOpen: false,
+    initialData: null,
+  })
+
+  // Delete Confirm Modal State
   const [modal, setModal] = useState({
     isOpen: false,
     type: null, // 'doc' or 'edu'
@@ -22,6 +33,17 @@ const AcademicInfo = () => {
     message: ''
   })
 
+  const notifySuccess = (msg) => {
+    setStatusMessage(msg)
+    setErrorMessage(null)
+    setTimeout(() => setStatusMessage(null), 4000)
+  }
+
+  const notifyError = (msg) => {
+    setErrorMessage(msg)
+    setStatusMessage(null)
+  }
+
   const handleUploadClick = () => {
     fileInputRef.current?.click()
   }
@@ -29,14 +51,57 @@ const AcademicInfo = () => {
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        notifyError('File size exceeds the 10MB limit.')
+        return
+      }
+
       const formData = new FormData()
       formData.append('documentation', file)
-      
+
       try {
         await dispatch(updateUserProfile(formData)).unwrap()
+        notifySuccess('Document uploaded successfully!')
       } catch (err) {
-        alert(`Upload failed: ${err}`)
+        notifyError(`Upload failed: ${err?.message || err}`)
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = ''
       }
+    }
+  }
+
+  const openAddEducationModal = () => {
+    setEduModal({
+      isOpen: true,
+      initialData: null,
+    })
+  }
+
+  const openEditEducationModal = (edu) => {
+    setEduModal({
+      isOpen: true,
+      initialData: edu,
+    })
+  }
+
+  const handleSaveEducation = async (eduPayload) => {
+    try {
+      let updatedEducation
+      if (eduPayload._id) {
+        // Edit existing
+        updatedEducation = education.map((item) =>
+          item._id === eduPayload._id ? { ...item, ...eduPayload } : item
+        )
+      } else {
+        // Add new
+        updatedEducation = [...education, eduPayload]
+      }
+
+      await dispatch(updateUserProfile({ education: updatedEducation })).unwrap()
+      setEduModal({ isOpen: false, initialData: null })
+      notifySuccess(eduPayload._id ? 'Education entry updated!' : 'Education entry added successfully!')
+    } catch (err) {
+      notifyError(`Failed to save education: ${err?.message || err}`)
     }
   }
 
@@ -46,7 +111,7 @@ const AcademicInfo = () => {
       type,
       id,
       title: `Remove ${type === 'doc' ? 'Document' : 'Education'}?`,
-      message: `Are you certain you wish to purge "${name}" from your permanent record? This action cannot be undone.`
+      message: `Are you certain you wish to remove "${name}" from your profile? This action cannot be undone.`
     })
   }
 
@@ -55,12 +120,14 @@ const AcademicInfo = () => {
     try {
       if (type === 'doc') {
         await dispatch(deleteDocument(id)).unwrap()
+        notifySuccess('Document deleted successfully.')
       } else {
         await dispatch(deleteEducation(id)).unwrap()
+        notifySuccess('Education entry removed.')
       }
       setModal({ ...modal, isOpen: false })
     } catch (err) {
-      alert(`Deletion failed: ${err}`)
+      notifyError(`Deletion failed: ${err?.message || err}`)
     }
   }
 
@@ -71,9 +138,37 @@ const AcademicInfo = () => {
         ref={fileInputRef} 
         className="hidden" 
         onChange={handleFileChange}
-        accept=".pdf,.jpg,.jpeg,.png"
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
       />
 
+      {/* Status Notifications */}
+      {statusMessage && (
+        <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs font-jetbrains flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-700">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>{statusMessage}</span>
+          </div>
+          <button onClick={() => setStatusMessage(null)} className="text-amber-700 hover:text-amber-950 font-bold font-jetbrains text-[10px] uppercase">Dismiss</button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-jetbrains flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-600">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{errorMessage}</span>
+          </div>
+          <button onClick={() => setErrorMessage(null)} className="text-red-500 hover:text-red-800 font-bold font-jetbrains text-[10px] uppercase">Dismiss</button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
       <ConfirmModal 
         isOpen={modal.isOpen}
         onClose={() => setModal({ ...modal, isOpen: false })}
@@ -83,38 +178,67 @@ const AcademicInfo = () => {
         confirmText="Confirm Deletion"
         loading={updateLoading}
       />
+
+      {/* Add / Edit Education Modal */}
+      <EducationModal
+        isOpen={eduModal.isOpen}
+        initialData={eduModal.initialData}
+        onClose={() => setEduModal({ isOpen: false, initialData: null })}
+        onSave={handleSaveEducation}
+        loading={updateLoading}
+      />
       
       {/* -------------------- EDUCATION HISTORY -------------------- */}
       <div className="space-y-6">
          <div className="flex justify-between items-end border-b border-slate-100 pb-4">
             <h2 className="font-inter text-3xl text-slate-900 font-bold tracking-tight lowercase flex items-center gap-2">
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600"><path d="M12 2L2 7l10 5l10-5l-10-5z M2 17l10 5l10-5 M2 12l10 5l10-5" /></svg>
+               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600">
+                 <path d="M12 2L2 7l10 5l10-5l-10-5z M2 17l10 5l10-5 M2 12l10 5l10-5" />
+               </svg>
                {t('academic') || 'Education'} <span className="text-slate-400 font-normal">History</span>
             </h2>
-            <button className="px-5 py-2 border border-slate-200 font-jetbrains text-xs text-slate-700 font-bold uppercase tracking-[0.2em] hover:bg-slate-100 transition-all rounded-full">{t('viewAll') || 'VIEW ALL'}</button>
+            <button
+               onClick={openAddEducationModal}
+               className="px-5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-jetbrains text-xs font-bold uppercase tracking-[0.2em] transition-all rounded-full flex items-center gap-2"
+            >
+               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14" /></svg>
+               {t('addEducation') || 'ADD EDUCATION'}
+            </button>
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {education.length > 0 ? (
                education.map((edu, index) => (
-                  <div key={edu._id || index} className="p-6 border border-slate-200/80 bg-slate-50 rounded-2xl flex flex-col items-start space-y-3 group relative overflow-hidden shadow-sm">
+                  <div key={edu._id || index} className="p-6 border border-slate-200/80 bg-slate-50 rounded-2xl flex flex-col items-start space-y-3 group relative overflow-hidden shadow-sm hover:border-amber-400 transition-all">
                      <div className="space-y-1 relative z-10 w-full">
-                        <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-start gap-2">
                            <p className="font-jetbrains text-xs text-amber-800 font-black uppercase tracking-[0.3em]">{edu.degree || 'Degree'}</p>
-                           <p className="font-jetbrains text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                           <p className="font-jetbrains text-[10px] text-slate-500 font-bold uppercase tracking-widest whitespace-nowrap">
                               {edu.startDate ? new Date(edu.startDate).getFullYear() : 'N/A'} — {edu.endDate ? new Date(edu.endDate).getFullYear() : 'Present'}
                            </p>
                         </div>
                         <h4 className="font-inter text-2xl text-slate-900 font-bold tracking-tight">{edu.institution || 'Institution Name'}</h4>
-                        <p className="font-jetbrains text-xs text-slate-600 font-medium uppercase tracking-widest pt-2 border-t border-slate-200/80 mt-3">Field of Study: {edu.fieldOfStudy || 'General'}</p>
+                        <p className="font-jetbrains text-xs text-slate-600 font-medium uppercase tracking-widest pt-2 border-t border-slate-200/80 mt-3">
+                           Field of Study: {edu.fieldOfStudy || 'General'}
+                        </p>
                      </div>
                      
-                     <button 
-                        onClick={() => openDeleteModal('edu', edu._id, edu.institution)}
-                        className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all p-2 hover:text-red-600 text-slate-400"
-                     >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                     </button>
+                     <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all bg-white/90 border border-slate-200 rounded-lg p-1 shadow-sm">
+                        <button 
+                           onClick={() => openEditEducationModal(edu)}
+                           className="p-1.5 hover:text-amber-700 text-slate-500 transition-colors"
+                           title="Edit entry"
+                        >
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button 
+                           onClick={() => openDeleteModal('edu', edu._id, edu.institution)}
+                           className="p-1.5 hover:text-red-600 text-slate-500 transition-colors"
+                           title="Remove entry"
+                        >
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                     </div>
                   </div>
                ))
             ) : (
@@ -129,8 +253,13 @@ const AcademicInfo = () => {
                </div>
             )}
             
-            <div className="p-8 border-2 border-dashed border-slate-200 hover:border-amber-400 bg-slate-50/50 hover:bg-amber-50/30 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 cursor-pointer transition-all min-h-[140px]">
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-600"><path d="M12 5v14M5 12h14" /></svg>
+            <div 
+               onClick={openAddEducationModal}
+               className="p-8 border-2 border-dashed border-slate-200 hover:border-amber-400 bg-slate-50/50 hover:bg-amber-50/30 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 cursor-pointer transition-all min-h-[140px] group"
+            >
+               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-700"><path d="M12 5v14M5 12h14" /></svg>
+               </div>
                <p className="font-jetbrains text-xs text-amber-800 font-black uppercase tracking-[0.3em]">{t('addEducation') || 'ADD EDUCATION'}</p>
             </div>
          </div>
@@ -146,9 +275,19 @@ const AcademicInfo = () => {
             <button 
                onClick={handleUploadClick}
                disabled={updateLoading}
-               className="px-8 py-3.5 bg-accent text-slate-950 font-jetbrains text-xs font-black uppercase tracking-[0.3em] hover:scale-105 transition-all rounded-full shadow-accent-soft disabled:opacity-50"
+               className="px-8 py-3.5 bg-accent text-slate-950 font-jetbrains text-xs font-black uppercase tracking-[0.3em] hover:scale-105 active:scale-95 transition-all rounded-full shadow-accent-soft disabled:opacity-50 flex items-center gap-2"
             >
-               {updateLoading ? 'Uploading...' : (t('uploadFile') || 'UPLOAD FILE')}
+               {updateLoading ? (
+                 <>
+                   <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                   <span>UPLOADING...</span>
+                 </>
+               ) : (
+                 <>
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 3v12M12 3l-4 4M12 3l4 4M5 20h14"/></svg>
+                   <span>{t('uploadFile') || 'UPLOAD FILE'}</span>
+                 </>
+               )}
             </button>
          </div>
 
@@ -166,7 +305,7 @@ const AcademicInfo = () => {
                               </svg>
                            </div>
                            <div>
-                              <p className="font-jetbrains text-xs text-slate-900 font-bold uppercase tracking-wider truncate max-w-[240px]">{doc.name || 'Untitled Document'}</p>
+                              <p className="font-jetbrains text-xs text-slate-900 font-bold uppercase tracking-wider truncate max-w-[240px] sm:max-w-md">{doc.name || 'Untitled Document'}</p>
                               <p className="font-jetbrains text-[10px] text-slate-500 uppercase tracking-widest mt-0.5 font-medium">Verified Asset</p>
                            </div>
                         </div>
@@ -201,7 +340,7 @@ const AcademicInfo = () => {
                   <div className="w-14 h-14 bg-amber-100 border border-amber-300/60 rounded-full flex items-center justify-center text-amber-700 group-hover:scale-110 transition-transform">
                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3v12M12 3l-4 4M12 3l4 4M5 20h14"/></svg>
                   </div>
-                  <p className="font-jetbrains text-xs text-slate-600 font-medium uppercase tracking-wider max-w-xs mx-auto">Your document vault is empty. Upload certificates for carrier verification.</p>
+                  <p className="font-jetbrains text-xs text-slate-600 font-medium uppercase tracking-wider max-w-xs mx-auto">Your document vault is empty. Click to upload certificates or diplomas.</p>
                </div>
             )}
          </div>

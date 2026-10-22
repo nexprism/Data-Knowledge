@@ -22,6 +22,7 @@ const Checkout = () => {
 
    const selectedPlan = location.state?.plan || (urlPlanId ? { id: urlPlanId, title: 'Selected Plan', price: urlAmount ? Number(urlAmount) : 3499 } : { id: '1year', title: '1 Year Access', price: 3499 })
    const course = location.state?.course || (urlCourseId ? { id: urlCourseId, _id: urlCourseId, title: 'Course Purchase' } : {})
+   const [activeCourse, setActiveCourse] = useState(course)
    const accParam = urlAcc || location.state?.acc || ''
 
    const { settings, coupons, couponData, couponError, couponLoading } = useSelector(state => state.config)
@@ -72,12 +73,78 @@ const Checkout = () => {
    const [showSuccessModal, setShowSuccessModal] = useState(false)
    const [paying, setPaying] = useState(false)
 
+   // Fetch course tax & gateway rules if not populated
+   useEffect(() => {
+      const cId = course._id || course.id || urlCourseId
+      if (cId && activeCourse?.gstType === undefined && activeCourse?.overrideGst === undefined) {
+         fetch(`${BASE_API}/courses/${cId}`)
+            .then(res => res.json())
+            .then(data => {
+               const fetched = data?.data || data?.course || data
+               if (fetched && (fetched.title || fetched._id)) {
+                  setActiveCourse(prev => ({ ...prev, ...fetched }))
+               }
+            })
+            .catch(err => console.error('Error fetching course tax details for checkout', err))
+      }
+   }, [course._id, course.id, urlCourseId, BASE_API])
+
+   const normalizeRate = (rate, defaultVal = 0) => {
+      if (rate === undefined || rate === null || isNaN(Number(rate))) return defaultVal
+      const num = Number(rate)
+      return num > 1 ? num / 100 : num
+   }
+   const round2 = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100
+
+   const resolvedPlan = React.useMemo(() => {
+      const planId = selectedPlan?._id || selectedPlan?.id || urlPlanId
+      if (activeCourse?.plans && Array.isArray(activeCourse.plans) && planId) {
+         const found = activeCourse.plans.find(p => String(p._id || p.id) === String(planId))
+         if (found) {
+            return { ...found, ...selectedPlan }
+         }
+      }
+      return selectedPlan
+   }, [selectedPlan, urlPlanId, activeCourse?.plans])
+
+   const effectiveGstType = resolvedPlan?.overrideGst
+      ? (resolvedPlan.gstType || 'exclusive')
+      : (activeCourse?.overrideGst ? (activeCourse.gstType || 'exclusive') : (settings?.gstType || 'exclusive'))
+
+   const effectiveGstRate = resolvedPlan?.overrideGst && resolvedPlan.gstRate !== undefined
+      ? resolvedPlan.gstRate
+      : (activeCourse?.overrideGst && activeCourse.gstRate !== undefined ? activeCourse.gstRate : (settings?.gstRate ?? 18))
+
+   const effectivePgRate = resolvedPlan?.overridePaymentGatewayFee && resolvedPlan.paymentGatewayFeeRate !== undefined
+      ? resolvedPlan.paymentGatewayFeeRate
+      : (activeCourse?.overridePaymentGatewayFee && activeCourse.paymentGatewayFeeRate !== undefined ? activeCourse.paymentGatewayFeeRate : (settings?.paymentGatewayFeeRate ?? 2))
+
+   const effectiveCollectPg = resolvedPlan?.overridePaymentGatewayFee && resolvedPlan.collectPaymentGatewayFeeFromStudent !== undefined
+      ? Boolean(resolvedPlan.collectPaymentGatewayFeeFromStudent)
+      : (activeCourse?.overridePaymentGatewayFee ? Boolean(activeCourse.collectPaymentGatewayFeeFromStudent) : Boolean(settings?.collectPaymentGatewayFeeFromStudent))
+
    const basePrice = Number(selectedPlan.price || 0)
-   const gstRate = Number(settings?.gstRate ?? 0.18)
    const discount = couponData ? (couponData.discountType === 'percentage' ? (basePrice * couponData.discountPercent / 100) : Number(couponData.discountAmount || 0)) : 0
    const discountedBase = Math.max(0, basePrice - discount)
-   const gstAmount = discountedBase * gstRate
-   const total = discountedBase + gstAmount
+
+   const rGst = normalizeRate(effectiveGstRate, 0.18)
+   const isInclusive = effectiveGstType === 'inclusive'
+
+   let calculatedBasePrice = 0
+   let calculatedGstAmount = 0
+   if (isInclusive) {
+      calculatedBasePrice = rGst > 0 ? round2(discountedBase / (1 + rGst)) : discountedBase
+      calculatedGstAmount = round2(discountedBase - calculatedBasePrice)
+   } else {
+      calculatedBasePrice = discountedBase
+      calculatedGstAmount = round2(discountedBase * rGst)
+   }
+
+   const payableBeforeGateway = isInclusive ? discountedBase : round2(discountedBase + calculatedGstAmount)
+   const rPg = normalizeRate(effectivePgRate, 0.02)
+   const totalGatewayFee = round2(payableBeforeGateway * rPg)
+   const gatewayFeeCharged = effectiveCollectPg ? totalGatewayFee : 0
+   const total = round2(payableBeforeGateway + gatewayFeeCharged)
    const formatCurrency = (v) => `₹${Number(v || 0).toFixed(2)}`
 
    useEffect(() => {
@@ -161,7 +228,10 @@ const Checkout = () => {
          const razor = chkData?.razorpay || {}
          const rKey = razor.key || settings?.RAZORPAY_KEY_ID || settings?.settings?.RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID || ''
          const order = razor.order || {}
-         const rAmount = (order.amount != null) ? order.amount : Math.round(total * 100)
+         const serverGrandTotal = chkData?.breakdown?.grandTotal
+         const rAmount = (order.amount != null)
+            ? order.amount
+            : (serverGrandTotal != null ? Math.round(serverGrandTotal * 100) : Math.round(total * 100))
 
          const options = {
             key: rKey,
@@ -625,7 +695,10 @@ const Checkout = () => {
                            compact
                            basePrice={basePrice}
                            discount={discount}
-                           gstRate={gstRate}
+                           gstRate={effectiveGstRate}
+                           gstType={effectiveGstType}
+                           paymentGatewayFeeRate={effectivePgRate}
+                           collectPaymentGatewayFeeFromStudent={effectiveCollectPg}
                            couponData={couponData}
                         />
                      </div>

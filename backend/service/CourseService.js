@@ -166,7 +166,13 @@ class CourseService {
           durationType: plan.durationType,
           duration: parsedDuration,
           salePrice: plan.salePrice ? Number(plan.salePrice) : 0,
-          status: plan.status || 'active'
+          status: plan.status || 'active',
+          overrideGst: plan.overrideGst === true || plan.overrideGst === 'true',
+          gstType: plan.gstType === 'inclusive' ? 'inclusive' : 'exclusive',
+          gstRate: plan.gstRate !== undefined && plan.gstRate !== '' ? Number(plan.gstRate) : 18,
+          overridePaymentGatewayFee: plan.overridePaymentGatewayFee === true || plan.overridePaymentGatewayFee === 'true',
+          paymentGatewayFeeRate: plan.paymentGatewayFeeRate !== undefined && plan.paymentGatewayFeeRate !== '' ? Number(plan.paymentGatewayFeeRate) : 2,
+          collectPaymentGatewayFeeFromStudent: plan.collectPaymentGatewayFeeFromStudent === true || plan.collectPaymentGatewayFeeFromStudent === 'true',
         };
 
         if (plan._id && mongoose.Types.ObjectId.isValid(plan._id)) {

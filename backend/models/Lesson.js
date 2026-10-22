@@ -107,7 +107,7 @@ const lessonSchema = new Schema(
     },
     ismobileOnly: {
       type: Boolean,
-      default: true,
+      default: false,
     },
 
     // === SOFT DELETE ===

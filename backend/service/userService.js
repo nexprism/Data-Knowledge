@@ -299,7 +299,10 @@ class UserService {
     try {
       const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
       const user = await this.userRepository.findBy({
-        passwordResetToken: hashedToken,
+        $or: [
+          { passwordResetToken: hashedToken },
+          { passwordResetToken: resetToken }
+        ],
         passwordResetExpiry: { $gt: new Date() }
       });
 

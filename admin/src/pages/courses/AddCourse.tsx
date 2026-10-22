@@ -42,6 +42,8 @@ import Editor from "../../components/Editor";
 import QuillEditor from "../../components/QuillEditor";
 import LandingPageSections from "./LandingPageSections";
 import { toNumber } from "../../utils/number";
+import CoursePricingGstSection from "./components/CoursePricingGstSection";
+import CoursePlansManager, { PlanItem } from "./components/CoursePlansManager";
 // Validation schema
 type FormErrors = {
   title?: string;
@@ -437,6 +439,13 @@ const AddCourse = () => {
     isPrivate: false,
     enableWaitlist: false,
     coursePosition: "",
+    // GST & Payment Gateway settings
+    gstType: "exclusive",
+    gstRate: 18,
+    overrideGst: false,
+    paymentGatewayFeeRate: 2,
+    overridePaymentGatewayFee: false,
+    collectPaymentGatewayFeeFromStudent: false,
     // Mentor fields
     mentorName: "",
     mentorTitle: "",
@@ -489,9 +498,7 @@ const AddCourse = () => {
   });
 
   // Plans state
-  const [plans, setPlans] = useState<
-    { name: string; price: string; description: string; durationType: string; duration: string; salePrice: string; status: string }[]
-  >([]);
+  const [plans, setPlans] = useState<PlanItem[]>([]);
 
   // Plan form state
   const [planForm, setPlanForm] = useState({
@@ -786,10 +793,12 @@ const AddCourse = () => {
     }
 
     // --- FLATTEN PLANS IN PAYLOAD WITHOUT QUOTES ---
+    submitFormData.set("hasPlansPayload", "true");
+    submitFormData.set("plansPayload", JSON.stringify(plans));
     plans.forEach((plan, idx) => {
       Object.entries(plan).forEach(([key, value]) => {
         // Use bracket notation, not quotes
-        submitFormData.append(`plans[${idx}][${key}]`, value);
+        submitFormData.append(`plans[${idx}][${key}]`, String(value));
       });
     });
     // --- END FLATTEN PLANS ---
@@ -1342,207 +1351,21 @@ const AddCourse = () => {
             )}
             {activeTab === "pricing" && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Pricing
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      <DollarSign className="w-4 h-4 inline mr-1" />
-                      Price *
-                    </label>
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (
-                          value === "" ||
-                          /^\d+(\.\d{0,2})?$/.test(value)
-                        ) {
-                          handleInputChange(e);
-                        }
-                      }}
-                      step="0.01"
-                      min="0"
-                      className={`w-full border rounded-lg px-4 py-3 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.price
-                        ? "border-red-400"
-                        : "border-gray-300 dark:border-gray-600"
-                        }`}
-                      placeholder="Course price"
-                      required
-                    />
-                    {formErrors.price && (
-                      <p className="mt-1 text-xs text-red-600">{formErrors.price}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      <DollarSign className="w-4 h-4 inline mr-1" />
-                      Sale Price
-                    </label>
-                    <input
-                      type="number"
-                      name="salePrice"
-                      value={formData.salePrice}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (
-                          value === "" ||
-                          /^\d+(\.\d{0,2})?$/.test(value)
-                        ) {
-                          handleInputChange(e);
-                        }
-                      }}
-                      step="0.01"
-                      min="0"
-                      className={`w-full border rounded-lg px-4 py-3 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.salePrice
-                        ? "border-red-400"
-                        : "border-gray-300 dark:border-gray-600"
-                        }`}
-                      placeholder="Course sale price"
-                    />
-                    {formErrors.salePrice && (
-                      <p className="mt-1 text-xs text-red-600">{formErrors.salePrice}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Currency
-                    </label>
-                    <select
-                      name="currency"
-                      value={formData.currency}
-                      onChange={handleInputChange}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option className="dark:text-black" value="INR">
-                        INR (₹)
-                      </option>
-                      <option className="dark:text-black" value="USD">
-                        USD ($)
-                      </option>
-                      <option className="dark:text-black" value="EUR">
-                        EUR (€)
-                      </option>
-                      <option className="dark:text-black" value="GBP">
-                        GBP (£)
-                      </option>
-                    </select>
-                  </div>
-                </div>
+                <CoursePricingGstSection
+                  formData={formData}
+                  setFormData={setFormData}
+                  formErrors={formErrors}
+                  handleInputChange={handleInputChange}
+                />
                 {/* --- Plans Section --- */}
-                <div className="mt-8">
-                  <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                    Course Plans
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-7 gap-3 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Plan Name"
-                      value={planForm.name}
-                      onChange={e => setPlanForm({ ...planForm, name: e.target.value })}
-                      className="border rounded px-2 py-2 text-sm"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Price"
-                      value={planForm.price}
-                      onChange={e => setPlanForm({ ...planForm, price: e.target.value })}
-                      className="border rounded px-2 py-2 text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Description"
-                      value={planForm.description}
-                      onChange={e => setPlanForm({ ...planForm, description: e.target.value })}
-                      className="border rounded px-2 py-2 text-sm"
-                    />
-                    <select
-                      value={planForm.durationType}
-                      onChange={e => setPlanForm({ ...planForm, durationType: e.target.value })}
-                      className="border rounded px-2 py-2 text-sm"
-                    >
-                      <option value="Month">Month</option>
-                      <option value="Year">Year</option>
-                      <option value="Day">Day</option>
-                    </select>
-                    <input
-                      type="number"
-                      placeholder="Duration"
-                      value={planForm.duration}
-                      onChange={e => setPlanForm({ ...planForm, duration: e.target.value })}
-                      className="border rounded px-2 py-2 text-sm"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Sale Price"
-                      value={planForm.salePrice}
-                      onChange={e => setPlanForm({ ...planForm, salePrice: e.target.value })}
-                      className="border rounded px-2 py-2 text-sm"
-                    />
-                    <select
-                      value={planForm.status}
-                      onChange={e => setPlanForm({ ...planForm, status: e.target.value })}
-                      className="border rounded px-2 py-2 text-sm"
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddPlan}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                  >
-                    Add Plan
-                  </button>
-                  {planFormError && (
-                    <div className="text-xs text-red-600 mt-1">{planFormError}</div>
-                  )}
-                  {plans.length > 0 && (
-                    <div className="mt-4">
-                      <table className="w-full text-sm border">
-                        <thead>
-                          <tr className="bg-gray-100 dark:bg-gray-700">
-                            <th className="p-2">Name</th>
-                            <th className="p-2">Price</th>
-                            <th className="p-2">Description</th>
-                            <th className="p-2">Duration Type</th>
-                            <th className="p-2">Duration</th>
-                            <th className="p-2">Sale Price</th>
-                            <th className="p-2">Status</th>
-                            <th className="p-2"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {plans.map((plan, idx) => (
-                            <tr key={idx}>
-                              <td className="p-2">{plan.name}</td>
-                              <td className="p-2">{plan.price}</td>
-                              <td className="p-2">{plan.description}</td>
-                              <td className="p-2">{plan.durationType}</td>
-                              <td className="p-2">{plan.duration}</td>
-                              <td className="p-2">{plan.salePrice}</td>
-                              <td className="p-2">{plan.status}</td>
-                              <td className="p-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemovePlan(idx)}
-                                  className="text-red-500 hover:underline"
-                                >
-                                  Remove
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                <CoursePlansManager
+                  plans={plans}
+                  setPlans={setPlans}
+                  courseGstType={formData.gstType}
+                  courseGstRate={formData.gstRate}
+                  coursePgRate={formData.paymentGatewayFeeRate}
+                  courseCollectPg={formData.collectPaymentGatewayFeeFromStudent}
+                />
                 {/* --- End Plans Section --- */}
               </div>
             )}

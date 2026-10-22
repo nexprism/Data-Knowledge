@@ -465,8 +465,8 @@ const CourseAccordion = ({ courseId }) => {
                                 {lesson.duration}min
                               </span>
                             )}
-                            {(lesson.ismobileOnly ||
-                              lesson.accessSettings?.platform === "phone") && (
+                            {(lesson.accessSettings?.platform === "phone" ||
+                              (lesson.ismobileOnly && lesson.accessSettings?.platform !== "both")) && (
                               <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
                                 Mobile Only
                               </span>
@@ -587,9 +587,7 @@ const CourseAccordion = ({ courseId }) => {
                             name="access-type"
                             value="phone"
                             defaultChecked={
-                              modalData.lesson.ismobileOnly ||
-                              modalData.lesson.accessSettings?.platform ===
-                                "phone"
+                              modalData.lesson.accessSettings?.platform === "phone"
                             }
                             className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                             disabled={savingSettings}
@@ -614,10 +612,7 @@ const CourseAccordion = ({ courseId }) => {
                             name="access-type"
                             value="both"
                             defaultChecked={
-                              !modalData.lesson.ismobileOnly &&
-                              (!modalData.lesson.accessSettings?.platform ||
-                                modalData.lesson.accessSettings?.platform ===
-                                  "both")
+                              modalData.lesson.accessSettings?.platform !== "phone"
                             }
                             className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                             disabled={savingSettings}

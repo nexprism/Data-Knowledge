@@ -12,10 +12,16 @@ const orderSchema = new Schema({
         currency: { type: String, required: true }
     }],
     subTotal: { type: mongoose.Types.Decimal128, required: true },
+    basePrice: { type: mongoose.Types.Decimal128, default: 0 },
     discount: { type: mongoose.Types.Decimal128, default: 0 },
     tax: { type: mongoose.Types.Decimal128, default: 0 },
     gstRate: { type: mongoose.Types.Decimal128, default: 0 },
+    gstType: { type: String, enum: ['inclusive', 'exclusive'], default: 'exclusive' },
+    paymentGatewayFee: { type: mongoose.Types.Decimal128, default: 0 },
+    paymentGatewayFeeRate: { type: mongoose.Types.Decimal128, default: 0 },
+    collectGatewayFeeFromStudent: { type: Boolean, default: false },
     grandTotal: { type: mongoose.Types.Decimal128, required: true },
+    pricingBreakdown: { type: Schema.Types.Mixed },
     // ✅ GST/company info for order
     company: {
         name: { type: String, trim: true },

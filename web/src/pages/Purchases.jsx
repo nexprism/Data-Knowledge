@@ -6,12 +6,15 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchMyEnrollments } from '../redux/slices/enrollmentSlice'
 import { useLanguage } from '../context/LanguageContext'
 import { getApiBaseUrl } from '../utils/apiConfig'
+import ReceiptModal from '../components/dashboard/ReceiptModal'
 
 const Purchases = () => {
   const dispatch = useDispatch()
   const { t } = useLanguage()
+  const { user } = useSelector((state) => state.auth)
   const { enrollments, loading, error } = useSelector((state) => state.enrollment)
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedReceipt, setSelectedReceipt] = useState(null)
   const itemsPerPage = 5
 
   useEffect(() => {
@@ -150,20 +153,25 @@ const Purchases = () => {
                         </div>
 
                         {/* Actions */}
-                        <div className="col-span-2 flex justify-end gap-3 transition-all duration-500">
-                           {item.certificate ? (
+                        <div className="col-span-2 flex justify-end items-center gap-2 transition-all duration-500">
+                           {item.certificate && (
                               <a 
                                 href={item.certificate.certificate_url?.startsWith('http') ? item.certificate.certificate_url : `${baseUrl}/${item.certificate.certificate_url?.replace(/^\/+/, '')}`} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className="font-jetbrains text-xs font-bold text-amber-700 hover:text-slate-950 uppercase tracking-wider transition-colors bg-amber-100 px-3 py-1.5 rounded-full border border-amber-300/60"
+                                className="font-jetbrains text-[10px] font-bold text-amber-800 hover:text-slate-950 uppercase tracking-wider transition-colors bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-full border border-amber-300/60 flex items-center gap-1"
                               >
-                                Certificate
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+                                <span>Certificate</span>
                               </a>
-                           ) : (
-                              <button className="font-jetbrains text-xs font-bold text-amber-800 hover:text-slate-950 uppercase tracking-wider transition-colors px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200">{t('receipt') || 'Receipt'}</button>
                            )}
-                           {/* <button className="font-jetbrains text-xs font-bold text-slate-400 hover:text-red-600 uppercase tracking-wider transition-colors">{t('refund') || 'Refund'}</button> */}
+                           <button 
+                             onClick={() => setSelectedReceipt(item)}
+                             className="font-jetbrains text-[10px] font-bold text-slate-700 hover:text-slate-950 uppercase tracking-wider transition-colors px-3 py-1.5 rounded-full bg-slate-100 hover:bg-amber-100 hover:border-amber-300 border border-slate-200 flex items-center gap-1.5 shadow-2xs"
+                           >
+                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                             <span>{t('receipt') || 'Receipt'}</span>
+                           </button>
                         </div>
                      </div>
                   ))}
@@ -215,6 +223,14 @@ const Purchases = () => {
 
         </div>
       </main>
+
+      {/* Official Receipt & Invoice Modal */}
+      <ReceiptModal
+        isOpen={!!selectedReceipt}
+        onClose={() => setSelectedReceipt(null)}
+        enrollment={selectedReceipt}
+        user={user}
+      />
     </div>
   )
 }

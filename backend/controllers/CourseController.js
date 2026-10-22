@@ -260,6 +260,14 @@ export const createCourse = async (req, res) => {
       accessExpiry,
       salePrice: req.body.salePrice, // <-- Add salePrice to courseData
 
+      // GST & Payment Gateway Charges
+      gstType: req.body.gstType === 'inclusive' ? 'inclusive' : 'exclusive',
+      gstRate: req.body.gstRate !== undefined && req.body.gstRate !== '' ? Number(req.body.gstRate) : 18,
+      overrideGst: parseBoolean(req.body.overrideGst),
+      paymentGatewayFeeRate: req.body.paymentGatewayFeeRate !== undefined && req.body.paymentGatewayFeeRate !== '' ? Number(req.body.paymentGatewayFeeRate) : 2,
+      overridePaymentGatewayFee: parseBoolean(req.body.overridePaymentGatewayFee),
+      collectPaymentGatewayFeeFromStudent: parseBoolean(req.body.collectPaymentGatewayFeeFromStudent),
+
       // Dynamic content fields
       contentSections,
       brandColors,
@@ -1596,6 +1604,14 @@ export const updateCourse = async (req, res) => {
       price: parsePrice(req.body.price),
       salePrice: req.body.salePrice !== undefined && req.body.salePrice !== '' ? req.body.salePrice : undefined, // <-- always pass as string/number
       discountPrice: parsePrice(req.body.discountPrice),
+
+      // GST & Payment Gateway Charges
+      ...(req.body.gstType !== undefined && { gstType: req.body.gstType === 'inclusive' ? 'inclusive' : 'exclusive' }),
+      ...(req.body.gstRate !== undefined && { gstRate: req.body.gstRate !== '' ? Number(req.body.gstRate) : 18 }),
+      ...(req.body.overrideGst !== undefined && { overrideGst: parseBoolean(req.body.overrideGst) }),
+      ...(req.body.paymentGatewayFeeRate !== undefined && { paymentGatewayFeeRate: req.body.paymentGatewayFeeRate !== '' ? Number(req.body.paymentGatewayFeeRate) : 2 }),
+      ...(req.body.overridePaymentGatewayFee !== undefined && { overridePaymentGatewayFee: parseBoolean(req.body.overridePaymentGatewayFee) }),
+      ...(req.body.collectPaymentGatewayFeeFromStudent !== undefined && { collectPaymentGatewayFeeFromStudent: parseBoolean(req.body.collectPaymentGatewayFeeFromStudent) }),
 
       prerequisites: req.body.prerequisites || undefined,
       accessPeriod,

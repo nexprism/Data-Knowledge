@@ -5,13 +5,72 @@ dotenv.config();
 /**
  * EmailService handles sending different types of emails from different sender addresses.
  * 
- * Transactional: noreply@edrilla.com (process.env.TransactionalEmail / process.env.TransactionalEmailPass)
- * Founder/Casual: sahil@edrilla.com (process.env.FounderEmail / process.env.FounderEmailPass)
- * Support: support@edrilla.com (process.env.SupportEmail / process.env.SupportEmailPass)
+ * Transactional: noreply@dataknowledge.in (process.env.TransactionalEmail / process.env.TransactionalEmailPass)
+ * Founder/Casual: noreply@dataknowledge.in (process.env.FounderEmail / process.env.FounderEmailPass)
+ * Support: noreply@dataknowledge.in (process.env.SupportEmail / process.env.SupportEmailPass)
  */
 class EmailService {
   constructor() {
     this.transporters = {};
+  }
+
+  /**
+   * Helper to get a clean, validated frontend base URL without trailing slashes,
+   * leading dots in domain names, or malformed ports/routes.
+   */
+  getFrontendUrl() {
+    let url = process.env.FRONTEND_URL || "https://dataknowledge.in";
+    url = String(url).trim();
+
+    if (!url) return "https://dataknowledge.in";
+
+    // Ensure protocol
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+
+    // Strip accidental leading dot right after protocol (e.g. "https://.dataknowledge.in")
+    url = url.replace(/^(https?:\/\/)\.+/i, "$1");
+
+    // Strip trailing colons, slashes, or whitespace (e.g. "https://dataknowledge.in:" or "https://dataknowledge.in/")
+    url = url.replace(/[:\/]+$/, "");
+
+    // Strip any accidental route attached to FRONTEND_URL (e.g. ":reset-password" or "/reset-password")
+    url = url.replace(/[:\/](reset-password|login|dashboard|api).*$/i, "");
+
+    try {
+      const parsed = new URL(url);
+      // Strip leading dot from hostname
+      parsed.hostname = parsed.hostname.replace(/^\.+/, "");
+      if (!parsed.hostname || parsed.hostname === ".") {
+        parsed.hostname = "dataknowledge.in";
+      }
+      // If port is not a purely numeric string, remove it
+      if (parsed.port && !/^\d+$/.test(parsed.port)) {
+        parsed.port = "";
+      }
+      return parsed.origin;
+    } catch {
+      return "https://dataknowledge.in";
+    }
+  }
+
+  resolveFrontendUrl(clientOrigin = null) {
+    if (clientOrigin) {
+      try {
+        let clean = String(clientOrigin).trim();
+        if (!/^https?:\/\//i.test(clean)) {
+          clean = `https://${clean}`;
+        }
+        clean = clean.replace(/[:\/]+$/, "");
+        clean = clean.replace(/[:\/](reset-password|login|dashboard|api).*$/i, "");
+        const parsed = new URL(clean);
+        if (parsed.origin && (parsed.protocol === "http:" || parsed.protocol === "https:")) {
+          return parsed.origin;
+        }
+      } catch (_) {}
+    }
+    return this.getFrontendUrl();
   }
 
   _createTransporter(user, pass, portOverride = null, secureOverride = null) {
@@ -149,93 +208,98 @@ class EmailService {
   /**
    * Send password reset email (Transactional)
    */
-  async sendPasswordResetEmail(email, resetToken, userName) {
-    const resetUrl = `${process.env.FRONTEND_URL || "https://dataknowledge.in"
-      }/reset-password?token=${resetToken}`;
+  async sendPasswordResetEmail(email, resetToken, userName, clientOrigin = null) {
+    const frontendBase = this.resolveFrontendUrl(clientOrigin);
+    const resetUrl = `${frontendBase}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
     const mailOptions = {
       from: this.getFrom("transactional"),
       to: email,
       subject: "Password Reset Request - Data Knowledge",
       html: `
-       <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Password Reset - Data Knowledge</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, sans-serif;">
-    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+<body style="margin: 0; padding: 0; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #0b0f19;">
         <tr>
-            <td style="padding: 20px 0;">
-                <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #191a17; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <td style="padding: 30px 15px;" align="center">
+                <table role="presentation" style="width: 100%; max-width: 580px; margin: 0 auto; background-color: #131b2e; border: 1px solid #1e293b; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
                     
-                    <!-- Header with Logo -->
+                    <!-- Header with Official Logo -->
                     <tr>
-                        <td style="background-color: #0284c7; padding: 30px 40px; text-align: center;">
-                            <img src="https://dataknowledge.in/logo.svg" alt="Data Knowledge Logo" style="height: 40px; width: auto; display: block; margin: 0 auto 15px auto;">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">Password Reset Request</h1>
+                        <td style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 32px 30px; text-align: center;">
+                            <img src="https://dataknowledge.in/data_knowlege/logo/logo.png" alt="Data Knowledge" width="180" style="max-height: 48px; width: auto; display: block; margin: 0 auto 10px auto; border: 0; outline: none;" />
+                            <div style="font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px;">DATA KNOWLEDGE</div>
+                            <div style="font-size: 13px; color: #e0f2fe; margin-bottom: 14px; letter-spacing: 0.5px;">Practical Learning Ecosystem</div>
+                            <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 14px; letter-spacing: 0.5px;">Password Reset Request</h1>
                         </td>
                     </tr>
                     
                     <!-- Main Content -->
                     <tr>
-                        <td style="padding: 40px; color: #ffffff;">
-                            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.5;">
+                        <td style="padding: 36px 32px; color: #e2e8f0;">
+                            <p style="margin: 0 0 18px 0; font-size: 16px; line-height: 1.6; color: #f8fafc;">
                                 Hello <strong style="color: #38bdf8;">${userName}</strong>,
                             </p>
                             
-                            <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.5;">
-                                We received a request to reset your password for your Data Knowledge account. If you made this request, click the button below to create a new password.
+                            <p style="margin: 0 0 25px 0; font-size: 15px; line-height: 1.6; color: #cbd5e1;">
+                                We received a request to reset your password for your Data Knowledge account. If you made this request, please click the button below to set a new password:
                             </p>
                             
                             <!-- Reset Button -->
-                            <table role="presentation" style="margin: 30px 0;">
+                            <table role="presentation" style="margin: 28px auto;" align="center">
                                 <tr>
-                                    <td style="text-align: center;">
-                                        <a href="${resetUrl}" style="display: inline-block; padding: 15px 30px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 25px; font-weight: bold; font-size: 16px; text-align: center; transition: background-color 0.3s ease;">
+                                    <td style="text-align: center; border-radius: 8px; background-color: #0284c7;">
+                                        <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 34px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; letter-spacing: 0.5px; text-align: center; border: 1px solid #38bdf8;">
                                             Reset My Password
                                         </a>
                                     </td>
                                 </tr>
                             </table>
                             
-                            <!-- Alternative Link -->
-                            <div style="background-color: #2a2b28; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                                <p style="margin: 0 0 10px 0; font-size: 14px; color: #cccccc;">
+                            <!-- Alternative Link Box -->
+                            <div style="background-color: #0f172a; padding: 18px; border-radius: 8px; margin: 26px 0; border: 1px solid #1e293b;">
+                                <p style="margin: 0 0 8px 0; font-size: 13px; color: #94a3b8; font-weight: 500;">
                                     If the button doesn't work, copy and paste this link into your browser:
                                 </p>
-                                <p style="margin: 0; word-break: break-all; font-size: 14px;">
-                                    <a href="${resetUrl}" style="color: #38bdf8; text-decoration: underline;">${resetUrl}</a>
+                                <p style="margin: 0; word-break: break-all; font-size: 13px; line-height: 1.5;">
+                                    <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: underline;">${resetUrl}</a>
                                 </p>
                             </div>
                             
                             <!-- Security Notice -->
-                            <div style="border-left: 4px solid #0284c7; padding-left: 20px; margin: 25px 0;">
-                                <p style="margin: 0 0 10px 0; font-size: 14px; color: #ff9999; font-weight: bold;">
+                            <div style="border-left: 3px solid #0284c7; background-color: rgba(2,132,199,0.08); padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+                                <p style="margin: 0 0 6px 0; font-size: 13px; color: #f87171; font-weight: 700;">
                                     ⏰ Important Security Notice
                                 </p>
-                                <p style="margin: 0; font-size: 14px; line-height: 1.4; color: #cccccc;">
-                                    This reset link will expire in <strong>1 hour</strong> for your security.
+                                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #cbd5e1;">
+                                    This password reset link will expire in <strong>1 hour</strong> for your security.
                                 </p>
                             </div>
                             
-                            <p style="margin: 25px 0 0 0; font-size: 16px; line-height: 1.5;">
-                                If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+                            <p style="margin: 24px 0 0 0; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                                If you didn't request a password reset, you can safely ignore this email. Your password will remain completely unchanged.
                             </p>
                         </td>
                     </tr>
                     
                     <!-- Footer -->
                     <tr>
-                        <td style="background-color: #0f100e; padding: 30px 40px; text-align: center; border-top: 2px solid #0284c7;">
-                            <p style="margin: 0 0 15px 0; color: #0284c7; font-size: 18px; font-weight: bold;">
+                        <td style="background-color: #0a0f1d; padding: 26px 30px; text-align: center; border-top: 1px solid #1e293b;">
+                            <p style="margin: 0 0 8px 0; color: #38bdf8; font-size: 15px; font-weight: 700; letter-spacing: 1px;">
                                 Data Knowledge
                             </p>
-                            <p style="margin: 0; font-size: 12px; color: #888888; line-height: 1.4;">
-                                This is an automated email, please do not reply.<br>
-                                If you need help, contact our support team.
+                            <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.6;">
+                                This is an automated email, please do not reply directly.<br>
+                                If you need assistance, please contact our support team at <a href="mailto:noreply@dataknowledge.in" style="color: #38bdf8; text-decoration: none;">noreply@dataknowledge.in</a>.
+                            </p>
+                            <p style="margin: 12px 0 0 0; font-size: 11px; color: #475569;">
+                                © ${new Date().getFullYear()} Data Knowledge. All rights reserved.
                             </p>
                         </td>
                     </tr>
@@ -263,31 +327,46 @@ class EmailService {
    */
   async sendOrderConfirmationEmail(email, name, password) {
     console?.log("Sending order confirmation email to:", email);
+    const loginUrl = `${this.getFrontendUrl()}/login`;
     const mailOptions = {
       from: this.getFrom("transactional"),
       to: email,
-      subject: "Course Enrollment Confirmation",
+      subject: "Course Enrollment Confirmation - Data Knowledge",
       html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <h2>Course Enrollment Confirmation</h2>
-        <p>Hello <strong>${name}</strong>,</p>
-        <p>Thank you for enrolling in our course(s)! Your enrollment is now confirmed and you can start learning right away.</p>
-        ${
-        password !== null && password !== undefined && password !== ''
-          ? `
-          <p>Your login details are as follows:</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Password:</strong> ${password}</p>
-          <a href="${process.env.FRONTEND_URL || 'https://edrilla.com'}/login" style="padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            Login to your account
-          </a>
-          `
-          : ''
-        }
-        <p>Once logged in, you can access your enrolled courses from your dashboard and begin your learning journey.</p>
-        <p>If you have any questions or need assistance, feel free to contact our support team.</p>
-        <hr />
-        <p style="font-size: 12px; color: #777;">This is an automated email, please do not reply.</p>
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+        <div style="background-color: #0284c7; padding: 24px 30px; text-align: center; color: #ffffff;">
+          <h2 style="margin: 0; font-size: 22px;">Course Enrollment Confirmation</h2>
+          <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Data Knowledge – Practical Learning Ecosystem</p>
+        </div>
+        <div style="padding: 30px; color: #1e293b;">
+          <p>Hello <strong>${name}</strong>,</p>
+          <p>Thank you for enrolling in our course(s)! Your enrollment is confirmed and your access has been activated.</p>
+          ${
+          password !== null && password !== undefined && password !== ''
+            ? `
+            <div style="background: #f8fafc; border-left: 4px solid #0284c7; padding: 16px 20px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0 0 8px; font-weight: bold; color: #0f172a;">Your Account Details:</p>
+              <p style="margin: 0 0 4px;"><strong>Email:</strong> ${email}</p>
+              <p style="margin: 0 0 14px;"><strong>Password:</strong> ${password}</p>
+              <a href="${loginUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 24px; background-color: #0284c7; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                Login to your account
+              </a>
+            </div>
+            `
+            : `
+            <div style="margin: 20px 0;">
+              <a href="${loginUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 24px; background-color: #0284c7; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                Go to Dashboard
+              </a>
+            </div>
+            `
+          }
+          <p>Once logged in, you can access your enrolled courses directly from your student dashboard.</p>
+          <p>If you have any questions or need assistance, feel free to contact us at <a href="mailto:noreply@dataknowledge.in" style="color: #0284c7;">noreply@dataknowledge.in</a>.</p>
+        </div>
+        <div style="background: #f1f5f9; padding: 16px 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0;">This is an automated email, please do not reply.</p>
+        </div>
       </div>
       `,
     };
@@ -309,6 +388,7 @@ class EmailService {
    * Uses the same design as the welcome mail (with login info if needed).
    */
   async sendEnrollmentMail(email, name, courseTitle) {
+    const loginUrl = `${this.getFrontendUrl()}/login`;
     const mailOptions = {
       from: this.getFrom("transactional"),
       to: email,
@@ -365,7 +445,7 @@ class EmailService {
                 <div class="download-title">Start Learning Now</div>
                 <div class="download-subtitle">Access your course on the web platform</div>
                 <div class="download-buttons">
-                    <a href="${process.env.FRONTEND_URL || 'https://dataknowledge.in'}/login" class="download-btn" target="_blank">🌐 Go to Dashboard</a>
+                    <a href="${loginUrl}" class="download-btn" target="_blank">🌐 Go to Dashboard</a>
                 </div>
             </div>
             <p class="message-text">If you have any questions or need assistance, our support team is here for you.</p>

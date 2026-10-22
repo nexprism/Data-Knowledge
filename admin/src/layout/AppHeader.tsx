@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { ArrowLeft } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
 
 const AppHeader: React.FC = () => {
+  const navigate = useNavigate();
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
@@ -63,6 +65,15 @@ const AppHeader: React.FC = () => {
                 />
               </svg>
             )}
+          </button>
+
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center w-10 h-10 text-gray-500 border border-gray-200 rounded-xl dark:border-gray-800 dark:text-gray-400 lg:h-11 lg:w-11 shadow-theme-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+            aria-label="Go Back"
+            title="Go Back"
+          >
+            <ArrowLeft className="w-5 h-5" />
           </button>
 
           <Link to="/" className="lg:hidden shrink-0">

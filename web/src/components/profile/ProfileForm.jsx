@@ -22,7 +22,7 @@ const ProfileForm = () => {
       setFormData({
         fullName: user.fullName || '',
         phone: user.phone || '',
-        location: user.location || '',
+        location: user.location || user.address?.city || '',
         bio: user.bio || '',
         companyName: user.company?.name || '',
         gstNumber: user.company?.gstNumber || ''
