@@ -34,6 +34,10 @@ build/
 .turbo/
 .cache/
 
+# Zip archives (dist.zip etc — kept locally for deployment, must not be watched by Vite)
+*.zip
+**/dist.zip
+
 # Logs & Debugging
 logs/
 **/logs/

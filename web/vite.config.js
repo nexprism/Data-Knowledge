@@ -6,6 +6,10 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      // Ignore zip files to prevent EBUSY crash when dist.zip is locked
+      ignored: ['**/*.zip', '**/dist.zip'],
+    },
   },
   plugins: [
     react({ jsxRuntime: 'automatic' }),

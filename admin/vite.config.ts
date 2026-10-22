@@ -23,5 +23,9 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
     allowedHosts: ["admin.edrilla.com", "admin.dataknowledge.in"],
+    watch: {
+      // Ignore zip files to prevent EBUSY crash when dist.zip is locked
+      ignored: ['**/*.zip', '**/dist.zip'],
+    },
   },
 });
