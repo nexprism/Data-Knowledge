@@ -209,10 +209,12 @@ const Hero = ({ isLoaded }) => {
          </div>
 
          {/* Consultation Booking Modal */}
-         <ConsultationModal
-            isOpen={isConsultationOpen}
-            onClose={() => setIsConsultationOpen(false)}
-         />
+         {isConsultationOpen && (
+            <ConsultationModal
+               isOpen={isConsultationOpen}
+               onClose={() => setIsConsultationOpen(false)}
+            />
+         )}
       </section>
    )
 }

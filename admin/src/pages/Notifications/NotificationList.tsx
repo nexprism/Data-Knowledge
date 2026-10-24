@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 import { fetchNotifications, setFilters, clearFilters } from "../../store/slices/notification";
 import { fetchCourses } from "../../store/slices/course";
 import { RootState } from "../../store";
@@ -8,13 +9,15 @@ import {
   Filter, 
   Search, 
   RefreshCw, 
-  Eye,
-  Calendar,
-  User,
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  RotateCcw
+  Eye, 
+  Calendar, 
+  User, 
+  BookOpen, 
+  ChevronLeft, 
+  ChevronRight, 
+  RotateCcw,
+  Send,
+  Users
 } from "lucide-react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
@@ -122,15 +125,20 @@ const NotificationList: React.FC = () => {
 
   const getTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      'global': 'bg-blue-100 text-blue-800',
-      'course_notification': 'bg-purple-100 text-purple-800',
-      'assignment_reminder': 'bg-orange-100 text-orange-800',
-      'system': 'bg-red-100 text-red-800',
-      'announcement': 'bg-green-100 text-green-800',
+      'global': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+      'course_notification': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+      'assignment_reminder': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+      'system': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+      'announcement': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+      'general': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+      'promotion': 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
+      'course_update': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+      'deadline_alert': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+      'quiz_reminder': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
     };
     
     return (
-      <span className={`px-2 py-1 text-xs rounded-full ${colors[type] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
         {type?.replace('_', ' ')?.toUpperCase() || 'GENERAL'}
       </span>
     );
@@ -147,11 +155,15 @@ const NotificationList: React.FC = () => {
   const courses = courseData?.courses || [];
 
   const notificationTypes = [
+    { value: 'general', label: 'General' },
+    { value: 'announcement', label: 'Announcement' },
     { value: 'global', label: 'Global' },
     { value: 'course_notification', label: 'Course Notification' },
     { value: 'assignment_reminder', label: 'Assignment Reminder' },
-    { value: 'system', label: 'System' },
-    { value: 'announcement', label: 'Announcement' },
+    { value: 'course_update', label: 'Course Update' },
+    { value: 'deadline_alert', label: 'Deadline Alert' },
+    { value: 'system', label: 'System Update' },
+    { value: 'promotion', label: 'Promotion' },
     { value: 'quiz_reminder', label: 'Quiz Reminder' },
   ];
 
@@ -162,18 +174,27 @@ const NotificationList: React.FC = () => {
       
       <div className="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-100 rounded-xl">
-              <Bell className="w-8 h-8 text-indigo-600" />
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-950/50 rounded-xl">
+              <Bell className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Notification History</h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">View and manage all sent notifications</p>
             </div>
           </div>
-          <div className="text-sm text-gray-500">
-            Total: {pagination.total} notifications
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+              Total: {pagination.total} notifications
+            </span>
+            <Link
+              to="/send-notification"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+            >
+              <Send className="w-4 h-4" />
+              Send Notification
+            </Link>
           </div>
         </div>
 
@@ -356,8 +377,21 @@ const NotificationList: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center">
-                            <User className="w-4 h-4 mr-1" />
-                            {notification.user_id?.fullName || notification.user_id?.email || 'Unknown User'}
+                            {notification.user_id ? (
+                              <>
+                                <User className="w-4 h-4 mr-1.5 text-gray-400" />
+                                <span className="font-medium text-gray-800 dark:text-gray-200">
+                                  {notification.user_id?.fullName || notification.user_id?.name || notification.user_id?.email || 'Student'}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Users className="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                  {notification.data?.courseTitle ? `Course: ${notification.data.courseTitle}` : 'All Users (Global)'}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

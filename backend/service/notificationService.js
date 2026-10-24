@@ -44,10 +44,30 @@ class NotificationService {
         pipeline.push({ $sort: { created_at: -1 } });
       }
 
-      // Add isRead field based on status (status: 0 = read, status: 1 = unread)
+      const userObjId = userId && mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : null;
+
+      // Add isRead field based on status and read_by
       pipeline.push({
         $addFields: {
-          isRead: { $eq: ["$status", 0] } // true if status is 0 (read), false if status is 1 (unread)
+          isRead: {
+            $or: [
+              { $eq: ["$status", 0] },
+              ...(userObjId ? [{ $in: [userObjId, { $ifNull: ["$read_by", []] }] }] : [])
+            ]
+          }
+        }
+      });
+
+      // Normalize status: 0 if read by user, 1 if unread
+      pipeline.push({
+        $addFields: {
+          status: {
+            $cond: {
+              if: "$isRead",
+              then: 0,
+              else: 1
+            }
+          }
         }
       });
 
@@ -64,8 +84,6 @@ class NotificationService {
       const notifications = result?.data || [];
       const total = result?.count[0]?.total || 0;
 
-      //console.log(`📌 Notifications fetched: ${notifications.length}, Total: ${total}`);
-
       return {
         result: notifications,
         total,
@@ -79,24 +97,30 @@ class NotificationService {
     }
   }
 
-
-
-   async markAllRead(userId, deviceId) {
+  async markAllRead(userId, deviceId) {
     try {
-      const result = await Notification.updateMany(
-        {
-          $or: [
-        { user_id: userId }
-        // { device_id: deviceId }
-          ],
-          status: 1 // Fix: looking for unread notifications (1)
-        },
-        { $set: { status: 0 } } // Fix: setting to read (0)
+      const userObjId = userId && mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+
+      // Mark direct user notifications as read
+      const userResult = await Notification.updateMany(
+        { user_id: userObjId, status: 1 },
+        { 
+          $set: { status: 0 },
+          $addToSet: { read_by: userObjId }
+        }
+      );
+
+      // Also mark global broadcast notifications as read for this user
+      const broadcastResult = await Notification.updateMany(
+        { user_id: null },
+        { 
+          $addToSet: { read_by: userObjId }
+        }
       );
 
       return {
-        matched: result.matchedCount,
-        modified: result.modifiedCount,
+        matched: (userResult.matchedCount || 0) + (broadcastResult.matchedCount || 0),
+        modified: (userResult.modifiedCount || 0) + (broadcastResult.modifiedCount || 0),
       };
     } catch (error) {
       console.error("❌ Error marking notifications as read:", error.message);
@@ -104,17 +128,26 @@ class NotificationService {
     }
   }
 
-  //markSingleRead
+  // markSingleRead
   async markSingleRead(userId, notificationId) {
     try {
+      const userObjId = userId && mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+      const notifObjId = mongoose.isValidObjectId(notificationId) ? new mongoose.Types.ObjectId(notificationId) : notificationId;
+
       const result = await Notification.updateOne(
         {
-          user_id: userId,
-          _id: notificationId,
-          status: 1 // Fix: looking for unread notification (1)
+          _id: notifObjId,
+          $or: [
+            { user_id: userObjId },
+            { user_id: null }
+          ]
         },
-        { $set: { status: 0 } } // Fix: setting to read (0)
+        { 
+          $set: { status: 0 },
+          $addToSet: { read_by: userObjId }
+        }
       );
+
       return {
         matched: result.matchedCount,
         modified: result.modifiedCount,
@@ -129,85 +162,76 @@ async sendToAllStudents(data, webPushLink = null) {
   try {
     console.log("🔥 sendToAllStudents called with data:", data);
 
-    // 1️⃣ Fetch all FCM tokens
-    const tokens = await FcmToken.find({}).select("token userId deviceId updatedAt -_id");
-    console.log(`🟢 Total tokens fetched: ${tokens.length}`);
+    const notificationPayload = {
+      ...data,
+      type: data?.type || "general"
+    };
 
-    if (!tokens || tokens.length === 0) {
-      console.warn("⚠️ No students with FCM tokens found");
-      return { success: false, message: "No students with FCM tokens found", sent: 0, failed: 0 };
-    }
-
-    // Group by deviceId+token combination and keep only the latest user for each device
-    const deviceTokensMap = new Map();
-    
-    tokens.forEach(t => {
-      if (t.token && t.deviceId) {
-        const deviceKey = `${t.deviceId}_${t.token}`;
-        
-        if (!deviceTokensMap.has(deviceKey)) {
-          deviceTokensMap.set(deviceKey, t);
-        } else {
-          // Keep the token with the latest updatedAt
-          const existing = deviceTokensMap.get(deviceKey);
-          if (new Date(t.updatedAt) > new Date(existing.updatedAt)) {
-            deviceTokensMap.set(deviceKey, t);
-          }
-        }
-      }
+    // 1️⃣ Always save a master broadcast notification in database
+    // (user_id: null indicates a platform-wide global announcement)
+    const masterNotification = new Notification({
+      user_id: null,
+      device_id: null,
+      data: notificationPayload,
+      status: 1, // 1 = unread
     });
+    await masterNotification.save();
+    console.log(`✅ Master global notification saved with ID: ${masterNotification._id}`);
 
-    console.log(`🟢 Found ${deviceTokensMap.size} unique devices with latest users to notify`);
-
+    // 2️⃣ Fetch all registered FCM tokens to attempt web push
     let sent = 0;
     let failed = 0;
+    const tokens = await FcmToken.find({}).select("token userId deviceId updatedAt -_id");
+    console.log(`🟢 Total FCM tokens fetched: ${tokens.length}`);
 
-    // 2️⃣ Send FCM notifications and save to database (one per device, latest user)
-    const sendPromises = Array.from(deviceTokensMap.values()).map(async deviceToken => {
-      try {
-        const res = await fcmService.sendPushNotification([deviceToken.token], data, webPushLink);
-
-        // Check response and save notification only if FCM was successful
-        if (res.responses && res.responses[0]) {
-          if (res.responses[0].success) {
-            // Save notification to database after successful FCM send
-            const notification = new Notification({
-              user_id: deviceToken.userId,
-              device_id: deviceToken.deviceId,
-              data: {
-                ...data,
-                type: data.type || "general_notification"
-              },
-              status: 1, // 1 = unread (correct)
-            });
-            await notification.save();
-
-            sent++;
-            console.log(`✅ Notification sent and saved for device: ${deviceToken.deviceId}, latest user: ${deviceToken.userId}, updated: ${deviceToken.updatedAt}`);
+    if (tokens && tokens.length > 0) {
+      // Group by deviceId+token combination and keep only the latest user for each device
+      const deviceTokensMap = new Map();
+      
+      tokens.forEach(t => {
+        if (t.token && t.deviceId) {
+          const deviceKey = `${t.deviceId}_${t.token}`;
+          if (!deviceTokensMap.has(deviceKey)) {
+            deviceTokensMap.set(deviceKey, t);
           } else {
-            failed++;
-            console.log(`❌ Notification FAILED for device: ${deviceToken.deviceId}, error: ${res.responses[0].error?.message}`);
-
-            // Remove invalid FCM token automatically
-            if (res.responses[0].error?.code === "messaging/registration-token-not-registered") {
-              await FcmToken.deleteMany({ token: deviceToken.token });
-              console.log(`🗑 Removed invalid token for device: ${deviceToken.deviceId}`);
+            const existing = deviceTokensMap.get(deviceKey);
+            if (new Date(t.updatedAt) > new Date(existing.updatedAt)) {
+              deviceTokensMap.set(deviceKey, t);
             }
           }
-        } else {
-          failed++;
-          console.warn(`⚠️ Unknown FCM response for device: ${deviceToken.deviceId}`);
         }
-      } catch (err) {
-        failed++;
-        console.error(`❌ FCM ERROR for device: ${deviceToken.deviceId}`, err.message);
-      }
-    });
+      });
 
-    await Promise.all(sendPromises);
+      console.log(`🟢 Found ${deviceTokensMap.size} unique devices to push via FCM`);
 
-    console.log(`📡 FCM sending finished. Total sent: ${sent}, Failed: ${failed}, Unique devices: ${deviceTokensMap.size}`);
-    return { success: true, sent, failed, uniqueDevices: deviceTokensMap.size };
+      const sendPromises = Array.from(deviceTokensMap.values()).map(async deviceToken => {
+        try {
+          const res = await fcmService.sendPushNotification([deviceToken.token], notificationPayload, webPushLink);
+          if (res.responses && res.responses[0]?.success) {
+            sent++;
+          } else {
+            failed++;
+            if (res.responses && res.responses[0]?.error?.code === "messaging/registration-token-not-registered") {
+              await FcmToken.deleteMany({ token: deviceToken.token });
+            }
+          }
+        } catch (err) {
+          failed++;
+          console.error(`❌ FCM error for device: ${deviceToken.deviceId}`, err.message);
+        }
+      });
+
+      await Promise.all(sendPromises);
+    }
+
+    return {
+      success: true,
+      message: "Global notification published and recorded successfully",
+      notificationId: masterNotification._id,
+      sent,
+      failed,
+      uniqueDevices: tokens ? tokens.length : 0
+    };
 
   } catch (err) {
     console.error("❌ Error sending notification to all students:", err);
@@ -231,127 +255,92 @@ async sendToCourseStudents(courseId, data, webPushLink = null) {
 
     console.log(`🟢 Found ${enrollments.length} enrollments for course ${courseId}`);
 
-    if (!enrollments || enrollments.length === 0) {
-      return { 
-        success: false, 
-        message: "No students enrolled in this course",
-        sent: 0,
-        failed: 0,
-        totalStudents: 0
-      };
-    }
+    const userIds = enrollments.map(e => e.userId).filter(Boolean);
+    const courseNotificationData = {
+      ...data,
+      courseId: courseId,
+      type: data?.type || "course_notification"
+    };
 
-    // 3️⃣ Extract user IDs
-    const userIds = enrollments.map(e => e.userId);
-
-    // 4️⃣ Get FCM tokens for enrolled students only
-    const tokens = await FcmToken.find({
-      userId: { $in: userIds }
-    }).select("token userId deviceId updatedAt -_id");
-
-    console.log(`🟢 Found ${tokens.length} FCM tokens for enrolled students`);
-
-    if (!tokens || tokens.length === 0) {
-      console.warn("⚠️ No enrolled students with FCM tokens found for this course");
-      return { 
-        success: false, 
-        message: "No enrolled students with FCM tokens found for this course",
-        sent: 0,
-        failed: 0,
-        totalStudents: enrollments.length
-      };
-    }
-
-    // Group by deviceId+token combination and keep only the latest user for each device
-    const deviceTokensMap = new Map();
-    
-    tokens.forEach(t => {
-      if (t.token && t.deviceId) {
-        const deviceKey = `${t.deviceId}_${t.token}`;
-        
-        if (!deviceTokensMap.has(deviceKey)) {
-          deviceTokensMap.set(deviceKey, t);
-        } else {
-          // Keep the token with the latest updatedAt
-          const existing = deviceTokensMap.get(deviceKey);
-          if (new Date(t.updatedAt) > new Date(existing.updatedAt)) {
-            deviceTokensMap.set(deviceKey, t);
-          }
-        }
-      }
-    });
-
-    console.log(`🟢 Found ${deviceTokensMap.size} unique devices for enrolled students to notify`);
-
-    let sent = 0;
-    let failed = 0;
     const savedNotifications = [];
 
-    // 5️⃣ Send FCM notifications to course students and save to database (one per device, latest user)
-    const sendPromises = Array.from(deviceTokensMap.values()).map(async deviceToken => {
-      try {
-        const courseNotificationData = {
-          ...data,
-          courseId: courseId,
-          type: "course_notification"
-        };
+    // 3️⃣ Always save in-app notification in database for enrolled students
+    if (userIds.length > 0) {
+      const notificationsToInsert = userIds.map(uId => ({
+        user_id: uId,
+        data: courseNotificationData,
+        status: 1, // 1 = unread
+      }));
+      const inserted = await Notification.insertMany(notificationsToInsert);
+      savedNotifications.push(...inserted);
+    } else {
+      // If no students enrolled yet, save course record so it appears in Admin History
+      const courseMaster = await Notification.create({
+        user_id: null,
+        data: courseNotificationData,
+        status: 1
+      });
+      savedNotifications.push(courseMaster);
+    }
 
-        const res = await fcmService.sendPushNotification([deviceToken.token], courseNotificationData, webPushLink);
+    console.log(`✅ Saved ${savedNotifications.length} notification record(s) in database`);
 
-        if (res.responses && res.responses[0]) {
-          if (res.responses[0].success) {
-            // ✅ Save notification to database after successful FCM send
-            try {
-              const notification = new Notification({
-                user_id: deviceToken.userId,
-                device_id: deviceToken.deviceId,
-                data: courseNotificationData,
-                status: 1, // 1 = unread
-              });
-              
-              const savedNotification = await notification.save();
-              savedNotifications.push(savedNotification);
-              
-              sent++;
-              console.log(`✅ Course notification sent and saved for device: ${deviceToken.deviceId}, latest user: ${deviceToken.userId}, notification ID: ${savedNotification._id}, updated: ${deviceToken.updatedAt}`);
-            } catch (saveError) {
-              console.error(`❌ Error saving notification for device ${deviceToken.deviceId}:`, saveError);
-              // Still count as sent since FCM was successful
-              sent++;
-            }
-          } else {
-            failed++;
-            console.log(`❌ Course notification FAILED for device: ${deviceToken.deviceId}, error: ${res.responses[0].error?.message}`);
+    // 4️⃣ If FCM tokens exist for enrolled students, push to their devices
+    let sent = 0;
+    let failed = 0;
 
-            // Remove invalid FCM token
-            if (res.responses[0].error?.code === "messaging/registration-token-not-registered") {
-              await FcmToken.deleteMany({ token: deviceToken.token });
-              console.log(`🗑 Removed invalid token for device: ${deviceToken.deviceId}`);
+    if (userIds.length > 0) {
+      const tokens = await FcmToken.find({
+        userId: { $in: userIds }
+      }).select("token userId deviceId updatedAt -_id");
+
+      if (tokens && tokens.length > 0) {
+        const deviceTokensMap = new Map();
+        tokens.forEach(t => {
+          if (t.token && t.deviceId) {
+            const deviceKey = `${t.deviceId}_${t.token}`;
+            if (!deviceTokensMap.has(deviceKey)) {
+              deviceTokensMap.set(deviceKey, t);
+            } else {
+              const existing = deviceTokensMap.get(deviceKey);
+              if (new Date(t.updatedAt) > new Date(existing.updatedAt)) {
+                deviceTokensMap.set(deviceKey, t);
+              }
             }
           }
-        } else {
-          failed++;
-          console.warn(`⚠️ Unknown FCM response for course notification to device: ${deviceToken.deviceId}`);
-        }
-      } catch (err) {
-        failed++;
-        console.error(`❌ FCM ERROR for course notification to device: ${deviceToken.deviceId}`, err.message);
+        });
+
+        const sendPromises = Array.from(deviceTokensMap.values()).map(async deviceToken => {
+          try {
+            const res = await fcmService.sendPushNotification([deviceToken.token], courseNotificationData, webPushLink);
+            if (res.responses && res.responses[0]?.success) {
+              sent++;
+            } else {
+              failed++;
+              if (res.responses && res.responses[0]?.error?.code === "messaging/registration-token-not-registered") {
+                await FcmToken.deleteMany({ token: deviceToken.token });
+              }
+            }
+          } catch (err) {
+            failed++;
+            console.error(`❌ FCM error for device: ${deviceToken.deviceId}`, err.message);
+          }
+        });
+
+        await Promise.all(sendPromises);
       }
-    });
+    }
 
-    await Promise.all(sendPromises);
-
-    console.log(`📡 Course FCM sending finished. Total sent: ${sent}, Failed: ${failed}, Total enrolled: ${enrollments.length}, Notifications saved: ${savedNotifications.length}, Unique devices: ${deviceTokensMap.size}`);
-    
-    return { 
-      success: true, 
-      sent, 
-      failed, 
-      totalStudents: enrollments.length,
+    return {
+      success: true,
+      message: `Course notification published and saved (${savedNotifications.length} records created)`,
       courseId,
+      sent,
+      failed,
+      totalStudents: enrollments.length,
       savedNotifications: savedNotifications.length,
       notificationIds: savedNotifications.map(n => n._id),
-      uniqueDevices: deviceTokensMap.size
+      uniqueDevices: deviceTokensMap ? deviceTokensMap.size : 0
     };
 
   } catch (err) {

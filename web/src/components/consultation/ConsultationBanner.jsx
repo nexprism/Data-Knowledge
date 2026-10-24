@@ -241,7 +241,9 @@ const ConsultationBanner = () => {
       </div>
 
       {/* Consultation Booking Modal */}
-      <ConsultationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      {isModalOpen && (
+        <ConsultationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      )}
     </section>
   );
 };

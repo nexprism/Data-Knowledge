@@ -601,15 +601,66 @@ const DashboardCoursePlayer = () => {
         }
     }, [currentCourse, detailLoading]);
 
-    // Automatically open first module accordion if none selected
+    // Flatten all lessons across all modules for sequential navigation
+    const allCourseLessons = React.useMemo(() => {
+        if (!currentCourse?.modules) return [];
+        const list = [];
+        currentCourse.modules.forEach((mod, modIdx) => {
+            (mod.lessons || []).forEach((les, lesIdx) => {
+                list.push({
+                    ...les,
+                    moduleId: mod._id || modIdx,
+                    moduleTitle: mod.title,
+                    moduleNumber: modIdx + 1,
+                    lessonIndex: lesIdx + 1,
+                });
+            });
+        });
+        return list;
+    }, [currentCourse]);
+
+    const currentLessonIndex = React.useMemo(() => {
+        if (!selectedLesson || allCourseLessons.length === 0) return -1;
+        const selId = selectedLesson._id || selectedLesson.id;
+        return allCourseLessons.findIndex((l) => (l._id || l.id) === selId);
+    }, [selectedLesson, allCourseLessons]);
+
+    const prevLesson = currentLessonIndex > 0 ? allCourseLessons[currentLessonIndex - 1] : null;
+    const nextLesson = currentLessonIndex >= 0 && currentLessonIndex < allCourseLessons.length - 1
+        ? allCourseLessons[currentLessonIndex + 1]
+        : null;
+
+    const completedLessonsCount = React.useMemo(() => {
+        if (!allCourseLessons.length) return 0;
+        return allCourseLessons.filter((l) => {
+            const st = dripStatuses[l._id || l.id];
+            return (st?.progress ?? l.progress ?? 0) >= 100;
+        }).length;
+    }, [allCourseLessons, dripStatuses]);
+
+    const overallProgress = React.useMemo(() => {
+        if (!allCourseLessons.length) return 0;
+        return Math.round((completedLessonsCount / allCourseLessons.length) * 100);
+    }, [completedLessonsCount, allCourseLessons.length]);
+
+    // Automatically open first module accordion and auto-load initial lesson so player is ready at the top
     useEffect(() => {
-        if (currentCourse && !selectedLesson && !detailLoading) {
-            const firstModule = currentCourse.modules?.[0];
-            if (firstModule) {
-                setActiveAccordion(firstModule._id || 0);
+        if (currentCourse && !selectedLesson && !detailLoading && allCourseLessons.length > 0) {
+            const firstPlayable = allCourseLessons.find((l) => {
+                const s = dripStatuses[l._id || l.id];
+                return s ? s.unlocked !== false : true;
+            }) || allCourseLessons[0];
+
+            if (firstPlayable) {
+                if (firstPlayable.moduleId !== undefined) {
+                    setActiveAccordion(firstPlayable.moduleId);
+                }
+                if (!firstPlayable.type || firstPlayable.type === 'video') {
+                    setSelectedLesson(firstPlayable);
+                }
             }
         }
-    }, [currentCourse, detailLoading]);
+    }, [currentCourse, selectedLesson, detailLoading, allCourseLessons, dripStatuses]);
 
     // Fetch unlock/progress statuses for lessons in currentCourse with bounded concurrency
     useEffect(() => {
@@ -705,6 +756,22 @@ const DashboardCoursePlayer = () => {
 
         setSelectedLesson(lesson);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleNextLesson = () => {
+        if (!nextLesson) return;
+        if (nextLesson.moduleId !== undefined) {
+            setActiveAccordion(nextLesson.moduleId);
+        }
+        handleLessonPlay(nextLesson);
+    };
+
+    const handlePrevLesson = () => {
+        if (!prevLesson) return;
+        if (prevLesson.moduleId !== undefined) {
+            setActiveAccordion(prevLesson.moduleId);
+        }
+        handleLessonPlay(prevLesson);
     };
 
     const extractYouTubeId = (url) => {
@@ -806,25 +873,53 @@ const DashboardCoursePlayer = () => {
             <main className="pt-20 pb-28 sm:pb-36 px-4">
                 <div className="space-y-12">
                     {/* Header Section */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between items-start gap-8 player-reveal opacity-0">
-                        <div className="space-y-4">
-                            <Link to="/dashboard/my-courses" className="font-jetbrains text-[8px] text-accent/40 uppercase tracking-[0.4em] hover:text-accent transition-colors flex items-center gap-2">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m15 18-6-6 6-6" /></svg>
-                                Return to Curriculum
+                    <div className="space-y-4 player-reveal opacity-0">
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                            <Link to="/dashboard/my-courses" className="inline-flex items-center gap-1.5 hover:text-blue-600 transition-colors font-semibold">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
+                                My Courses
                             </Link>
-                            <h1 className="font-inter text-3xl md:text-6xl text-normal font-extralight tracking-tight leading-none uppercase">
+                            <span className="text-slate-300">/</span>
+                            <span className="text-slate-700 font-medium truncate max-w-xs sm:max-w-md">
                                 {sanitizeDisplay(currentCourse.title)}
-                            </h1>
-                            <div className="flex items-center gap-6 pt-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(139, 92, 246,0.5)]" />
-                                    <span className="font-jetbrains text-[9px] text-accent font-black uppercase tracking-widest leading-none">
-                                        {selectedLesson ? `Viewing: ${selectedLesson.title}` : 'Session Protocol Active'}
+                            </span>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+                            <div>
+                                <h1 className="font-inter text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                                    {sanitizeDisplay(currentCourse.title)}
+                                </h1>
+                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-600 font-medium">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
+                                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                                        {currentCourse.modules?.length || 0} Modules
                                     </span>
+                                    <span>•</span>
+                                    <span>{allCourseLessons.length} Lessons</span>
+                                    {completedLessonsCount > 0 && (
+                                        <>
+                                            <span>•</span>
+                                            <span className="text-emerald-700 font-semibold">
+                                                {completedLessonsCount} of {allCourseLessons.length} Completed ({overallProgress}%)
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
-                                <span className="font-jetbrains text-[8px] text-description/20 uppercase tracking-[0.4em] leading-none">
-                                    {currentCourse.modules?.length || 0} Modules Curated
-                                </span>
+                            </div>
+
+                            {/* Overall progress bar */}
+                            <div className="w-full md:w-64 space-y-1.5">
+                                <div className="flex justify-between items-center text-xs font-semibold">
+                                    <span className="text-slate-600">Course Progress</span>
+                                    <span className="text-blue-600">{overallProgress}%</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-700"
+                                        style={{ width: `${overallProgress}%` }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1019,52 +1114,64 @@ const DashboardCoursePlayer = () => {
                                 </div>
                             </div>
 
-                            {/* Socket.io Live Video Progress HUD */}
-                            <div className="bg-[#111625] border border-slate-700/60 p-5 rounded-2xl shadow-xl space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            {/* Modern LMS Player Control & Navigation HUD */}
+                            <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-sm space-y-4">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M5 3l14 9-14 9V3z" />
                                             </svg>
                                         </div>
-                                        <div>
-                                            <h3 className="font-jetbrains text-sm font-bold text-white tracking-wide truncate max-w-md">
-                                                {selectedLesson.title}
-                                            </h3>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-emerald-400">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                                    Socket.IO Live Sync Active
-                                                </span>
-                                                {isSyncing && (
-                                                    <span className="text-[10px] text-blue-300 font-mono animate-pulse">
-                                                        (Updating DB...)
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                {selectedLesson.moduleTitle && (
+                                                    <span className="text-xs font-semibold text-blue-600 truncate max-w-xs">
+                                                        Module {selectedLesson.moduleNumber || 1}: {selectedLesson.moduleTitle}
                                                     </span>
                                                 )}
+                                                <span className="text-slate-300">•</span>
+                                                <span className="text-xs text-slate-500 font-medium">
+                                                    Lesson {currentLessonIndex >= 0 ? currentLessonIndex + 1 : 1} of {allCourseLessons.length}
+                                                </span>
                                             </div>
+                                            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate max-w-xl">
+                                                {selectedLesson.title}
+                                            </h3>
                                         </div>
                                     </div>
 
-                                    {/* Progress & Controls */}
-                                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                                    {/* Action Buttons: Prev, Play/Pause, Next, Mark Complete */}
+                                    <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+                                        <button
+                                            type="button"
+                                            onClick={handlePrevLesson}
+                                            disabled={!prevLesson}
+                                            title={prevLesson ? `Previous: ${prevLesson.title}` : 'First lesson'}
+                                            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 transition-all flex items-center gap-1.5"
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+                                            <span>Previous</span>
+                                        </button>
+
                                         <button
                                             type="button"
                                             onClick={handleTogglePlay}
-                                            className={`px-4 py-2 rounded-xl text-xs font-jetbrains font-bold uppercase tracking-wider transition-all flex items-center gap-2 border ${isPlaying
-                                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                                                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                                                }`}
+                                            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 border shadow-xs ${
+                                                isPlaying
+                                                    ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                                    : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                                            }`}
                                         >
                                             {isPlaying ? (
                                                 <>
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                                                    Pause Video
+                                                    <span>Pause</span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 9-14 9V3z" /></svg>
-                                                    Play Video
+                                                    <span>Play</span>
                                                 </>
                                             )}
                                         </button>
@@ -1072,8 +1179,8 @@ const DashboardCoursePlayer = () => {
                                         <button
                                             type="button"
                                             onClick={handleToggleMute}
-                                            title={isMuted ? "Unmute" : "Mute"}
-                                            className="p-2.5 rounded-xl text-xs font-jetbrains text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-all flex items-center justify-center"
+                                            title={isMuted ? 'Unmute' : 'Mute'}
+                                            className="p-2 rounded-xl text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all flex items-center justify-center"
                                         >
                                             {isMuted ? (
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1092,47 +1199,44 @@ const DashboardCoursePlayer = () => {
                                         <button
                                             type="button"
                                             onClick={handleToggleFullscreen}
-                                            title={isPseudoFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen"}
-                                            className={`p-2.5 rounded-xl text-xs font-jetbrains text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-all flex items-center justify-center ${
-                                                isPseudoFullscreen ? 'text-blue-400 border-blue-500/50 bg-blue-500/10' : ''
-                                            }`}
+                                            title="Toggle Fullscreen"
+                                            className="p-2 rounded-xl text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all flex items-center justify-center"
                                         >
-                                            {isPseudoFullscreen ? (
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7" />
-                                                </svg>
-                                            ) : (
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                                                </svg>
-                                            )}
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                                            </svg>
                                         </button>
 
                                         <button
                                             type="button"
                                             onClick={handleMarkComplete}
-                                            className="px-5 py-2 rounded-xl text-xs font-jetbrains font-bold uppercase tracking-wider bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg hover:shadow-blue-500/20 transition-all flex items-center gap-2"
+                                            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all flex items-center gap-1.5 shadow-xs"
                                         >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                 <polyline points="20 6 9 17 4 12" />
                                             </svg>
-                                            Mark as Complete
+                                            <span>Mark Complete</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleNextLesson}
+                                            disabled={!nextLesson}
+                                            title={nextLesson ? `Next: ${nextLesson.title}` : 'Last lesson'}
+                                            className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-slate-900 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 shadow-xs"
+                                        >
+                                            <span>Next Lesson</span>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Interactive Progress Bar */}
-                                <div className="space-y-2 pt-2">
-                                    <div className="flex justify-between items-center text-xs font-mono">
-                                        <span className="text-slate-400">
-                                            {formatTime(currentTime)} / {formatTime(duration)}
-                                        </span>
-                                        <span className="text-blue-400 font-bold text-sm tracking-wider">
-                                            {Math.round(currentLessonProgress)}% COMPLETED
-                                        </span>
+                                {/* Scrubber track */}
+                                <div className="space-y-1.5 pt-1">
+                                    <div className="flex justify-between items-center text-xs text-slate-500 font-medium">
+                                        <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+                                        <span className="text-blue-600 font-semibold">{Math.round(currentLessonProgress)}% Completed</span>
                                     </div>
-
-                                    {/* Scrubber track */}
                                     <div
                                         onClick={(e) => {
                                             const rect = e.currentTarget.getBoundingClientRect();
@@ -1140,79 +1244,82 @@ const DashboardCoursePlayer = () => {
                                             const perc = (clickX / rect.width) * 100;
                                             handleSeek(perc);
                                         }}
-                                        className="h-3 bg-slate-800 rounded-full relative overflow-hidden cursor-pointer group/bar border border-slate-700 hover:border-blue-400 transition-colors"
-                                        title="Click to seek / update progress"
+                                        className="h-2.5 bg-slate-100 rounded-full relative overflow-hidden cursor-pointer group/bar border border-slate-200 hover:border-blue-400 transition-colors"
+                                        title="Click to seek"
                                     >
                                         <div
-                                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-400 to-emerald-400 transition-all duration-300 rounded-full shadow-[0_0_12px_rgba(59,130,246,0.6)]"
+                                            className="absolute top-0 left-0 h-full bg-blue-600 rounded-full transition-all duration-300"
                                             style={{ width: `${Math.min(100, Math.max(0, currentLessonProgress))}%` }}
                                         />
-                                        {/* Hover indicator */}
-                                        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none" />
                                     </div>
-                                    <p className="text-[10px] text-slate-400 font-mono text-right">
-                                        Progress syncs live via Socket.IO to your course dashboard
-                                    </p>
                                 </div>
+
+                                {nextLesson && (
+                                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                                        <span className="truncate max-w-md">
+                                            <strong className="text-slate-800">Next Up:</strong> {nextLesson.title}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleNextLesson}
+                                            className="text-blue-600 hover:text-blue-800 font-semibold shrink-0 flex items-center gap-1"
+                                        >
+                                            Continue to Next <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
 
                     {/* DRM Troubleshooting Note */}
                     {selectedLesson?.videoLessons?.[0]?.sourcePlatform === 'videocypher' && (
-                        <div className="player-reveal opacity-0 py-2 border-l-2 border-accent/20 pl-4">
-                            <p className="font-jetbrains text-[8px] text-description/80 uppercase tracking-[0.4em] leading-relaxed">
-                                Security Protocol: If feed decryption fails, ensure <span className="text-accent/60 font-black">Incognito Mode</span> is disabled and <span className="text-accent/60 font-black">Protected Content</span> is allowed in system settings.
+                        <div className="player-reveal opacity-0 p-4 rounded-xl bg-blue-50 border border-blue-200 text-slate-700 text-xs">
+                            <p>
+                                <strong>Playback Note:</strong> If video feed fails to load, ensure Incognito Mode is disabled and Protected Content playback is enabled in your browser settings.
                             </p>
                         </div>
                     )}
 
-                    {/* Curated Curriculum Accordion */}
-                    <div className="player-reveal opacity-0 space-y-4">
-                        <div className="flex items-center gap-4 mb-2">
-                            <p className="font-jetbrains text-[8px] text-accent uppercase tracking-[0.6em] font-black underline decoration-accent/20 underline-offset-4">Dossier Index</p>
-                            <div className="h-[1px] bg-white/5 flex-1" />
+                    {/* Course Content Accordion */}
+                    <div className="player-reveal opacity-0 space-y-4 pt-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Course Content</h2>
+                                <p className="text-xs text-slate-500 mt-0.5">Browse all modules and lessons in this course</p>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                                {currentCourse.modules?.length || 0} Modules • {allCourseLessons.length} Total Lessons
+                            </span>
                         </div>
 
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="text-[12px] text-description/80">Status:</div>
-                            {dripLoading ? (
-                                <div className="text-[12px] text-accent">Fetching lesson statuses...</div>
-                            ) : dripError ? (
-                                <div className="text-[12px] text-red-400">Error fetching statuses</div>
-                            ) : (
-                                <div className="text-[12px] text-green-400">Statuses loaded</div>
-                            )}
-                            <button onClick={refreshStatuses} className="ml-4 px-3 py-1 bg-white/5 border border-white/5 text-[12px]">Refresh</button>
-                        </div>
-
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-3">
                             {currentCourse.modules?.map((module, i) => (
                                 <div
                                     key={module._id || i}
-                                    className={`group border rounded-2xl transition-all duration-700 overflow-hidden bg-white
-                                        ${activeAccordion === (module._id || i) ? 'border-amber-400 shadow-md' : 'border-slate-200 hover:border-slate-300'}`}
+                                    className={`group border rounded-2xl transition-all duration-300 overflow-hidden bg-white
+                                        ${activeAccordion === (module._id || i) ? 'border-blue-400 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
                                 >
                                     <button
                                         onClick={() => setActiveAccordion(activeAccordion === (module._id || i) ? null : (module._id || i))}
-                                        className="w-full flex items-center justify-between p-8 md:p-10 text-left"
+                                        className="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-slate-50/70 transition-colors"
                                     >
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-10 h-10 border rounded-lg flex items-center justify-center font-jetbrains text-[10px] transition-all duration-700
-                                                ${activeAccordion === (module._id || i) ? 'bg-amber-400 text-slate-950 border-amber-400 font-black' : 'bg-slate-50 border-slate-200 text-slate-500 group-hover:border-slate-300 group-hover:text-slate-700'}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-all
+                                                ${activeAccordion === (module._id || i) ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'}`}>
                                                 {String(i + 1).padStart(2, '0')}
                                             </div>
-                                            <div className="space-y-1">
-                                                <h3 className={`font-inter italic text-xl md:text-2xl lowercase tracking-tight transition-colors ${activeAccordion === (module._id || i) ? 'text-slate-900 font-semibold' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                                            <div>
+                                                <h3 className="font-inter font-semibold text-base sm:text-lg text-slate-900 tracking-tight">
                                                     {sanitizeDisplay(module.title)}
                                                 </h3>
-                                                <p className="font-jetbrains text-[8px] text-slate-500 uppercase tracking-widest">
-                                                    {module.lessons?.length || 0} Lessons Integrated
+                                                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                                    {module.lessons?.length || 0} Lessons
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className={`transition-transform duration-700 ${activeAccordion === (module._id || i) ? 'rotate-180 text-amber-500' : 'text-slate-400 group-hover:text-slate-600'}`}>
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m18 15-6-6-6 6" /></svg>
+                                        <div className={`transition-transform duration-300 ${activeAccordion === (module._id || i) ? 'rotate-180 text-blue-600' : 'text-slate-400'}`}>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
                                         </div>
                                     </button>
 
@@ -1220,12 +1327,12 @@ const DashboardCoursePlayer = () => {
                                         style={{
                                             display: 'grid',
                                             gridTemplateRows: activeAccordion === (module._id || i) ? '1fr' : '0fr',
-                                            transition: 'grid-template-rows 0.4s ease-in-out, opacity 0.4s ease-in-out',
+                                            transition: 'grid-template-rows 0.3s ease-in-out, opacity 0.3s ease-in-out',
                                             opacity: activeAccordion === (module._id || i) ? 1 : 0
                                         }}
                                     >
                                         <div className="overflow-hidden">
-                                            <div className="border-t border-slate-200 divide-y divide-slate-100">
+                                            <div className="border-t border-slate-100 divide-y divide-slate-100">
                                                 {module.lessons?.map((lesson, li) => {
                                                     const lid = lesson._id || lesson.id || li;
                                                     const status = dripStatuses[lid] || {};

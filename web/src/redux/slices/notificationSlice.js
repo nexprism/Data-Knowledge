@@ -29,7 +29,7 @@ export const markNotificationsRead = createAsyncThunk(
   'notifications/markAllRead',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await authorizedFetch(`${BASE_URL}/notifications/read`, {
+      const response = await authorizedFetch(`${BASE_URL}/notifications/mark-read`, {
         method: 'PUT'
       });
       
@@ -46,6 +46,27 @@ export const markNotificationsRead = createAsyncThunk(
   }
 );
 
+export const markSingleNotificationRead = createAsyncThunk(
+  'notifications/markSingleRead',
+  async (notificationId, { rejectWithValue }) => {
+    try {
+      const response = await authorizedFetch(`${BASE_URL}/notifications/mark-read/${notificationId}`, {
+        method: 'PUT'
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return rejectWithValue(data?.message || 'Failed to mark notification as read');
+      }
+      
+      return { id: notificationId, data };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const notificationSlice = createSlice({
   name: 'notifications',
   initialState: {
@@ -55,7 +76,16 @@ const notificationSlice = createSlice({
     error: null,
     hasMore: true,
   },
-  reducers: {},
+  reducers: {
+    markLocalRead: (state, action) => {
+      state.items = state.items.map(item =>
+        item._id === action.payload ? { ...item, status: 0, isRead: true } : item
+      );
+    },
+    markAllLocalRead: (state) => {
+      state.items = state.items.map(item => ({ ...item, status: 0, isRead: true }));
+    }
+  },
   extraReducers: (builder) => {
     builder
       // Fetch Notifications
@@ -66,7 +96,7 @@ const notificationSlice = createSlice({
       .addCase(fetchNotifications.fulfilled, (state, { payload }) => {
         state.loading = false;
         // Assuming API returns { data: { result: [], total: number } }
-        const { result: notifications, total } = payload.data;
+        const { result: notifications, total } = payload.data || {};
         state.items = notifications || [];
         state.total = total || 0;
         state.hasMore = state.items.length < state.total;
@@ -78,9 +108,17 @@ const notificationSlice = createSlice({
       
       // Mark All Read
       .addCase(markNotificationsRead.fulfilled, (state) => {
-        state.items = state.items.map(item => ({ ...item, status: 0 }));
+        state.items = state.items.map(item => ({ ...item, status: 0, isRead: true }));
+      })
+
+      // Mark Single Read
+      .addCase(markSingleNotificationRead.fulfilled, (state, { payload }) => {
+        state.items = state.items.map(item =>
+          item._id === payload.id ? { ...item, status: 0, isRead: true } : item
+        );
       });
   }
 });
 
+export const { markLocalRead, markAllLocalRead } = notificationSlice.actions;
 export default notificationSlice.reducer;

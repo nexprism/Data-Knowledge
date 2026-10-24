@@ -35,13 +35,13 @@ const initialState: NotificationState = {
 };
 
 export const sendNotification = createAsyncThunk<
-    void,
+    any,
     {
         title: string;
         description: string;
         type: string;
-        image: File;
-        webPushLink: string;
+        image?: File | null;
+        webPushLink?: string;
         token: string;
     }
 >('notification/send', async (payload, { rejectWithValue }) => {
@@ -49,25 +49,35 @@ export const sendNotification = createAsyncThunk<
         const formData = new FormData();
         formData.append('title', payload.title);
         formData.append('description', payload.description);
-        formData.append('data[type]', payload.type);
-        formData.append('image', payload.image);
-        formData.append('webPushLink', payload.webPushLink);
+        formData.append('type', payload.type || 'general');
+        formData.append('data[type]', payload.type || 'general');
+        if (payload.image) {
+            formData.append('image', payload.image);
+        }
+        if (payload.webPushLink) {
+            formData.append('webPushLink', payload.webPushLink);
+        }
 
-        await axiosInstance.post('/notifications/send', formData);
+        const response = await axiosInstance.post('/notifications/send', formData, {
+            headers: {
+                Authorization: `Bearer ${payload.token}`,
+            },
+        });
+        return response.data;
     } catch (error: any) {
         return rejectWithValue(error.response?.data?.message || 'Failed to send notification');
     }
 });
 
 export const sendCourseNotification = createAsyncThunk<
-    void,
+    any,
     {
         courseId: string;
         title: string;
         description: string;
         type: string;
-        image?: File;
-        webPushLink: string;
+        image?: File | null;
+        webPushLink?: string;
         token: string;
     }
 >('notification/sendToCourse', async (payload, { rejectWithValue }) => {
@@ -75,18 +85,21 @@ export const sendCourseNotification = createAsyncThunk<
         const formData = new FormData();
         formData.append('title', payload.title);
         formData.append('description', payload.description);
-        formData.append('data[type]', payload.type);
+        formData.append('type', payload.type || 'course_notification');
+        formData.append('data[type]', payload.type || 'course_notification');
         if (payload.image) {
             formData.append('image', payload.image);
         }
-        formData.append('webPushLink', payload.webPushLink);
+        if (payload.webPushLink) {
+            formData.append('webPushLink', payload.webPushLink);
+        }
 
-        await axiosInstance.post(`/notifications/send-to-course/${payload.courseId}`, formData, {
+        const response = await axiosInstance.post(`/notifications/send-to-course/${payload.courseId}`, formData, {
             headers: {
                 Authorization: `Bearer ${payload.token}`,
-                'Content-Type': 'multipart/form-data',
             },
         });
+        return response.data;
     } catch (error: any) {
         return rejectWithValue(error.response?.data?.message || 'Failed to send course notification');
     }

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { sendNotification, sendCourseNotification, clearNotificationState } from "../../store/slices/notification";
 import { fetchCourses } from "../../store/slices/course";
 import { RootState } from "../../store";
+import { toastConfig } from "../../utils/toastConfig";
 import { 
   Send, 
   Upload, 
@@ -21,6 +23,7 @@ import PageMeta from "../../components/common/PageMeta";
 
 const NotificationDashboard: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { loading, error, success } = useSelector((state: RootState) => state.notification);
   const { data: courseData, loading: coursesLoading } = useSelector((state: RootState) => state.course);
   const token = useSelector((state: RootState) => state.auth.token);
@@ -37,31 +40,19 @@ const NotificationDashboard: React.FC = () => {
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [sentDetails, setSentDetails] = useState<{
+    title: string;
+    description: string;
+    target: string;
+    type: string;
+    timestamp: string;
+  } | null>(null);
 
   useEffect(() => {
     dispatch(fetchCourses({ page: 1, limit: 100000 }) as any);
     dispatch(clearNotificationState());
   }, [dispatch]);
-
-  useEffect(() => {
-    if (success) {
-      setShowSuccess(true);
-      setForm({
-        courseId: "",
-        title: "",
-        description: "",
-        type: "",
-        image: null,
-        webPushLink: "",
-      });
-      setImagePreview(null);
-      
-      setTimeout(() => {
-        setShowSuccess(false);
-        dispatch(clearNotificationState());
-      }, 3000);
-    }
-  }, [success, dispatch]);
 
   const handleTypeChange = (type: 'global' | 'course') => {
     setNotificationType(type);
@@ -96,9 +87,17 @@ const NotificationDashboard: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!token) {
+      toastConfig.error("Authentication token missing. Please log in again.");
+      return;
+    }
     
     try {
+      const selectedCourse = courses.find((c: any) => c._id === form.courseId);
+      const targetLabel = notificationType === 'global' 
+        ? 'All Platform Users (Global Broadcast)' 
+        : `Course: ${selectedCourse?.title || form.courseId}`;
+
       if (notificationType === 'global') {
         await dispatch(sendNotification({ 
           ...form, 
@@ -110,8 +109,36 @@ const NotificationDashboard: React.FC = () => {
           token 
         }) as any).unwrap();
       }
-    } catch (err) {
+
+      setSentDetails({
+        title: form.title,
+        description: form.description,
+        target: targetLabel,
+        type: form.type || (notificationType === 'global' ? 'general' : 'course_notification'),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      });
+
+      setShowSuccessModal(true);
+      setShowSuccess(true);
+      toastConfig.success(
+        notificationType === 'global' 
+          ? "Global notification published successfully!" 
+          : "Course notification published successfully!"
+      );
+
+      // Reset the form
+      setForm({
+        courseId: "",
+        title: "",
+        description: "",
+        type: "",
+        image: null,
+        webPushLink: "",
+      });
+      setImagePreview(null);
+    } catch (err: any) {
       console.error('Failed to send notification:', err);
+      toastConfig.error(typeof err === 'string' ? err : (err?.message || 'Failed to send notification'));
     }
   };
 
@@ -406,6 +433,90 @@ const NotificationDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Prominent Success Popup Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-99999 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 p-6 sm:p-8 overflow-hidden">
+            {/* Top decorative gradient bar */}
+            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500" />
+            
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                dispatch(clearNotificationState());
+              }}
+              className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Content */}
+            <div className="text-center pt-2">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4 ring-8 ring-green-50 dark:ring-green-900/10">
+                <CheckCircle className="w-9 h-9 text-green-600 dark:text-green-400" />
+              </div>
+
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                Notification Sent!
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Your notification has been published and saved to history.
+              </p>
+
+              {/* Notification Summary Card */}
+              {sentDetails && (
+                <div className="bg-gray-50 dark:bg-gray-700/40 rounded-2xl p-4 text-left border border-gray-200/70 dark:border-gray-600 mb-6 space-y-2.5">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Title</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {sentDetails.title}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Target Audience</div>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5 mt-0.5">
+                      <Users className="w-4 h-4 text-emerald-600" />
+                      <span>{sentDetails.target}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600">
+                    <span>Type: <strong className="text-gray-700 dark:text-gray-200 capitalize">{sentDetails.type.replace('_', ' ')}</strong></span>
+                    <span>Sent at: {sentDetails.timestamp}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    dispatch(clearNotificationState());
+                    navigate('/notification-history');
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-all shadow-md shadow-indigo-600/20"
+                >
+                  <Bell className="w-4 h-4" />
+                  View History
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    dispatch(clearNotificationState());
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-all"
+                >
+                  Send Another
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

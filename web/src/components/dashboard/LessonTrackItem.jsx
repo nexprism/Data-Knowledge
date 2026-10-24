@@ -1,18 +1,28 @@
 import React from 'react';
 
-const LessonTrackItem = ({ title, progress, isActive, onPlay, unlocked = true, type = 'video' }) => {
+const LessonTrackItem = ({ title, progress = 0, isActive, onPlay, unlocked = true, type = 'video' }) => {
+    const isCompleted = progress >= 100;
+
     const getIcon = () => {
+        if (isCompleted) {
+            return (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600">
+                    <polyline points="20 6 9 17 4 12" />
+                </svg>
+            );
+        }
         switch (type) {
             case 'quiz':
                 return (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 11l3 3L22 4" />
-                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
                 );
             case 'assignment':
                 return (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <polyline points="14 2 14 8 20 8" />
                         <line x1="16" y1="13" x2="8" y2="13" />
@@ -21,98 +31,126 @@ const LessonTrackItem = ({ title, progress, isActive, onPlay, unlocked = true, t
                 );
             case 'text':
                 return (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-600">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
                     </svg>
                 );
             default:
-                return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 9-14 9V3z"/></svg>;
+                return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className={isActive ? "text-blue-600" : "text-slate-600"}>
+                        <path d="M5 3l14 9-14 9V3z"/>
+                    </svg>
+                );
         }
     };
 
-    const getLabel = () => {
+    const getTypeBadge = () => {
         switch (type) {
             case 'quiz':
-                return <span className="font-jetbrains text-[8px] bg-purple-600/20 text-purple-400 border border-purple-600/30 px-2 py-0.5 uppercase tracking-widest font-black">Quiz</span>;
+                return <span className="text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200/80 px-2 py-0.5 rounded-md">Quiz</span>;
             case 'assignment':
-                return <span className="font-jetbrains text-[8px] bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2 py-0.5 uppercase tracking-widest font-black">Assignment</span>;
+                return <span className="text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 px-2 py-0.5 rounded-md">Assignment</span>;
             case 'text':
-                return <span className="font-jetbrains text-[8px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 uppercase tracking-widest font-black">Reading</span>;
+                return <span className="text-[11px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200/80 px-2 py-0.5 rounded-md">Reading</span>;
             default:
-                return (
-                    <>
-                        <span className="font-jetbrains text-[8px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 uppercase tracking-widest font-black">Video</span>
-                        <span className="font-jetbrains text-[8px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 uppercase tracking-widest font-black">Secure</span>
-                    </>
-                );
+                return <span className="text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/80 px-2 py-0.5 rounded-md">Video</span>;
         }
     };
 
     const getButtonText = () => {
         switch (type) {
             case 'quiz': return 'Take Quiz';
-            case 'assignment': return 'Submit';
-            case 'text': return 'Read';
-            default: return 'Play';
+            case 'assignment': return 'Submit Assignment';
+            case 'text': return 'Start Reading';
+            default: return 'Play Video';
         }
     };
 
     return (
-        <div className={`group flex flex-col md:flex-row md:items-center justify-between p-6 md:p-8 border rounded-xl transition-all duration-500 hover:border-accent/30 bg-white/[0.01]
-            ${isActive ? 'border-accent/40 bg-accent/[0.02]' : 'border-white/5 hover:bg-white/[0.02]'}`}>
-            
-            <div className="flex items-start md:items-center gap-6 flex-1 min-w-0">
-                {/* Tactical Icon */}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-500 shrink-0
-                    ${isActive ? 'bg-accent text-dark border-accent' : 'bg-white/5 border-white/10 text-accent/60 group-hover:border-accent group-hover:text-accent group-hover:bg-accent/10'}`}>
+        <div
+            onClick={unlocked ? onPlay : undefined}
+            className={`group flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 transition-all cursor-pointer
+                ${isActive
+                    ? 'bg-blue-50/70 border-l-4 border-l-blue-600'
+                    : 'bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent'
+                } ${!unlocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+            <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors
+                    ${isCompleted
+                        ? 'bg-emerald-50 border border-emerald-200'
+                        : isActive
+                            ? 'bg-blue-100 border border-blue-200'
+                            : 'bg-slate-100 border border-slate-200 group-hover:bg-slate-200'
+                    }`}
+                >
                     {getIcon()}
                 </div>
 
-                <div className="space-y-4 flex-1 min-w-0 pr-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <h4 className="font-jetbrains text-[13px] md:text-[15px] font-black text-normal tracking-tight truncate leading-tight group-hover:text-accent transition-colors">
+                <div className="space-y-1 flex-1 min-w-0 pr-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h4 className={`text-sm sm:text-[15px] font-medium tracking-tight truncate transition-colors
+                            ${isActive ? 'text-blue-900 font-semibold' : 'text-slate-800 group-hover:text-blue-600'}`}>
                             {title}
                         </h4>
-                        <div className="flex gap-2">
-                            {getLabel()}
-                        </div>
+                        {getTypeBadge()}
+                        {isActive && (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-600 text-white flex items-center gap-1 shadow-xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                Playing
+                            </span>
+                        )}
+                        {isCompleted && (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Completed
+                            </span>
+                        )}
                     </div>
 
-                    {/* Tactical Progress Protocol */}
-                    <div className="space-y-2 max-w-sm">
-                        <div className="flex justify-between items-center font-jetbrains text-[9px] font-black tracking-[0.2em] uppercase">
-                                <span className="text-description/80">Progress: {typeof progress === 'number' ? (Math.round(progress) === progress ? `${progress}%` : `${progress.toFixed(1)}%`) : `${progress}%`}</span>
-                            </div>
-                        <div className="h-1.5 bg-white/[0.05] relative overflow-hidden">
-                                <div 
-                                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-accent to-accent/60 transition-all duration-1000 ease-out-quint shadow-[0_0_15px_rgba(139, 92, 246,0.4)]" 
-                                    style={{ width: `${Math.min(100, Math.max(0, Number(progress) || 0))}%` }} 
+                    {typeof progress === 'number' && progress > 0 && progress < 100 && (
+                        <div className="flex items-center gap-2 max-w-xs pt-0.5">
+                            <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-blue-600 rounded-full"
+                                    style={{ width: `${Math.min(100, Math.round(progress))}%` }}
                                 />
+                            </div>
+                            <span className="text-[11px] text-slate-500 font-medium">
+                                {Math.round(progress)}%
+                            </span>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
-            <div className="mt-6 md:mt-0 md:pl-8 flex items-center pr-2">
+            <div className="mt-3 sm:mt-0 flex items-center shrink-0 sm:pl-4">
                 {unlocked ? (
-                    <button 
-                        onClick={onPlay}
-                        className="relative bg-accent text-dark px-10 py-3.5 rounded-xl font-montserrat text-[14px] font-black uppercase tracking-[0.4em] hover:scale-[1.05] active:scale-95 transition-all shadow-[0_0_20px_rgba(139, 92, 246,0.1)] group/btn overflow-hidden"
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onPlay();
+                        }}
+                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-xs
+                            ${isActive
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-slate-900 text-white hover:bg-blue-600'
+                            }`}
                     >
-                        <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-in-out skew-x-12" />
-                        {getButtonText()}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M5 3l14 9-14 9V3z" />
+                        </svg>
+                        <span>{isActive ? 'Playing' : getButtonText()}</span>
                     </button>
                 ) : (
-                    <button
-                        onClick={onPlay}
-                        className="relative bg-white/5 text-description px-8 py-3.5 rounded-xl font-montserrat text-[13px] font-black uppercase tracking-[0.4em] opacity-80 cursor-not-allowed border border-white/10"
-                    >
-                        <div className="inline-flex items-center gap-2">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            Locked
-                        </div>
-                    </button>
+                    <div className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <span>Locked</span>
+                    </div>
                 )}
             </div>
         </div>
