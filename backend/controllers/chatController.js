@@ -2746,7 +2746,7 @@ export const removeCourseChatParticipant = async (req, res) => {
         .json({ message: "Authentication failed: User not authenticated" });
     }
 
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "admin" && req.user.role !== "super_admin") {
       return res.status(403).json({
         success: false,
         message: "Access denied: Only admins can remove participants",

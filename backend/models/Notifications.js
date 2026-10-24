@@ -15,6 +15,12 @@ const notificationSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    read_by: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     device_id: { type: String, default: null }, // optional
   },
   {

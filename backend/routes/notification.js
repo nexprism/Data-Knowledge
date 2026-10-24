@@ -22,10 +22,21 @@ notificationRouter.put(
   passport.authenticate("jwt", { session: false }),
   markNotificationsRead
 );
-
+notificationRouter.put(
+  "/read",
+  accessTokenAutoRefresh,
+  passport.authenticate("jwt", { session: false }),
+  markNotificationsRead
+);
 
 notificationRouter.put(
   "/mark-read/:id",
+  accessTokenAutoRefresh,
+  passport.authenticate("jwt", { session: false }),
+  markNotificationsReadSingle
+);
+notificationRouter.put(
+  "/read/:id",
   accessTokenAutoRefresh,
   passport.authenticate("jwt", { session: false }),
   markNotificationsReadSingle
@@ -179,7 +190,7 @@ notificationRouter.get(
 
       // Get notifications with pagination
       const notifications = await Notification.find(filter)
-        .populate("user_id", "name email role")
+        .populate("user_id", "fullName name email role")
         .sort({ created_at: -1 })
         .skip(skip)
         .limit(limitNum)

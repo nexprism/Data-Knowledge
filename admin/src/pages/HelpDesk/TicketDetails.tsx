@@ -77,6 +77,8 @@ const TicketDetails: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => {
     }
   }, [ticket]);
 
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setStatus(e.target.value);
   };
@@ -84,8 +86,33 @@ const TicketDetails: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (ticketId) {
-      await dispatch(updateSupportTicketStatus({ ticketId, status }));
-      navigate("/requests");
+      try {
+        setUpdatingStatus(true);
+        const result = await dispatch(
+          updateSupportTicketStatus({ ticketId, status })
+        );
+        if (updateSupportTicketStatus.fulfilled.match(result)) {
+          setPopup({
+            isVisible: true,
+            message: "Ticket status updated successfully!",
+            type: isEditMode ? "edit_success" : "view_success",
+          });
+        } else {
+          setPopup({
+            isVisible: true,
+            message: "Failed to update status. Please try again.",
+            type: "error",
+          });
+        }
+      } catch (err) {
+        setPopup({
+          isVisible: true,
+          message: "Failed to update status.",
+          type: "error",
+        });
+      } finally {
+        setUpdatingStatus(false);
+      }
     }
   };
 
@@ -195,10 +222,11 @@ const TicketDetails: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => {
       <PopupAlert
         isVisible={popup.isVisible}
         message={popup.message}
-        type={popup.type}
+        type={popup.type === "edit_success" || popup.type === "view_success" ? "success" : popup.type}
         onClose={() => {
+          const shouldNavigate = popup.type === "edit_success";
           setPopup({ isVisible: false, message: "", type: "" });
-          if (popup.type === "success") {
+          if (shouldNavigate) {
             navigate("/requests");
           }
         }}
@@ -320,39 +348,39 @@ const TicketDetails: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Status
                 </label>
-                <select
-                  name="status"
-                  value={status}
-                  onChange={handleStatusChange}
-                  disabled={!isEditMode}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-              {isEditMode && (
-                <div className="flex gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    name="status"
+                    value={status}
+                    onChange={handleStatusChange}
+                    className="flex-1 min-w-[200px] border border-gray-300 rounded-lg p-2.5 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm font-medium"
+                  >
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                  </select>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                    disabled={updatingStatus || (ticket && status === ticket.status)}
+                    className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                   >
-                    Save Status
+                    {updatingStatus ? "Saving..." : "Update Status"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/requests")}
-                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
-                  >
-                    Cancel
-                  </button>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/requests")}
+                      className="px-5 py-2.5 border border-gray-300 text-sm font-semibold rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
             </form>
 
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-8">

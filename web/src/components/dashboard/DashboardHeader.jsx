@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../../redux/slices/authSlice'
-import { fetchNotifications, markNotificationsRead } from '../../redux/slices/notificationSlice'
+import { fetchNotifications, markNotificationsRead, markSingleNotificationRead } from '../../redux/slices/notificationSlice'
 import { createPortal } from 'react-dom'
 import { gsap } from 'gsap'
 import RollingText from '../RollingText'
@@ -24,6 +24,7 @@ const DashboardHeader = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const { items: notifications } = useSelector(state => state.notifications)
+  const hasUnreadNotifications = notifications?.some(n => n.status === 1 || !n.isRead)
 
   useEffect(() => {
     document.documentElement.classList.add('dashboard-normal-font')
@@ -41,6 +42,26 @@ const DashboardHeader = () => {
       dispatch(fetchNotifications({ page: 1, limit: 5 }))
     })
   }
+
+  const handleDropdownItemClick = (item) => {
+    setShowNotifications(false);
+    if (item.status === 1 || !item.isRead) {
+      dispatch(markSingleNotificationRead(item._id));
+    }
+    const targetUrl = item.data?.webPushLink || item.data?.link || item.data?.url;
+    const courseId = item.data?.courseId || item.course_id;
+    if (targetUrl) {
+      if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        navigate(targetUrl);
+      }
+    } else if (courseId) {
+      navigate(`/dashboard/course/${courseId}`);
+    } else {
+      navigate('/dashboard/notifications');
+    }
+  };
 
   const navItems = [
     { key: 'dashboard', name: (t('dashboard') || 'DASHBOARD').toUpperCase(), path: '/dashboard' },
@@ -314,7 +335,9 @@ const DashboardHeader = () => {
               <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6981 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <div className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full border-2 border-white" />
+            {hasUnreadNotifications && (
+              <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white animate-pulse" />
+            )}
           </button>
 
           <div className={`absolute top-14 right-0 w-80 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl transition-all duration-300 origin-top
@@ -325,18 +348,28 @@ const DashboardHeader = () => {
             </div>
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
               {notifications?.length > 0 ? notifications.slice(0, 5).map((item, i) => (
-                <div key={i} className={`group cursor-pointer p-3 rounded-lg hover:bg-slate-50 transition-colors border-l-2 ${item.status === 1 ? 'border-amber-400 bg-amber-50/30' : 'border-transparent hover:border-accent'}`}>
+                <div 
+                  key={item._id || i} 
+                  onClick={() => handleDropdownItemClick(item)}
+                  className={`group cursor-pointer p-3 rounded-lg hover:bg-slate-50 transition-colors border-l-2 ${item.status === 1 || !item.isRead ? 'border-amber-400 bg-amber-50/30' : 'border-transparent hover:border-slate-300'}`}
+                >
                   <div className="flex justify-between items-start mb-1">
-                    <h5 className="font-inter text-sm text-slate-900 group-hover:text-amber-600 transition-colors">{item.data?.title || 'Notification'}</h5>
-                    <span className="font-jetbrains text-[6px] text-amber-700 bg-amber-50 border border-amber-200 px-1 rounded">{item.status === 1 ? 'NEW' : 'READ'}</span>
+                    <h5 className="font-inter text-sm text-slate-900 group-hover:text-amber-600 transition-colors line-clamp-1">{item.data?.title || item.title || 'Notification'}</h5>
+                    <span className="font-jetbrains text-[6px] text-amber-700 bg-amber-50 border border-amber-200 px-1 rounded shrink-0">{item.status === 1 || !item.isRead ? 'NEW' : 'READ'}</span>
                   </div>
-                  <p className="font-jetbrains text-[9px] text-slate-600 leading-tight line-clamp-2">{item.data?.description || item.data?.body || ''}</p>
+                  <p className="font-jetbrains text-[9px] text-slate-600 leading-tight line-clamp-2">{item.data?.description || item.data?.body || item.description || ''}</p>
                 </div>
               )) : (
                 <p className="text-xs text-slate-500 text-center py-4">No recent notifications</p>
               )}
             </div>
-            <Link to="/dashboard/notifications" className="w-full mt-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-jetbrains text-[8px] text-slate-700 uppercase tracking-[0.3em] hover:bg-accent hover:text-slate-950 font-bold transition-all flex justify-center text-center items-center">{t('viewAllAlerts') || 'VIEW ALL ALERTS'}</Link>
+            <Link 
+              to="/dashboard/notifications" 
+              onClick={() => setShowNotifications(false)}
+              className="w-full mt-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-jetbrains text-[8px] text-slate-700 uppercase tracking-[0.3em] hover:bg-amber-400 hover:text-slate-950 font-bold transition-all flex justify-center text-center items-center"
+            >
+              {t('viewAllAlerts') || 'VIEW ALL ALERTS'}
+            </Link>
           </div>
         </div>
 

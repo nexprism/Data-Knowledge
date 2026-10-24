@@ -44,9 +44,14 @@ class CouponService {
       }
 
       // Check if coupon code already exists
-      const existingCoupon = await this.repository.findByCode(code);
+      const existingCoupon = await this.repository.findAnyByCode(code);
       if (existingCoupon) {
-        throw new Error('Coupon code already exists');
+        if (!existingCoupon.isActive) {
+          // If a previously soft-deleted coupon exists with this code, remove it so the new one can be created
+          await this.repository.deleteById(existingCoupon._id);
+        } else {
+          throw new Error('Coupon code already exists');
+        }
       }
 
       // Validate applicableCourses if provided
@@ -214,9 +219,13 @@ class CouponService {
 
       // Validate code uniqueness if updating
       if (updateFields.code) {
-        const existingCoupon = await this.repository.findByCode(updateFields.code);
+        const existingCoupon = await this.repository.findAnyByCode(updateFields.code);
         if (existingCoupon && existingCoupon._id.toString() !== id) {
-          throw new Error('Coupon code already exists');
+          if (!existingCoupon.isActive) {
+            await this.repository.deleteById(existingCoupon._id);
+          } else {
+            throw new Error('Coupon code already exists');
+          }
         }
       }
 
@@ -249,9 +258,9 @@ class CouponService {
     }
   }
 
-  async softDeleteById(id) {
+  async deleteById(id) {
     try {
-      const deletedCoupon = await this.repository.softDeleteById(id);
+      const deletedCoupon = await this.repository.deleteById(id);
       if (!deletedCoupon) {
         throw new Error('Coupon not found');
       }
@@ -259,6 +268,10 @@ class CouponService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async softDeleteById(id) {
+    return this.deleteById(id);
   }
 
   async validateCoupon(code, orderAmount, email, courseId = null) {

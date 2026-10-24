@@ -94,16 +94,25 @@ const ConsultationModal = ({ isOpen, onClose }) => {
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const redirectTimerRef = useRef(null);
 
-  // Lock background scroll when modal is open
+  // Lock background scroll and listen for Escape key when modal is open
   useEffect(() => {
-    if (isOpen) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = originalOverflow;
-      };
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   // Autofill user details if logged in
   useEffect(() => {
@@ -447,14 +456,24 @@ I have booked a session:
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div 
       className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      data-lenis-prevent
+      onWheel={(e) => e.stopPropagation()}
     >
       <div 
         className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[92vh] my-auto animate-in zoom-in-95 duration-200 select-text"
         onClick={(e) => e.stopPropagation()}
+        data-lenis-prevent
+        onWheel={(e) => e.stopPropagation()}
       >
         {/* ── Top Header Banner ── */}
         <div className="relative bg-gradient-to-r from-[#08192b] via-[#0d2a4a] to-[#08192b] text-white px-6 sm:px-8 pt-6 pb-5 shrink-0 overflow-hidden">
@@ -464,7 +483,11 @@ I have booked a session:
           {/* Close X Button */}
           <button
             type="button"
-            onClick={onClose}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
             className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer z-10"
             aria-label="Close"
           >
@@ -551,7 +574,11 @@ I have booked a session:
         </div>
 
         {/* ── Scrollable Modal Body ── */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-7 space-y-6 touch-pan-y">
+        <div 
+          className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-7 space-y-6 touch-pan-y"
+          data-lenis-prevent
+          onWheel={(e) => e.stopPropagation()}
+        >
           {error && (
             <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">

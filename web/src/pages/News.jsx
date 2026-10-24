@@ -14,32 +14,55 @@ const NewsCard = ({ article, variant = 'standard' }) => {
       <Link 
         to={`/news/${article.id || 'featured'}`}
         ref={cardRef}
-        className="news-reveal col-span-1 lg:col-span-8 group cursor-pointer block relative h-[420px] md:h-[550px] overflow-hidden rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-amber-400 transition-all"
+        className="news-reveal col-span-1 lg:col-span-8 group cursor-pointer flex flex-col justify-between bg-white border border-slate-200/80 hover:border-blue-400 p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
       >
-        <div className="absolute inset-0 z-0">
+        <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 rounded-xl border border-slate-200/60 mb-6">
           <img 
             src={article.image} 
             alt={article.title}
             referrerPolicy="no-referrer"
-            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent opacity-90" />
+          <div className="absolute top-4 left-4">
+            <span className="font-inter text-xs font-bold text-white bg-[#3498db] tracking-wider uppercase px-3.5 py-1.5 rounded-full shadow-sm">
+              Featured Post
+            </span>
+          </div>
         </div>
         
-        <div className="relative z-10 h-full p-8 md:p-12 flex flex-col justify-end">
-          <span className="font-inter text-xs font-bold text-white bg-[#3498db] tracking-wider uppercase mb-4 px-3.5 py-1 rounded-full w-fit shadow-sm not-">
-            {article.category}
-          </span>
-          <h2 className="font-inter not- text-2xl md:text-4xl font-extrabold leading-tight text-white transition-colors group-hover:text-blue-200 mb-4 max-w-3xl">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+            <span className="font-inter text-xs font-bold text-[#3498db] uppercase tracking-wider">
+              {article.category}
+            </span>
+            <span>•</span>
+            <span>{article.date}</span>
+          </div>
+
+          <h2 className="font-inter text-2xl md:text-3xl font-bold leading-snug text-slate-900 group-hover:text-[#3498db] transition-colors line-clamp-2">
             {article.title}
           </h2>
-          <p className="font-inter text-xs leading-relaxed text-slate-200 tracking-wide max-w-2xl font-normal line-clamp-2 mb-6 not-">
+
+          <p className="font-inter text-sm leading-relaxed text-slate-600 line-clamp-3">
             {article.description}
           </p>
-          <div className="flex items-center gap-6 pt-4 border-t border-white/20">
-             <span className="font-jetbrains text-xs text-slate-300 font-medium uppercase tracking-wider">{article.date}</span>
-             <span className="font-jetbrains text-xs text-slate-300 font-medium uppercase tracking-wider">12.4K VIEWS</span>
-             <span className="font-jetbrains text-xs text-slate-300 font-medium uppercase tracking-wider">842 LIKES</span>
+
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-2">
+            <div className="flex items-center gap-6">
+              <span className="font-jetbrains text-xs text-slate-500 font-medium uppercase tracking-wider flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                {article.views} views
+              </span>
+              <span className="font-jetbrains text-xs text-slate-500 font-medium uppercase tracking-wider flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78v0z"/></svg>
+                {article.likes} likes
+              </span>
+            </div>
+
+            <span className="font-inter text-xs font-bold text-[#3498db] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+              Read Article
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
           </div>
         </div>
       </Link>

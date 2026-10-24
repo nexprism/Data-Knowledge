@@ -59,7 +59,7 @@ export const fetchMyTickets = createAsyncThunk(
       const { auth } = getState();
       const token = auth.token || localStorage.getItem('edrilla_token');
       
-      const response = await fetch(`${BASE_URL}/support-tickets/`, {
+      const response = await fetch(`${BASE_URL}/support-tickets/my-tickets`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -69,12 +69,11 @@ export const fetchMyTickets = createAsyncThunk(
       
       const data = await response.json();
       if (!response.ok) {
-        // If endpoint error occurs, return empty list safely
-        return { data: [] };
+        return { data: { tickets: [] } };
       }
       return data;
     } catch (error) {
-      return { data: [] };
+      return { data: { tickets: [] } };
     }
   }
 );
@@ -101,9 +100,13 @@ const supportSlice = createSlice({
         state.error = null;
         state.success = false;
       })
-      .addCase(createSupportTicket.fulfilled, (state) => {
+      .addCase(createSupportTicket.fulfilled, (state, action) => {
         state.submitting = false;
         state.success = true;
+        const newTicket = action.payload?.data?.ticket || action.payload?.data;
+        if (newTicket && newTicket._id) {
+          state.tickets = [newTicket, ...(state.tickets || [])];
+        }
       })
       .addCase(createSupportTicket.rejected, (state, action) => {
         state.submitting = false;
@@ -127,7 +130,14 @@ const supportSlice = createSlice({
       })
       .addCase(fetchMyTickets.fulfilled, (state, action) => {
         state.loading = false;
-        state.tickets = action.payload?.data || [];
+        const resData = action.payload?.data;
+        if (Array.isArray(resData?.tickets)) {
+          state.tickets = resData.tickets;
+        } else if (Array.isArray(resData)) {
+          state.tickets = resData;
+        } else {
+          state.tickets = [];
+        }
       })
       .addCase(fetchMyTickets.rejected, (state, action) => {
         state.loading = false;

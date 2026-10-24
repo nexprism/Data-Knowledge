@@ -64,7 +64,9 @@ const UsageDetailsModal: React.FC<{
 }> = ({ isOpen, onClose, coupon }) => {
   if (!isOpen || !coupon) return null;
 
-  const validUsages = coupon.usedBy.filter(usage => usage.userId !== null);
+  const validUsages = Array.isArray(coupon.usedBy)
+    ? coupon.usedBy.filter(usage => usage && usage.userId !== null)
+    : [];
   const totalUsages = validUsages.reduce((sum, usage) => sum + (usage.usageCount || 0), 0);
 
   return (
@@ -465,7 +467,7 @@ const Coupons: React.FC = () => {
   // Debug: Log when coupons array changes
   useEffect(() => {
     console.log("Coupons list updated. Count:", coupons.length);
-    console.log("Coupon IDs:", coupons.map(c => c._id));
+    console.log("Coupon IDs:", coupons.map(c => c?._id));
   }, [coupons]);
 
   return (
@@ -604,7 +606,10 @@ const Coupons: React.FC = () => {
                 </tr>
               ) : (
                 coupons.map((coupon: Coupon, idx: number) => {
-                  const validUsages = coupon.usedBy.filter(usage => usage.userId !== null);
+                  if (!coupon || !coupon._id) return null;
+                  const validUsages = Array.isArray(coupon.usedBy)
+                    ? coupon.usedBy.filter(usage => usage && usage.userId !== null)
+                    : [];
                   const totalUsages = validUsages.reduce((sum, usage) => sum + (usage.usageCount || 0), 0);
                   
                   return (

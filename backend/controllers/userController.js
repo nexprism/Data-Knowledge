@@ -1891,7 +1891,7 @@ export const banOrShadowBanUser = async (req, res) => {
     }
 
     // Only admin can ban/shadow-ban
-    if (!req.user.roles?.includes("admin") && req.user.role !== "admin") {
+    if (!req.user.roles?.includes("admin") && !req.user.roles?.includes("super_admin") && req.user.role !== "admin" && req.user.role !== "super_admin") {
       return res.status(403).json({
         success: false,
         message: "Admin privileges required",
@@ -1961,7 +1961,7 @@ export const unbanUser = async (req, res) => {
     }
 
     // Only admin can unban
-    if (!req.user.roles?.includes("admin") && req.user.role !== "admin") {
+    if (!req.user.roles?.includes("admin") && !req.user.roles?.includes("super_admin") && req.user.role !== "admin" && req.user.role !== "super_admin") {
       return res.status(403).json({
         success: false,
         message: "Admin privileges required",

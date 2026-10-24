@@ -269,12 +269,18 @@ export const deleteCoupon = async (req, res) => {
       });
     }
 
-    const deletedCoupon = await couponService.softDeleteById(id);
+    const deletedCoupon = await couponService.deleteById(id);
 
-    const redis = await initRedis();
-    await redis.del(`coupon:${id}`);
-    await redis.del(`coupon:code:${deletedCoupon.code}`);
-    //console.log('🗑️ Coupon cache cleared:', id);
+    try {
+      const redis = await initRedis();
+      await redis.del(`coupon:${id}`);
+      if (deletedCoupon?.code) {
+        await redis.del(`coupon:code:${deletedCoupon.code}`);
+      }
+      //console.log('🗑️ Coupon cache cleared:', id);
+    } catch (redisErr) {
+      console.error('Redis cache clear error:', redisErr.message);
+    }
 
     return res.status(200).json({
       success: true,

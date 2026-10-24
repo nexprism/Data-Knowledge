@@ -96,13 +96,28 @@ class TicketService {
       const limitNum = Math.max(1, parseInt(limit));
       const skip = Math.max(0, (pageNum - 1) * limitNum);
 
-      // Parse JSON strings from query parameters to objects
-      const parsedFilters = JSON.parse(filters);
-      const parsedSearchFields = JSON.parse(searchFields);
-      const parsedSort = JSON.parse(sort);
+      // Parse JSON strings from query parameters to objects safely
+      let parsedFilters = {};
+      let parsedSearchFields = {};
+      let parsedSort = {};
+      try {
+        parsedFilters = typeof filters === "string" ? JSON.parse(filters) : (filters || {});
+      } catch (e) {
+        parsedFilters = {};
+      }
+      try {
+        parsedSearchFields = typeof searchFields === "string" ? JSON.parse(searchFields) : (searchFields || {});
+      } catch (e) {
+        parsedSearchFields = {};
+      }
+      try {
+        parsedSort = typeof sort === "string" ? JSON.parse(sort) : (sort || {});
+      } catch (e) {
+        parsedSort = {};
+      }
 
       // Build query conditions
-      const queryConditions = { isDeleted: false };
+      const queryConditions = { isDeleted: { $ne: true } };
 
       // Add filters
       for (const [key, value] of Object.entries(parsedFilters)) {
@@ -170,15 +185,25 @@ class TicketService {
       const limitNum = Math.max(1, parseInt(limit));
       const skip = Math.max(0, (pageNum - 1) * limitNum);
 
-      // Parse JSON strings from query parameters to objects
-      const parsedSearchFields = JSON.parse(searchFields);
-      const parsedSort = JSON.parse(sort);
+      // Parse JSON strings from query parameters to objects safely
+      let parsedSearchFields = {};
+      let parsedSort = {};
+      try {
+        parsedSearchFields = typeof searchFields === "string" ? JSON.parse(searchFields) : (searchFields || {});
+      } catch (e) {
+        parsedSearchFields = {};
+      }
+      try {
+        parsedSort = typeof sort === "string" ? JSON.parse(sort) : (sort || {});
+      } catch (e) {
+        parsedSort = {};
+      }
 
       // Build query conditions with user filter and resolved status
       const queryConditions = {
         userId: userId,
         status: "resolved",
-        isDeleted: false,
+        isDeleted: { $ne: true },
       };
 
       // Add search conditions
@@ -239,15 +264,30 @@ class TicketService {
       const limitNum = Math.max(1, parseInt(limit));
       const skip = Math.max(0, (pageNum - 1) * limitNum);
 
-      // Parse JSON strings from query parameters to objects
-      const parsedFilters = JSON.parse(filters);
-      const parsedSearchFields = JSON.parse(searchFields);
-      const parsedSort = JSON.parse(sort);
+      // Parse JSON strings from query parameters to objects safely
+      let parsedFilters = {};
+      let parsedSearchFields = {};
+      let parsedSort = {};
+      try {
+        parsedFilters = typeof filters === "string" ? JSON.parse(filters) : (filters || {});
+      } catch (e) {
+        parsedFilters = {};
+      }
+      try {
+        parsedSearchFields = typeof searchFields === "string" ? JSON.parse(searchFields) : (searchFields || {});
+      } catch (e) {
+        parsedSearchFields = {};
+      }
+      try {
+        parsedSort = typeof sort === "string" ? JSON.parse(sort) : (sort || {});
+      } catch (e) {
+        parsedSort = {};
+      }
 
       // Build query conditions with user filter
       const queryConditions = {
         userId: userId,
-        isDeleted: false,
+        isDeleted: { $ne: true },
       };
 
       // Add filters

@@ -1,5 +1,6 @@
 import notificationService from "../service/notificationService.js";
 import mongoose from "mongoose";
+import { hasAdminRole } from "../middlewares/isAdmin.js";
 
 export const getAllNotifications = async (req, res) => {
   try {
@@ -77,7 +78,7 @@ export const sendNotification = async (req, res) => {
   try {
     const adminUser = req.user;
 
-    if (adminUser.role !== "admin") {
+    if (!hasAdminRole(adminUser)) {
       return res.status(403).json({
         success: false,
         message: "❌ Only admins can send notifications",
@@ -93,8 +94,16 @@ export const sendNotification = async (req, res) => {
       });
     }
 
+    // Extract type safely
+    const notificationType = req.body.type || (data && data.type) || req.body["data[type]"] || "general";
+
     // ✅ Handle uploaded image
-    let notificationData = { title, description, ...data };
+    let notificationData = { 
+      title, 
+      description, 
+      type: notificationType,
+      ...(typeof data === "object" && data !== null ? data : {}) 
+    };
     if (req.file) {
       notificationData.image = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
     }
@@ -104,7 +113,7 @@ export const sendNotification = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `✅ Notification sent to ${result.sent} student(s)`,
+      message: `✅ Notification sent to ${result.sent} student(s) and saved to database`,
       data: result,
     });
   } catch (err) {
@@ -121,7 +130,7 @@ export const sendNotificationToCourse = async (req, res) => {
     const adminUser = req.user;
     const { courseId } = req.params;
 
-    if (adminUser.role !== "admin") {
+    if (!hasAdminRole(adminUser)) {
       return res.status(403).json({
         success: false,
         message: "❌ Only admins can send notifications",
@@ -144,8 +153,16 @@ export const sendNotificationToCourse = async (req, res) => {
       });
     }
 
+    // Extract type safely
+    const notificationType = req.body.type || (data && data.type) || req.body["data[type]"] || "course_notification";
+
     // ✅ Handle uploaded image
-    let notificationData = { title, description, ...data };
+    let notificationData = { 
+      title, 
+      description, 
+      type: notificationType,
+      ...(typeof data === "object" && data !== null ? data : {}) 
+    };
     if (req.file) {
       notificationData.image = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
     }
