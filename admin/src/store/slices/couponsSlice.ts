@@ -194,9 +194,13 @@ const couponsSlice = createSlice({
       })
       .addCase(createCoupon.fulfilled, (state, action) => { 
         state.loading = false; 
-        // Add the new coupon to the existing data if it exists
-        if (state.data?.data?.coupons) {
-          state.data.data.coupons.unshift(action.payload);
+        // Extract coupon from response data structure: { success: true, data: { coupon }, ... }
+        const coupon = action.payload?.data?.coupon || action.payload?.coupon || action.payload;
+        if (state.data?.data?.coupons && coupon && coupon._id) {
+          if (!Array.isArray(coupon.usedBy)) {
+            coupon.usedBy = [];
+          }
+          state.data.data.coupons.unshift(coupon);
         }
       })
       .addCase(createCoupon.rejected, (state, action) => { 
@@ -258,9 +262,13 @@ const couponsSlice = createSlice({
       })
       .addCase(updateCoupon.fulfilled, (state, action) => {
         state.loading = false;
-        if (state.data?.data?.coupons) {
+        const coupon = action.payload?.data?.coupon || action.payload?.coupon || action.payload;
+        if (state.data?.data?.coupons && coupon && coupon._id) {
+          if (!Array.isArray(coupon.usedBy)) {
+            coupon.usedBy = [];
+          }
           state.data.data.coupons = state.data.data.coupons.map(c => 
-            c._id === action.payload._id ? action.payload : c
+            c._id === coupon._id ? coupon : c
           );
         }
       })

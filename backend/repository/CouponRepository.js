@@ -20,6 +20,19 @@ class CouponRepository extends CrudRepository {
     }
   }
 
+  async findAnyByCode(code) {
+    try {
+      const response = await Coupon.findOne({ 
+        code: code.toUpperCase() 
+      })
+      .populate('usedBy.userId', 'fullName email phone')
+      .populate('applicableCourses', 'title _id');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async findAll() {
     try {
       const response = await Coupon.find({})
@@ -169,17 +182,17 @@ class CouponRepository extends CrudRepository {
     }
   }
 
-  async softDeleteById(id) {
+  async deleteById(id) {
     try {
-      const deletedCoupon = await Coupon.findByIdAndUpdate(
-        id,
-        { isActive: false },
-        { new: true }
-      );
+      const deletedCoupon = await Coupon.findByIdAndDelete(id);
       return deletedCoupon;
     } catch (error) {
       throw error;
     }
+  }
+
+  async softDeleteById(id) {
+    return await this.deleteById(id);
   }
 
   async incrementUsage(couponId, userId) {
