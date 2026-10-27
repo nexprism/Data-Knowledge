@@ -850,15 +850,24 @@ const DashboardCoursePlayer = () => {
     if (error) {
         return (
             <div className="min-h-screen bg-dark flex flex-col items-center justify-center p-8 space-y-6">
-                <div className="bg-red-500/10 border border-red-500/20 p-12 text-center space-y-4 max-w-xl">
-                    <p className="font-jetbrains text-[10px] text-red-500 uppercase tracking-[0.4em] font-black">Decryption Error</p>
-                    <p className="font-inter text-2xl text-red-500/80">{error}</p>
-                    <button
-                        onClick={() => dispatch(fetchCourseDetail(id))}
-                        className="px-12 py-4 bg-red-500/20 text-red-500 font-jetbrains text-[10px] uppercase tracking-widest hover:bg-red-500/30 transition-all"
-                    >
-                        Re-establish Protocol
-                    </button>
+                <div className="bg-red-500/10 border border-red-500/20 p-10 sm:p-12 text-center space-y-4 max-w-xl rounded-2xl">
+                    <p className="font-jetbrains text-[10px] text-red-500 uppercase tracking-[0.4em] font-black">Course Unavailable</p>
+                    <p className="font-inter text-xl sm:text-2xl text-red-400 font-semibold">{error}</p>
+                    <p className="font-inter text-xs text-slate-400">This course is currently in draft mode, scheduled for future release, or has been removed.</p>
+                    <div className="flex flex-wrap gap-4 justify-center pt-4">
+                        <button
+                            onClick={() => navigate('/dashboard/my-courses')}
+                            className="px-8 py-3.5 bg-accent text-slate-950 font-jetbrains text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-accent-soft"
+                        >
+                            Back to My Courses
+                        </button>
+                        <button
+                            onClick={() => dispatch(fetchCourseDetail(id))}
+                            className="px-8 py-3.5 bg-red-500/20 text-red-400 font-jetbrains text-xs font-black uppercase tracking-widest rounded-xl hover:bg-red-500/30 transition-all"
+                        >
+                            Retry
+                        </button>
+                    </div>
                 </div>
             </div>
         );

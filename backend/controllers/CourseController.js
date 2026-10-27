@@ -478,7 +478,53 @@ export const createCourse = async (req, res) => {
   }
 };
 
-// Enhanced getCourseById with VdoCipher OTP fetching - FIXED PLATFORM NAME
+// Helper function to check if a user is actively enrolled in a course (direct, plan, or bundle)
+async function isUserEnrolledInCourse(userId, courseId) {
+  if (!userId || !courseId) return false;
+  try {
+    const directEnrollment = await CourseEnrollment.findOne({
+      userId,
+      courseId,
+      status: { $in: ['active', 'completed'] },
+      isWithdrawn: false
+    }).lean();
+
+    if (directEnrollment) return true;
+
+    // Check if enrolled via a plan for this course
+    const plans = await CoursePlan.find({ courseId }).select('_id').lean();
+    if (plans.length > 0) {
+      const planIds = plans.map(p => p._id);
+      const planEnrollment = await CourseEnrollment.findOne({
+        userId,
+        coursePlanId: { $in: planIds },
+        status: { $in: ['active', 'completed'] },
+        isWithdrawn: false
+      }).lean();
+      if (planEnrollment) return true;
+    }
+
+    // Check if enrolled via a bundle containing this course
+    const CourseBundle = (await import('../models/CourseBundle.js')).default;
+    const bundles = await CourseBundle.find({ courses: courseId }).select('_id').lean();
+    if (bundles.length > 0) {
+      const bundleIds = bundles.map(b => b._id);
+      const bundleEnrollment = await CourseEnrollment.findOne({
+        userId,
+        courseBundleId: { $in: bundleIds },
+        status: { $in: ['active', 'completed'] },
+        isWithdrawn: false
+      }).lean();
+      if (bundleEnrollment) return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error('Error checking user enrollment:', err);
+    return false;
+  }
+}
+
 // Enhanced getCourseById with VdoCipher OTP fetching - FIXED PLATFORM NAME
 export const getCourseById = async (req, res) => {
   try {
@@ -493,7 +539,7 @@ export const getCourseById = async (req, res) => {
       });
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?.id || req.user?._id;
     const userAgent = req.headers['user-agent'];
     const clientIP = req.ip || req.connection.remoteAddress;
 
@@ -512,11 +558,15 @@ export const getCourseById = async (req, res) => {
     if (!isAdminUser) {
       const isScheduledFuture = course.publishDate && new Date(course.publishDate) > new Date();
       if (!course.isPublished || isScheduledFuture) {
-        return res.status(404).json({
-          success: false,
-          message: "Course is not yet published",
-          data: {},
-        });
+        // Enrolled students CAN access their enrolled course even if it is in draft
+        const enrolled = await isUserEnrolledInCourse(userId, course._id);
+        if (!enrolled) {
+          return res.status(404).json({
+            success: false,
+            message: "Course is not yet published",
+            data: {},
+          });
+        }
       }
     }
 
@@ -745,11 +795,15 @@ export const getCourseBySlug = async (req, res) => {
     if (!isAdminUserSlug) {
       const isScheduledFuture = course.publishDate && new Date(course.publishDate) > new Date();
       if (!course.isPublished || isScheduledFuture) {
-        return res.status(404).json({
-          success: false,
-          message: "Course is not yet published",
-          data: {},
-        });
+        const currentUserId = req.user?.id || req.user?._id;
+        const enrolled = await isUserEnrolledInCourse(currentUserId, course._id);
+        if (!enrolled) {
+          return res.status(404).json({
+            success: false,
+            message: "Course is not yet published",
+            data: {},
+          });
+        }
       }
     }
 

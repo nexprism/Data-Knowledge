@@ -1133,7 +1133,8 @@ export const getMyEnrollments = async (req, res) => {
   // SECURITY (IDOR): identity comes from the authenticated token. Only admins
   // may pass an explicit ?userid — the admin panel uses this when issuing
   // certificates (IssueCertification.tsx).
-  const userId = (hasAdminRole(req.user) && req.query.userid) ? req.query.userid : req.user._id;
+  const isRequesterAdmin = hasAdminRole(req.user);
+  const userId = (isRequesterAdmin && req.query.userid) ? req.query.userid : req.user._id;
 
   try {
     // ACCESS EXPIRY (read-time enforcement): nothing flips status once
@@ -1156,7 +1157,7 @@ export const getMyEnrollments = async (req, res) => {
       .lean();
 
     if (!enrollments.length) {
-      return res.status(404).json({ message: 'No enrollments found.' });
+      return res.status(200).json({ success: true, data: [], message: 'No enrollments found.' });
     }
 
     // Belt-and-braces: reflect expiry in the returned status even if the
@@ -1341,7 +1342,13 @@ export const getMyEnrollments = async (req, res) => {
       if (enrollment.type === 'course' && enrollment.courseId) {
         const courseDoc = courseMap.get(enrollment.courseId.toString());
 
-        if (courseDoc && courseDoc._id) {
+        const isCourseAvailable = Boolean(
+          courseDoc &&
+          courseDoc._id &&
+          !courseDoc.isDeleted
+        );
+
+        if (isRequesterAdmin ? (courseDoc && courseDoc._id) : isCourseAvailable) {
           const courseIdStr = courseDoc._id.toString();
           const progress = overallProgressFor(courseIdStr);
           
@@ -1380,22 +1387,37 @@ export const getMyEnrollments = async (req, res) => {
           });
           continue;
         }
-        populatedEnrollments.push({
-          ...enrollment,
-          course: null,
-          certificate: null,
-          lastVideoPlayed,
-          error: `Course with ID ${enrollment.courseId} not found`,
-        });
+
+        if (isRequesterAdmin) {
+          populatedEnrollments.push({
+            ...enrollment,
+            course: null,
+            certificate: null,
+            lastVideoPlayed,
+            error: `Course with ID ${enrollment.courseId} not found`,
+          });
+        }
         continue;
       } else if (enrollment.type === 'courseBundle' && enrollment.courseBundleId) {
         const bundleDoc = bundleMap.get(enrollment.courseBundleId.toString());
         let bundle = bundleDoc || null;
 
+        const isBundleAvailable = Boolean(
+          bundleDoc &&
+          !bundleDoc.isDeleted
+        );
+
+        if (!isRequesterAdmin && !isBundleAvailable) {
+          continue;
+        }
+
         if (bundleDoc && bundleDoc.courses && bundleDoc.courses.length > 0) {
+          const visibleCourses = bundleDoc.courses.filter(c => 
+            isRequesterAdmin || !c.isDeleted
+          );
           bundle = {
             ...bundleDoc,
-            courses: bundleDoc.courses.map((course) => ({
+            courses: visibleCourses.map((course) => ({
               ...course,
               overallProgress: overallProgressFor(course._id.toString()),
               certificate: null,
@@ -1413,6 +1435,16 @@ export const getMyEnrollments = async (req, res) => {
         const plan = planMap.get(enrollment.coursePlanId.toString()) || null;
         if (plan && plan.courseId) {
           const courseDoc = courseMap.get(plan.courseId.toString());
+          const isCourseAvailable = Boolean(
+            courseDoc &&
+            courseDoc._id &&
+            !courseDoc.isDeleted
+          );
+
+          if (!isRequesterAdmin && !isCourseAvailable) {
+            continue;
+          }
+
           let course = null;
           let certificate = null;
           let iscompleted = enrollment.iscompleted;
@@ -1454,21 +1486,25 @@ export const getMyEnrollments = async (req, res) => {
           });
           continue;
         }
-        populatedEnrollments.push({
-          ...enrollment,
-          course: null,
-          coursePlan: plan,
-          certificate: null,
-          lastVideoPlayed,
-          error: `Course with ID ${plan?.courseId} not found`,
-        });
+        if (isRequesterAdmin) {
+          populatedEnrollments.push({
+            ...enrollment,
+            course: null,
+            coursePlan: plan,
+            certificate: null,
+            lastVideoPlayed,
+            error: `Course with ID ${plan?.courseId} not found`,
+          });
+        }
         continue;
       }
-      populatedEnrollments.push({
-        ...enrollment,
-        order: enrollment.orderId,
-        lastVideoPlayed,
-      });
+      if (isRequesterAdmin) {
+        populatedEnrollments.push({
+          ...enrollment,
+          order: enrollment.orderId,
+          lastVideoPlayed,
+        });
+      }
     }
 
     return res.status(200).json({

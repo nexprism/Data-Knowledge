@@ -34,7 +34,8 @@ export const fetchCourseDetail = createAsyncThunk(
         }
       });
       if (!response.ok) {
-        throw new Error('Failed to fetch course details');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to fetch course details');
       }
       const data = await response.json();
       return data;
