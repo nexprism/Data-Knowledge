@@ -144,6 +144,18 @@ class MemoryRedisClient {
     return remaining > 0 ? remaining : -2;
   }
 
+  async ping() {
+    return 'PONG';
+  }
+
+  async dbSize() {
+    return this.store.size + this.sortedSets.size;
+  }
+
+  async dbsize() {
+    return this.store.size + this.sortedSets.size;
+  }
+
   async flushAll() {
     this.store.clear();
     this.sortedSets.clear();
@@ -151,14 +163,17 @@ class MemoryRedisClient {
   }
 
   async connect() {
+    this.isOpen = true;
     return this;
   }
 
   async disconnect() {
+    this.isOpen = false;
     return 'OK';
   }
 
   async quit() {
+    this.isOpen = false;
     return 'OK';
   }
 
@@ -167,57 +182,281 @@ class MemoryRedisClient {
   }
 }
 
+import Setting from '../models/setting.js';
+
 let redisClient = null;
+let externalClient = null;
 let memoryFallbackClient = null;
+let isRedisManuallyDisabled = false;
+let isExternalConnected = false;
+let lastError = null;
+let lastPingLatency = null;
+let dbSettingLoaded = false;
 
-const initRedis = async () => {
-  if (redisClient) return redisClient;
-
-  const isRedisEnabled = process.env.REDIS_ENABLED !== 'false' && Boolean(process.env.REDIS_HOST && process.env.REDIS_PORT);
-
-  // Attempt external Redis if enabled and configuration is present
-  if (isRedisEnabled) {
-    let client = null;
-    try {
-      const clientOptions = {
-        socket: {
-          host: process.env.REDIS_HOST,
-          port: Number(process.env.REDIS_PORT),
-          connectTimeout: 1500,
-          reconnectStrategy: false,
-        },
-      };
-
-      if (process.env.REDIS_PASSWORD) {
-        clientOptions.password = process.env.REDIS_PASSWORD;
-      }
-
-      client = createClient(clientOptions);
-      client.on('error', () => {});
-
-      await Promise.race([
-        client.connect(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Redis connection timeout')), 2000)
-        ),
-      ]);
-
-      console.log('✅ Connected to Redis');
-      redisClient = client;
-      return redisClient;
-    } catch (err) {
-      console.warn('⚠️ External Redis unavailable, falling back to in-memory store:', err.message);
-      try {
-        if (client) await client.disconnect();
-      } catch (_) {}
-    }
-  }
-
+const getMemoryFallback = () => {
   if (!memoryFallbackClient) {
     memoryFallbackClient = new MemoryRedisClient();
   }
-  redisClient = memoryFallbackClient;
-  return redisClient;
+  return memoryFallbackClient;
 };
 
-export { initRedis, redisClient };
+const syncSettingFromDB = async () => {
+  if (dbSettingLoaded) return;
+  try {
+    const dbSetting = await Setting.findOne({ key: 'redis_enabled' });
+    if (dbSetting !== null && dbSetting.value !== undefined) {
+      isRedisManuallyDisabled = !(dbSetting.value === true || dbSetting.value === 'true');
+    }
+    dbSettingLoaded = true;
+  } catch (_) {
+    // DB might not be ready yet
+  }
+};
+
+const connectExternalRedis = async (force = false) => {
+  await syncSettingFromDB();
+
+  if (isRedisManuallyDisabled || process.env.REDIS_ENABLED === 'false') {
+    isExternalConnected = false;
+    redisClient = getMemoryFallback();
+    return redisClient;
+  }
+
+  const host = process.env.REDIS_HOST;
+  const port = process.env.REDIS_PORT;
+
+  if (!host || !port) {
+    lastError = 'REDIS_HOST or REDIS_PORT not configured in environment';
+    isExternalConnected = false;
+    redisClient = getMemoryFallback();
+    return redisClient;
+  }
+
+  if (externalClient && isExternalConnected && externalClient.isOpen && !force) {
+    redisClient = externalClient;
+    return redisClient;
+  }
+
+  // If previous external client exists, clean it up before reconnecting
+  if (externalClient) {
+    try {
+      await externalClient.disconnect();
+    } catch (_) {}
+    externalClient = null;
+  }
+
+  let client = null;
+  try {
+    const clientOptions = {
+      socket: {
+        host: host,
+        port: Number(port),
+        connectTimeout: 2000,
+        reconnectStrategy: false,
+      },
+    };
+
+    if (process.env.REDIS_PASSWORD) {
+      clientOptions.password = process.env.REDIS_PASSWORD;
+    }
+
+    client = createClient(clientOptions);
+    client.on('error', (err) => {
+      lastError = err?.message || 'Redis client runtime error';
+    });
+
+    await Promise.race([
+      client.connect(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Redis connection timeout (2000ms)')), 2500)
+      ),
+    ]);
+
+    // Measure initial ping
+    const pingStart = Date.now();
+    await client.ping();
+    lastPingLatency = Date.now() - pingStart;
+
+    console.log('✅ Connected to External Redis (' + host + ':' + port + ')');
+    externalClient = client;
+    isExternalConnected = true;
+    lastError = null;
+    redisClient = externalClient;
+    return redisClient;
+  } catch (err) {
+    console.warn('⚠️ External Redis unavailable (' + (err?.message || err) + '), using in-memory store');
+    lastError = err?.message || 'Connection failed';
+    isExternalConnected = false;
+    try {
+      if (client) await client.disconnect();
+    } catch (_) {}
+    externalClient = null;
+    redisClient = getMemoryFallback();
+    return redisClient;
+  }
+};
+
+const initRedis = async () => {
+  if (redisClient) {
+    // If external redis is expected but disconnected, or if client state changed
+    if (!isRedisManuallyDisabled && !isExternalConnected && process.env.REDIS_ENABLED !== 'false' && process.env.REDIS_HOST) {
+      return await connectExternalRedis();
+    }
+    return redisClient;
+  }
+
+  return await connectExternalRedis();
+};
+
+const getRedisStatus = async () => {
+  await syncSettingFromDB();
+
+  const isEnabled = !isRedisManuallyDisabled && process.env.REDIS_ENABLED !== 'false';
+  const host = process.env.REDIS_HOST || '127.0.0.1';
+  const port = process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379;
+  const hasPassword = Boolean(process.env.REDIS_PASSWORD);
+
+  let keyCount = 0;
+  let latencyMs = lastPingLatency;
+  let connected = isExternalConnected;
+  let currentMode = !isEnabled ? 'disabled' : (connected ? 'external' : 'memory');
+
+  try {
+    const activeClient = redisClient || getMemoryFallback();
+    if (activeClient) {
+      if (typeof activeClient.dbSize === 'function') {
+        keyCount = await activeClient.dbSize();
+      } else if (typeof activeClient.dbsize === 'function') {
+        keyCount = await activeClient.dbsize();
+      } else if (typeof activeClient.keys === 'function') {
+        const k = await activeClient.keys('*');
+        keyCount = Array.isArray(k) ? k.length : 0;
+      }
+
+      if (connected && externalClient && externalClient.isOpen) {
+        const pStart = Date.now();
+        await externalClient.ping();
+        latencyMs = Date.now() - pStart;
+        lastPingLatency = latencyMs;
+      }
+    }
+  } catch (err) {
+    lastError = err?.message || 'Error checking Redis status';
+  }
+
+  return {
+    success: true,
+    enabled: isEnabled,
+    connected: isEnabled && connected,
+    mode: currentMode,
+    latencyMs,
+    keyCount,
+    error: lastError ? 'Connection issue encountered' : null,
+    lastChecked: new Date().toISOString(),
+  };
+};
+
+const toggleRedis = async (enableState) => {
+  const shouldEnable = Boolean(enableState);
+  isRedisManuallyDisabled = !shouldEnable;
+  dbSettingLoaded = true;
+
+  try {
+    await Setting.findOneAndUpdate(
+      { key: 'redis_enabled' },
+      { value: shouldEnable, description: 'Redis external connection enabled/disabled' },
+      { upsert: true, new: true }
+    );
+  } catch (err) {
+    console.warn('⚠️ Could not persist redis_enabled in Setting model:', err.message);
+  }
+
+  if (!shouldEnable) {
+    if (externalClient) {
+      try {
+        await externalClient.disconnect();
+      } catch (_) {}
+      externalClient = null;
+    }
+    isExternalConnected = false;
+    lastError = null;
+    redisClient = getMemoryFallback();
+    return {
+      ...(await getRedisStatus()),
+      message: 'Redis connection turned OFF. In-memory cache fallback is active.',
+    };
+  } else {
+    await connectExternalRedis(true);
+    const status = await getRedisStatus();
+    return {
+      ...status,
+      message: status.connected
+        ? 'Redis connection turned ON and connected successfully.'
+        : `Redis connection turned ON, but external server could not be reached (${status.error || 'Connection failed'}). Using in-memory fallback.`,
+    };
+  }
+};
+
+const testRedisConnection = async () => {
+  const start = Date.now();
+  try {
+    const activeClient = await initRedis();
+    if (!activeClient) throw new Error('No Redis client initialized');
+    const pong = await activeClient.ping();
+    const latencyMs = Date.now() - start;
+    lastPingLatency = latencyMs;
+
+    return {
+      success: true,
+      ping: pong || 'PONG',
+      latencyMs,
+      connected: isExternalConnected,
+      mode: !isRedisManuallyDisabled ? (isExternalConnected ? 'external' : 'memory') : 'disabled',
+      message: isExternalConnected
+        ? `External Redis ping successful (${latencyMs}ms)`
+        : `In-memory Redis ping successful (${latencyMs}ms)`,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err?.message || 'Ping failed',
+      latencyMs: Date.now() - start,
+      connected: false,
+      mode: 'error',
+      message: `Redis ping failed: ${err?.message || 'Unknown error'}`,
+    };
+  }
+};
+
+const flushRedisCache = async () => {
+  try {
+    const activeClient = await initRedis();
+    if (activeClient && typeof activeClient.flushAll === 'function') {
+      await activeClient.flushAll();
+      return {
+        success: true,
+        message: 'Redis cache flushed successfully.',
+      };
+    }
+    return {
+      success: false,
+      message: 'Active Redis client does not support flushAll.',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err?.message || 'Failed to flush cache',
+      message: `Failed to flush cache: ${err?.message || 'Unknown error'}`,
+    };
+  }
+};
+
+export {
+  initRedis,
+  redisClient,
+  getRedisStatus,
+  toggleRedis,
+  testRedisConnection,
+  flushRedisCache,
+};
+

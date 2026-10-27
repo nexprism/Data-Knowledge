@@ -16,7 +16,7 @@ import {
   UserCircleIcon,
   VideoIcon,
 } from "../icons";
-import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare, ShieldCheck, Mail, Receipt } from "lucide-react";
+import { Tag, UserCircle2Icon, Bell, MessageCircle, Bot, Instagram, Trophy, Layers, Sparkles, Search, X, CheckSquare, ShieldCheck, Mail, Receipt, Database } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../hooks/redux";
 import { getAllQueries } from "../store/slices/query";
 import { fetchContactRequests } from "../store/slices/contactSlice";
@@ -259,6 +259,13 @@ const navItems: NavItem[] = [
     name: "Admin Management",
     path: "/admin-users",
     keywords: ["admins", "admin", "roles", "permissions", "rbac", "super", "access", "users"],
+    superAdminOnly: true,
+  },
+  {
+    icon: <Database className="w-5 h-5" />,
+    name: "Redis Management",
+    path: "/settings/redis",
+    keywords: ["redis", "cache", "server", "connectivity", "performance", "keys", "flush"],
     superAdminOnly: true,
   },
 ];

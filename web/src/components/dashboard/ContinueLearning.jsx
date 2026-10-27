@@ -14,7 +14,9 @@ const ContinueLearning = () => {
   if (!lastSession) return null;
 
   // Find thumbnail from activeCourses
-  const activeCourse = dashData?.activeCourses?.find(c => c.courseId === lastSession.courseId)
+  const activeCourse = dashData?.activeCourses?.find(c => String(c.courseId) === String(lastSession.courseId))
+  if (!activeCourse) return null;
+
   const thumbnail = activeCourse?.thumbnail 
     ? getMediaUrl(activeCourse.thumbnail, 'courses', '') || bannerImg
     : bannerImg

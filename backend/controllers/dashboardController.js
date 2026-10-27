@@ -24,8 +24,14 @@ class DashboardController {
       const [user, enrollments, news, leaderboardData, certificatesCount] = await Promise.all([
         User.findById(userId).select('fullName email profilePicture role bio phone company address education skills mobileVerified emailVerified').lean(),
         CourseEnrollment.find({ userId, isWithdrawn: false })
-          .populate('courseId', 'title thumbnail')
-          .populate('courseBundleId', 'title thumbnail')
+          .populate({
+            path: 'courseId',
+            select: 'title thumbnail isPublished isDeleted publishDate'
+          })
+          .populate({
+            path: 'courseBundleId',
+            select: 'title thumbnail isPublished isDeleted'
+          })
           .lean(),
         News.find({ status: 'active' }).sort({ publishedAt: -1 }).limit(5).select('title summary publishedAt imageUrl').lean(),
         Leaderboard.findOne({ userId }).lean(),
@@ -36,8 +42,22 @@ class DashboardController {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      // 2. Process Enrollment Stats
-      const activeCourses = enrollments
+      // 2. Process Enrollment Stats (Exclude deleted courses, but keep active enrolled courses even if in draft)
+      const validEnrollments = enrollments.filter(e => {
+        const course = e.courseId;
+        const bundle = e.courseBundleId;
+        if (course) {
+          if (course.isDeleted) return false;
+          return true;
+        }
+        if (bundle) {
+          if (bundle.isDeleted) return false;
+          return true;
+        }
+        return false;
+      });
+
+      const activeCourses = validEnrollments
         .filter(e => e.status === 'active')
         .map(e => {
           const courseObj = e.courseId || e.courseBundleId;
@@ -50,11 +70,11 @@ class DashboardController {
           };
         });
 
-      const completedCoursesCount = enrollments.filter(
+      const completedCoursesCount = validEnrollments.filter(
         e => e.iscompleted || e.progressPercentage === 100 || e.status === 'completed'
       ).length;
 
-      const completedModulesCount = enrollments.reduce(
+      const completedModulesCount = validEnrollments.reduce(
         (acc, e) => acc + (e.completedLessons?.length || 0),
         0
       );
@@ -79,7 +99,7 @@ class DashboardController {
         }));
 
       // 4. Fetch Pending Assignments
-      const enrolledCourseIds = enrollments
+      const enrolledCourseIds = validEnrollments
         .map(e => e.courseId?._id || e.courseId)
         .filter(Boolean);
 
@@ -108,17 +128,20 @@ class DashboardController {
         console.error('Error fetching video sessions for dashboard:', err);
       }
         
+      const activeCourseIdSet = new Set(activeCourses.map(c => c.courseId?.toString()).filter(Boolean));
+
       let recentSessions = (sessions || [])
         .sort((a, b) => new Date(b.updatedAt || b.startTime) - new Date(a.updatedAt || a.startTime))
-        .slice(0, 5)
         .map(s => ({
           sessionId: s.sessionId,
           videoTitle: s.videoId?.title || '',
           lessonTitle: s.videoId?.lessonId?.title || s.lessonId?.title || '',
-          courseId: s.videoId?.lessonId?.courseId || s.courseId,
+          courseId: (s.videoId?.lessonId?.courseId || s.courseId)?.toString(),
           lastWatchedAt: s.updatedAt || s.endTime || s.startTime,
           completionPercentage: s.completionPercentage || 0
-        }));
+        }))
+        .filter(s => s.courseId && activeCourseIdSet.has(s.courseId))
+        .slice(0, 5);
 
       // If no video session has been recorded yet, provide active enrolled course as continue learning
       if (recentSessions.length === 0 && activeCourses.length > 0) {
@@ -174,13 +197,13 @@ class DashboardController {
       res.json({
         success: true,
         data: {
-          allCoursesCount: enrollments.length,
+          allCoursesCount: validEnrollments.length,
           activeCoursesCount: activeCourses.length,
           certificatesCount: certificatesCount,
           profile: {
             ...user,
             stats: {
-              enrolledCourses: enrollments.length,
+              enrolledCourses: validEnrollments.length,
               completedCourses: completedCoursesCount,
               completedModules: completedModulesCount,
               certificatesEarned: certificatesCount,

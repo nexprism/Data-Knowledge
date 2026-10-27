@@ -40,6 +40,7 @@ const MyCourses = () => {
   const filteredEnrollments = useMemo(() => {
     return enrollments.filter(item => {
       if (!item.course) return false // Hide legacy/deleted courses from curriculum view
+      if (item.course.isDeleted) return false // Exclude removed courses
       const itemProgress = item.progressPercentage ?? item.course?.overallProgress ?? 0
       if (activeFilter === 'ALL COURSES') return true
       if (activeFilter === 'IN PROGRESS') return itemProgress < 100 && !item.iscompleted
@@ -49,10 +50,11 @@ const MyCourses = () => {
   }, [enrollments, activeFilter])
 
   // Statistics
-  const activeCount = useMemo(() => enrollments.filter(item => item.status === 'active' && item.course).length, [enrollments])
+  const activeCount = useMemo(() => enrollments.filter(item => item.status === 'active' && item.course && !item.course.isDeleted).length, [enrollments])
   const avgProgress = useMemo(() => {
-    return enrollments.length > 0 
-      ? Math.round(enrollments.reduce((acc, item) => acc + (item.progressPercentage ?? item.course?.overallProgress ?? 0), 0) / enrollments.length) 
+    const valid = enrollments.filter(item => item.course && !item.course.isDeleted)
+    return valid.length > 0 
+      ? Math.round(valid.reduce((acc, item) => acc + (item.progressPercentage ?? item.course?.overallProgress ?? 0), 0) / valid.length) 
       : 0
   }, [enrollments])
 
@@ -230,7 +232,7 @@ const MyCourses = () => {
                       {/* Action Link */}
                       <div className="pt-2">
                          <button 
-                            onClick={() => navigate(`/dashboard/course/${item.courseId}`)}
+                            onClick={() => navigate(`/dashboard/course/${item.courseId || item.course?._id}`)}
                             className="w-full py-3.5 bg-accent text-slate-950 font-jetbrains text-xs font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-95 transition-all rounded-full shadow-accent-soft text-center"
                          >
                             Continue Learning
