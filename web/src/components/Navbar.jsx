@@ -362,19 +362,19 @@ const Navbar = ({ isLoaded }) => {
             </button>
           </header>
 
-          <div className="relative z-10 flex flex-col items-center justify-center h-full gap-10 md:gap-16 px-8 text-center pt-28 md:pt-40 pb-12 overflow-y-auto">
-            <div className="flex flex-col items-center gap-6">
+          <div className="relative z-10 flex flex-col items-center justify-center h-full gap-5 sm:gap-7 md:gap-9 px-6 sm:px-8 text-center pt-24 sm:pt-28 pb-10 overflow-y-auto">
+            <div className="flex flex-col items-center gap-3 sm:gap-4 md:gap-5">
               {navLinks.map((link) => (
                 <NavLink
                   key={link.key}
                   to={link.path}
                   onClick={toggleMenu}
                   className={({ isActive }) =>
-                    `menu-item font-inter text-3xl sm:text-4xl md:text-8xl font-extralight transition-all duration-300 block ${isActive ? 'text-[#3498db] italic font-medium' : 'text-slate-800 opacity-60 hover:text-[#3498db] hover:opacity-100 hover:tracking-wider'
+                    `menu-item font-inter text-2xl sm:text-3xl md:text-4xl font-extralight transition-all duration-300 block ${isActive ? 'text-[#3498db] italic font-medium' : 'text-slate-800 opacity-60 hover:text-[#3498db] hover:opacity-100 hover:tracking-wide'
                     }`
                   }
                 >
-                  <RollingText text={link.name} className="md:h-24 h-8 sm:h-10" />
+                  <RollingText text={link.name} className="h-7 sm:h-8 md:h-10" />
                 </NavLink>
               ))}
             </div>
