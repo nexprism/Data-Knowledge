@@ -296,6 +296,7 @@ const AppSidebar: React.FC = () => {
 
   const dispatch = useAppDispatch();
   const queries = useAppSelector((state) => state.query.queries);
+  const newQueriesTotal = useAppSelector((state) => state.query.newQueriesTotal);
   const contactRequests = useAppSelector((state) => state.contact?.requests);
   const contactSummary = useAppSelector((state) => state.contact?.summary);
   const assignmentSubmissions = useAppSelector((state) => state.assignment?.submissions);
@@ -476,35 +477,49 @@ const AppSidebar: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    dispatch(getAllQueries());
+  const pollSidebarBadges = useCallback(() => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+    dispatch(getAllQueries({ status: "new", page: 1, limit: 1 }));
     dispatch(fetchContactRequests({ page: 1, limit: 10 }));
     dispatch(fetchAssignmentSubmissions({ page: 1, limit: 20 }));
     dispatch(fetchSupportTickets({ page: 1, limit: 20 }));
-
-    // Periodic poll every 45s for live notifications
-    const interval = setInterval(() => {
-      dispatch(getAllQueries());
-      dispatch(fetchContactRequests({ page: 1, limit: 10 }));
-      dispatch(fetchAssignmentSubmissions({ page: 1, limit: 20 }));
-      dispatch(fetchSupportTickets({ page: 1, limit: 20 }));
-    }, 45000);
-
-    return () => clearInterval(interval);
   }, [dispatch]);
 
+  useEffect(() => {
+    pollSidebarBadges();
+
+    const interval = setInterval(pollSidebarBadges, 45000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        pollSidebarBadges();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [pollSidebarBadges]);
+
   const newQueriesCount = useMemo(() => {
-    if (!Array.isArray(queries)) return 0;
-    return queries.filter((q) => {
+    if (!Array.isArray(queries)) return newQueriesTotal || 0;
+    const fromList = queries.filter((q) => {
       const isNew = (q.status || "").toLowerCase().trim().replace(/\s+/g, "_") === "new";
       if (!isNew) return false;
-      // If admin previously viewed queries, only count queries received after that view
       if (lastViewedQueriesAt && q.createdAt) {
         return new Date(q.createdAt).getTime() > new Date(lastViewedQueriesAt).getTime();
       }
       return !lastViewedQueriesAt;
     }).length;
-  }, [queries, lastViewedQueriesAt]);
+    if (queries.length <= 1 && newQueriesTotal > fromList) {
+      return newQueriesTotal;
+    }
+    return fromList;
+  }, [queries, lastViewedQueriesAt, newQueriesTotal]);
 
   const newAssignmentsCount = useMemo(() => {
     if (!Array.isArray(assignmentSubmissions)) return 0;

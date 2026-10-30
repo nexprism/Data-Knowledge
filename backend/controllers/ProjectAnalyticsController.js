@@ -3,7 +3,8 @@ import ProjectAnalyticsService from '../service/ProjectAnalyticsService.js';
 // Overall project analytics summary
 export const getProjectSummary = async (req, res) => {
   try {
-    const data = await ProjectAnalyticsService.getProjectSummary();
+    const { from, to } = req.query;
+    const data = await ProjectAnalyticsService.getProjectSummary({ from, to });
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -87,7 +88,8 @@ export const getActivityLogs = async (req, res) => {
 // Full project analytics
 export const getFullProjectAnalytics = async (req, res) => {
   try {
-    const summary = await ProjectAnalyticsService.getProjectSummary();
+    const { from, to } = req.query;
+    const summary = await ProjectAnalyticsService.getProjectSummary({ from, to });
     const topEntities = await ProjectAnalyticsService.getTopEntities();
     const trends = await ProjectAnalyticsService.getTrends(req.query.range || '30d');
     const revenueBreakdown = await ProjectAnalyticsService.getRevenueBreakdown();

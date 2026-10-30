@@ -36,7 +36,8 @@ export const getUserSales = async (req, res) => {
 // Get sales summary (total revenue, orders, etc)
 export const getSalesSummary = async (req, res) => {
   try {
-    const data = await SalesAnalyticsService.getSalesSummary();
+    const { from, to } = req.query;
+    const data = await SalesAnalyticsService.getSalesSummary({ from, to });
     // If totalRevenue is Decimal128, convert to number
     if (data.totalRevenue && typeof data.totalRevenue === 'object' && data.totalRevenue.$numberDecimal) {
       data.totalRevenue = parseFloat(data.totalRevenue.$numberDecimal);

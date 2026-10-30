@@ -18,7 +18,7 @@ export const fetchAllUsers = createAsyncThunk<
   { page?: number; limit?: number; token: string }
 >("student/fetchAllUsers", async (params, { rejectWithValue }) => {
   try {
-    const { page = 1, limit = 100000, token } = params;
+    const { page = 1, limit = 20, token } = params;
     const response = await axiosInstance.get(
       `/users?page=${page}&limit=${limit}`,
       {

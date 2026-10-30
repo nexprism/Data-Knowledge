@@ -2,6 +2,7 @@ import Course from '../models/Course.js';
 import CrudRepository from './crudRepository.js';
 import mongoose from 'mongoose';
 import Module from '../models/Module.js';
+import Lesson from '../models/Lesson.js';
 
 
 class CourseRepository extends CrudRepository {
@@ -28,6 +29,7 @@ class CourseRepository extends CrudRepository {
     sortOrder = "desc",
     filter = {},
     search = "",
+    view = "full",
   } = {}) {
     try {
       const skip = (page - 1) * limit;
@@ -113,28 +115,41 @@ class CourseRepository extends CrudRepository {
         sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
       }
 
-      // Query with filter, search, pagination, and sorting
-      const data = await Course.find(query)
-        .populate("categoryId")
-        .populate("subCategoryId")
-        .populate("instructorId")
-        .populate({
-          path: "modules",
-          populate: {
-            path: "lessons",
-            model: "Lesson",
-            populate: [
-              { path: "Quiz", model: "Quiz" },
-              { path: "Assignment", model: "Assignment" },
-            ],
-          },
-        })
-        .skip(skip)
-        .limit(limit)
-        .sort(sortOptions);
+      const isAdminListView = view === "adminList" || view === "adminTable";
 
-      // Count total documents for pagination meta
-      const total = await Course.countDocuments(query);
+      let courseQuery = Course.find(query);
+
+      if (isAdminListView) {
+        courseQuery = courseQuery
+          .select(
+            "_id title thumbnail description isPublished publishDate coursePosition level createdAt updatedAt categoryId subCategoryId instructorId enrolledStudentsCount duration slug"
+          )
+          .populate("categoryId", "name")
+          .populate("subCategoryId", "name")
+          .populate("instructorId", "name fullName")
+          .lean();
+      } else {
+        courseQuery = courseQuery
+          .populate("categoryId")
+          .populate("subCategoryId")
+          .populate("instructorId")
+          .populate({
+            path: "modules",
+            populate: {
+              path: "lessons",
+              model: "Lesson",
+              populate: [
+                { path: "Quiz", model: "Quiz" },
+                { path: "Assignment", model: "Assignment" },
+              ],
+            },
+          });
+      }
+
+      const [data, total] = await Promise.all([
+        courseQuery.skip(skip).limit(limit).sort(sortOptions),
+        Course.countDocuments(query),
+      ]);
 
       return {
         data,
@@ -143,6 +158,64 @@ class CourseRepository extends CrudRepository {
         limit: parseInt(limit),
         totalPages: Math.ceil(total / limit),
       };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /** Lightweight course payload for admin editor shell (no lesson bodies / quiz questions). */
+  async findByIdAdminEditor(id) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new Error('Invalid course ID format');
+      }
+
+      const course = await Course.findOne({
+        _id: new mongoose.Types.ObjectId(id),
+        isDeleted: false,
+      })
+        .select('-enrolledStudents')
+        .populate('categoryId', 'name')
+        .populate('subCategoryId', 'name')
+        .populate('instructorId', 'name fullName')
+        .lean();
+
+      if (!course) return null;
+
+      const modules = await Module.find({
+        courseId: course._id,
+        isDeleted: { $ne: true },
+      })
+        .select('_id title order isPublished dripEnabled lessons')
+        .sort({ order: 1 })
+        .lean();
+
+      const moduleIds = modules.map((m) => m._id);
+      const lessons =
+        moduleIds.length > 0
+          ? await Lesson.find({
+              moduleId: { $in: moduleIds },
+              isDeleted: { $ne: true },
+            })
+              .select('_id title order type moduleId section')
+              .sort({ order: 1 })
+              .lean()
+          : [];
+
+      const lessonsByModule = {};
+      lessons.forEach((lesson) => {
+        const key = lesson.moduleId?.toString();
+        if (!key) return;
+        if (!lessonsByModule[key]) lessonsByModule[key] = [];
+        lessonsByModule[key].push(lesson);
+      });
+
+      course.modules = modules.map((mod) => ({
+        ...mod,
+        lessons: lessonsByModule[mod._id.toString()] || [],
+      }));
+
+      return course;
     } catch (error) {
       throw error;
     }

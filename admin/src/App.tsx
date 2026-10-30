@@ -10,9 +10,10 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import AddFilter from "./components/filters/AddFilter";
 import FilterList from "./components/filters/FilterList";
 import AddCourse from "./pages/courses/AddCourse";
-import CourseList from "./pages/courses/CourseList";
 import { Edit } from "lucide-react";
-import EditCourse from "./pages/courses/EditCourse";
+
+const CourseList = lazy(() => import("./pages/courses/CourseList"));
+const EditCourse = lazy(() => import("./pages/courses/EditCourse"));
 import AddBundle from "./pages/bundles/AddBundle";
 import BundleList from "./pages/bundles/bundleList";
 import EditBundleForm from "./pages/bundles/EditBundle";
@@ -27,8 +28,8 @@ import AddFile from "./pages/courses/components/AddFile";
 import Session from "./pages/Files/Session";
 import { useSelector } from "react-redux";
 import { selectIsAuthenticated } from "./store/slices/authslice";
-import StudentList from "./pages/students/StudenList";
-import StudentDetail from "./pages/students/StudentDetail";
+const StudentList = lazy(() => import("./pages/students/StudenList"));
+const StudentDetail = lazy(() => import("./pages/students/StudentDetail"));
 import AssignmentSubmissionReview from "./pages/Assignmets/AssignmentDetails";
 import AssignmentSubmissions from "./pages/Assignmets/AssignmentSubmissions";
 import AssignmentPage from "./pages/Assignmets/AssignmentPage";
@@ -39,9 +40,9 @@ import CertificationList from "./pages/Certification/CertificationList";
 import EditCreateCertificateTemplate from "./pages/Certification/EditeCertification";
 import IssueCertification from "./pages/Certification/IssueCertification";
 import DeleteRequestsList from "./pages/students/DeleteRequestsList";
-import User from "./pages/SalesAnalytics/User";
-import Course from "./pages/SalesAnalytics/Course";
-import Bundel from "./pages/SalesAnalytics/Bundel";
+const User = lazy(() => import("./pages/SalesAnalytics/User"));
+const Course = lazy(() => import("./pages/SalesAnalytics/Course"));
+const Bundel = lazy(() => import("./pages/SalesAnalytics/Bundel"));
 import Project from "./pages/Files/Project";
 import QueryList from "./pages/Query/QueryList";
 import Coupons from "./pages/coupons/Coupons";
@@ -64,8 +65,12 @@ import AllBanners from "./pages/Banner/AllBanners";
 import AddBanner from "./pages/Banner/AddBanner";
 import EditBanner from "./pages/Banner/EditBanner";
 import LeaderboardSetting from "./pages/LeaderboardSetting";
-import NotificationDashboard from "./pages/Notifications/NotificationDashboard";
-import NotificationList from "./pages/Notifications/NotificationList";
+const NotificationDashboard = lazy(
+  () => import("./pages/Notifications/NotificationDashboard")
+);
+const NotificationList = lazy(
+  () => import("./pages/Notifications/NotificationList")
+);
 import NewsList from "./pages/News/NewsList";
 import AddNews from "./pages/News/AddNews";
 import EditNews from "./pages/News/EditNews";
@@ -79,7 +84,9 @@ import { AdminTrackerProvider } from "./components/AdminActivityTracker";
 import ResourceList from "./pages/Resources/ResourceList";
 import AddResource from "./pages/Resources/AddResource";
 import EditResource from "./pages/Resources/EditResource";
-import PlacementStoriesPage from "./pages/PlacementStories/PlacementStories";
+const PlacementStoriesPage = lazy(
+  () => import("./pages/PlacementStories/PlacementStories")
+);
 import ProvenResultsPage from "./pages/ProvenResults/ProvenResults";
 import ProgramsOfferPage from "./pages/ProgramsOffer/ProgramsOffer";
 import HeroSectionPage from "./pages/HeroSection/HeroSection";

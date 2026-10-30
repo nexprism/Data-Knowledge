@@ -98,19 +98,55 @@ class SalesAnalyticsService {
     return await Order.aggregate(pipeline);
   }
 
-  // Sales summary
-  async getSalesSummary() {
-    const orders = await Order.find({});
-    // Convert grandTotal to number if Decimal128
-    const totalRevenue = orders.reduce((sum, o) => {
-      if (o.grandTotal && typeof o.grandTotal === 'object' && o.grandTotal.$numberDecimal) {
-        return sum + parseFloat(o.grandTotal.$numberDecimal);
+  // Sales summary (date-bounded; default last 90 days)
+  async getSalesSummary({ from, to } = {}) {
+    const end = to ? new Date(to) : new Date();
+    const start = from ? new Date(from) : new Date(end);
+    if (!from) {
+      start.setDate(start.getDate() - 90);
+    }
+    const match = {
+      createdAt: { $gte: start, $lte: end },
+    };
+
+    const [summary] = await Order.aggregate([
+      { $match: match },
+      {
+        $addFields: {
+          revenueNum: {
+            $cond: {
+              if: { $eq: [{ $type: '$grandTotal' }, 'decimal'] },
+              then: { $toDouble: '$grandTotal' },
+              else: { $toDouble: { $ifNull: ['$grandTotal', 0] } },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$revenueNum' },
+          totalOrders: { $sum: 1 },
+          userIds: { $addToSet: '$userId' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalRevenue: 1,
+          totalOrders: 1,
+          totalUsers: { $size: '$userIds' },
+        },
+      },
+    ]);
+
+    return (
+      summary || {
+        totalRevenue: 0,
+        totalOrders: 0,
+        totalUsers: 0,
       }
-      return sum + (o.grandTotal || 0);
-    }, 0);
-    const totalOrders = orders.length;
-    const totalUsers = new Set(orders.map(o => o.userId.toString())).size;
-    return { totalRevenue, totalOrders, totalUsers };
+    );
   }
 
   // Sales per bundle

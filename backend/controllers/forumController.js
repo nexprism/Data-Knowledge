@@ -967,9 +967,6 @@ export const getThreadByIdAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-
-    // Check Redis cache first
-
     const thread = await forumService.getThreadByIdAdmin(id);
 
     if (!thread) {

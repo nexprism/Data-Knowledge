@@ -41,6 +41,7 @@ const NotificationList: React.FC = () => {
     type: '',
     search: '',
   });
+  const [courseSearch, setCourseSearch] = useState("");
 
   console.log("Notifications from Redux:", notifications);
   console.log("Pagination from Redux:", pagination);
@@ -54,9 +55,22 @@ const NotificationList: React.FC = () => {
         token,
         ...filters 
       }) as any);
-      dispatch(fetchCourses({ page: 1, limit: 100000 }) as any);
     }
   }, [dispatch, token, pagination.page, pagination.limit, filters]);
+
+  useEffect(() => {
+    if (!token) return;
+    const timer = setTimeout(() => {
+      dispatch(
+        fetchCourses({
+          page: 1,
+          limit: 20,
+          search: courseSearch.trim() || undefined,
+        }) as any
+      );
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [dispatch, token, courseSearch]);
 
   const handleFilterChange = (key: string, value: string) => {
     setLocalFilters(prev => ({ ...prev, [key]: value }));
@@ -258,6 +272,13 @@ const NotificationList: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Course
               </label>
+              <input
+                type="text"
+                placeholder="Search courses..."
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
               <select
                 value={localFilters.courseId}
                 onChange={(e) => handleFilterChange('courseId', e.target.value)}

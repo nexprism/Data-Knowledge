@@ -5,7 +5,6 @@ import "swiper/swiper-bundle.css";
 import "flatpickr/dist/flatpickr.css";
 import App from "./App.tsx";
 import { AppWrapper } from "./components/common/PageMeta.tsx";
-import { ThemeProvider } from "./context/ThemeContext.tsx";
 import { Provider } from "react-redux";
 import { store } from "./store/index.ts"
 import { Toaster } from "react-hot-toast"; // <-- Add this import
@@ -48,14 +47,19 @@ export function AppWithToaster() {
   );
 }
 
+document.documentElement.classList.remove("dark");
+try {
+  localStorage.setItem("theme", "light");
+} catch {
+  /* ignore */
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Provider store={store}>
-      <ThemeProvider>
-        <AppWrapper>
-          <AppWithToaster />
-        </AppWrapper>
-      </ThemeProvider>
+      <AppWrapper>
+        <AppWithToaster />
+      </AppWrapper>
     </Provider>
   </StrictMode>,
 );

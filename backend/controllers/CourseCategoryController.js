@@ -30,20 +30,6 @@ export const createCategory = async (req, res) => {
 
     const category = await categoryService.create(categoryData);
 
-    const categoryId = category._id.toString();
-    const categoryCacheData = {
-      _id: category._id,
-      name: category.name,
-      slug: category.slug,
-      status: category.status,
-      image: category.image, // Include image in cache
-      isDeleted: category.isDeleted,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt
-    };
-
-    //console.log('🗂️ Redis cache updated for category:', categoryId);
-
     return res.status(201).json({
       success: true,
       message: '✅ Category created successfully',
@@ -92,33 +78,7 @@ export const getCategoryById = async (req, res) => {
       });
     }
 
-    // const redis = await initRedis();
-    // const cachedCategory = await redis.get(`category:${id}`);
-    // if (cachedCategory) {
-    //   //console.log('🚀 Category data retrieved from Redis cache');
-    //   const categoryData = JSON.parse(cachedCategory);
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: '✅ Category retrieved successfully',
-    //     data: { category: categoryData },
-    //     err: {},
-    //   });
-    // }
-
     const category = await categoryService.getById(id);
-    const categoryCacheData = {
-      _id: category._id,
-      name: category.name,
-      slug: category.slug,
-      status: category.status,
-      image: category.image, // Include image in cache
-      isDeleted: category.isDeleted,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt
-    };
-
-    // await redis.setEx(`category:${id}`, 3600, JSON.stringify(categoryCacheData));
-    //console.log('🗂️ Category data cached in Redis:', id);
 
     return res.status(200).json({
       success: true,
@@ -196,20 +156,6 @@ export const updateCategory = async (req, res) => {
     }
 
     const updatedCategory = await categoryService.updateById(id, updateData);
-
-    const categoryId = updatedCategory._id.toString();
-    const categoryCacheData = {
-      _id: updatedCategory._id,
-      name: updatedCategory.name,
-      slug: updatedCategory.slug,
-      status: updatedCategory.status,
-      image: updatedCategory.image, // Include image in cache
-      isDeleted: updatedCategory.isDeleted,
-      createdAt: updatedCategory.createdAt,
-      updatedAt: updatedCategory.updatedAt
-    };
-
-    //console.log('🗂️ Redis cache updated for category:', categoryId);
 
     return res.status(200).json({
       success: true,

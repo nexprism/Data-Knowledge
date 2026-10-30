@@ -455,8 +455,8 @@ const Quiz = ({
 
   if (loading && isEditMode) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 max-h-[700px]">
-        <div className="bg-white  dark:bg-white/[0.03] rounded-xl md:rounded-2xl shadow-lg md:shadow-xl border border-gray-100 overflow-hidden">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col max-h-[min(92vh,900px)] min-h-0">
+        <div className="bg-white dark:bg-white/[0.03] rounded-xl md:rounded-2xl shadow-lg md:shadow-xl border border-gray-100 overflow-hidden flex flex-col flex-1 min-h-0">
           <div className="bg-blue-500 p-4 sm:p-6 text-white">
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white bg-opacity-20 rounded-lg sm:rounded-xl flex items-center justify-center">
@@ -486,9 +486,9 @@ const Quiz = ({
 
   return (
     <>
-      <div className="w-full max-w-7xl mx-auto max-h-[600px]">
+      <div className="w-full max-w-7xl mx-auto flex flex-col max-h-[min(92vh,900px)] min-h-0">
         {/* Enhanced Header - Responsive */}
-        <div className="bg-white  dark:bg-[#182131] rounded-xl md:rounded-2xl shadow-lg md:shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-[#182131] rounded-xl md:rounded-2xl shadow-lg md:shadow-xl border border-gray-100 overflow-hidden flex flex-col flex-1 min-h-0">
           <div className="bg-blue-500 p-4 sm:p-6 text-white">
             <div className="flex sm:flex-row items-center sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3 sm:gap-4">
@@ -515,8 +515,8 @@ const Quiz = ({
             </div>
           </div>
 
-          {/* Content - Responsive */}
-          <div className="p-4 sm:p-6 lg:p-8 space-y-6 !pb-36 sm:space-y-8 max-h-[600px] overflow-y-auto">
+          {/* Content - scrollable body (footer stays below, not overlapping) */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
             {/* Basic Quiz Information */}
             <div className=" rounded-xl p-4 sm:p-6 border-2 border-indigo-200 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white/90 mb-4 flex items-center">
@@ -783,8 +783,8 @@ const Quiz = ({
             </div>
           </div>
 
-          {/* Enhanced Footer - Responsive */}
-          <div className="bg-gradient-to-r from-gray-50 to-slate-50 fixed bottom-0 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-t border-gray-200">
+          {/* Footer — part of modal column (avoid fixed viewport overlap) */}
+          <div className="shrink-0 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-white/[0.04] dark:to-white/[0.02] px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-t border-gray-200 dark:border-white/10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="text-sm text-gray-600 order-2 sm:order-1">
                 <span className="text-red-500">*</span> Required fields

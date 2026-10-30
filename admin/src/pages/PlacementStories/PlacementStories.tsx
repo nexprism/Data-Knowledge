@@ -11,7 +11,6 @@ import {
 } from '../../store/slices/placementStory';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import PageMeta from '../../components/common/PageMeta';
-import { IMAGE_BASE_URL } from '../../utils/apiConfig';
 import {
   Plus,
   Search,
@@ -24,7 +23,6 @@ import {
   AlertCircle,
   X,
   // Upload, // COMMENTED OUT — banner/thumbnail upload removed (stories are video only)
-  Play,
   Heart,
   MessageCircle,
   Bookmark,
@@ -66,10 +64,21 @@ const PlacementStoriesPage: React.FC = () => {
 
   // Banner / thumbnail upload state — COMMENTED OUT (stories are video only, no banner)
   // const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
   // const [externalImageUrl, setExternalImageUrl] = useState<string>('');
 
-  const VITE_IMAGE_URL = IMAGE_BASE_URL;
+  const getInstagramEmbedUrl = (url?: string) => {
+    if (!url) return '';
+    const match = url.match(/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/);
+    if (match?.[1]) {
+      return `https://www.instagram.com/reel/${match[1]}/embed`;
+    }
+    return '';
+  };
+
+  const formEmbedUrl = useMemo(
+    () => getInstagramEmbedUrl(formData.instagramUrl),
+    [formData.instagramUrl]
+  );
 
   useEffect(() => {
     dispatch(fetchPlacementStories());
@@ -83,13 +92,6 @@ const PlacementStoriesPage: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [successMessage, error, dispatch]);
-
-  const getImageUrl = (thumb?: string) => {
-    if (!thumb) return '';
-    if (thumb.startsWith('http://') || thumb.startsWith('https://')) return thumb;
-    if (thumb.startsWith('data:')) return thumb;
-    return `${VITE_IMAGE_URL}/uploads/${thumb.replace(/^uploads\//, '')}`;
-  };
 
   const openCreateModal = () => {
     setEditingStory(null);
@@ -106,7 +108,6 @@ const PlacementStoriesPage: React.FC = () => {
       order: stories.length + 1,
       isActive: true,
     });
-    setPreviewUrl('');
     // setSelectedFile(null);
     // setExternalImageUrl('');
     setIsModalOpen(true);
@@ -127,7 +128,6 @@ const PlacementStoriesPage: React.FC = () => {
       order: story.order || 0,
       isActive: story.isActive !== false,
     });
-    setPreviewUrl('');
     // setSelectedFile(null);
     // setExternalImageUrl(
     //   story.thumbnail && (story.thumbnail.startsWith('http://') || story.thumbnail.startsWith('https://'))
@@ -367,7 +367,7 @@ const PlacementStoriesPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredStories.map((story) => {
-            const img = getImageUrl(story.thumbnail);
+            const embedUrl = getInstagramEmbedUrl(story.instagramUrl);
 
             return (
               <div
@@ -402,69 +402,59 @@ const PlacementStoriesPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Card Thumbnail / Preview Window (9:14 ratio) */}
-                <div className="relative aspect-[9/13] w-full bg-gray-950 overflow-hidden">
-                  {img ? (
-                    <img
-                      src={img}
-                      alt={story.studentName}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                {/* Instagram reel embed (same as student landing page) */}
+                <div className="relative aspect-[9/13] w-full bg-slate-900 overflow-hidden">
+                  {embedUrl ? (
+                    <iframe
+                      src={embedUrl}
+                      className="w-full h-full border-0 bg-black"
+                      allowFullScreen
+                      scrolling="no"
+                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                      title={story.studentName || 'Instagram Reel'}
                     />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-white text-center">
-                      <Instagram className="w-12 h-12 text-pink-400 mb-2 opacity-80" />
-                      <p className="text-sm font-bold">{story.studentName}</p>
-                      <p className="text-xs text-purple-300 mt-0.5">{story.company}</p>
-                    </div>
-                  )}
-
-                  {/* Dark Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/60 pointer-events-none" />
-
-                  {/* Top Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-1.5 z-10">
-                    {story.companyBadge && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/80 text-white backdrop-blur-md">
-                        {story.companyBadge}
-                      </span>
-                    )}
-                    {story.badge && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/80 text-white backdrop-blur-md">
-                        {story.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Play Button Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10">
                     <a
                       href={story.instagramUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-14 h-14 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/40 flex items-center justify-center text-white transition-all transform group-hover:scale-110 shadow-lg"
-                      title="Open in Instagram"
+                      className="w-full h-full flex flex-col items-center justify-center p-4 text-white text-center"
                     >
-                      <Play className="w-6 h-6 fill-white ml-0.5" />
+                      <Instagram className="w-10 h-10 text-pink-400 mb-2 opacity-80" />
+                      <p className="text-sm font-bold">{story.studentName}</p>
+                      <span className="text-xs text-pink-300 mt-2">Add a valid reel URL</span>
                     </a>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Bottom Student Info Overlay */}
-                  <div className="absolute bottom-3 left-3 right-3 z-10 text-white">
-                    <div className="bg-black/60 backdrop-blur-md rounded-xl p-2.5 border border-white/10">
-                      <p className="text-[11px] text-amber-300 font-bold uppercase tracking-wider">
-                        {story.company}
-                      </p>
-                      <h4 className="text-sm font-black text-white leading-tight">
-                        {story.studentName}
-                      </h4>
-                      <p className="text-[11px] text-gray-300">{story.role}</p>
-                      {story.caption && (
-                        <p className="text-[10px] text-gray-400 mt-1 line-clamp-2">
-                          "{story.caption}"
-                        </p>
+                {/* Story metadata */}
+                <div className="px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800 space-y-1">
+                  {(story.companyBadge || story.badge) && (
+                    <div className="flex flex-wrap gap-1">
+                      {story.companyBadge && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                          {story.companyBadge}
+                        </span>
+                      )}
+                      {story.badge && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          {story.badge}
+                        </span>
                       )}
                     </div>
-                  </div>
+                  )}
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
+                    {story.company}
+                  </p>
+                  <h4 className="text-sm font-black text-gray-900 dark:text-white leading-tight">
+                    {story.studentName}
+                  </h4>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{story.role}</p>
+                  {story.caption && (
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2">
+                      &ldquo;{story.caption}&rdquo;
+                    </p>
+                  )}
                 </div>
 
                 {/* Bottom Action Footer */}
@@ -554,7 +544,7 @@ const PlacementStoriesPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                         Target Role *
@@ -597,7 +587,7 @@ const PlacementStoriesPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                         Highlight Badge
@@ -624,7 +614,7 @@ const PlacementStoriesPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                         Instagram Handle
@@ -665,7 +655,7 @@ const PlacementStoriesPage: React.FC = () => {
                   </div>
 
                   {/* Priority Order & Active Toggle */}
-                  <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                         Display Order
@@ -761,53 +751,24 @@ const PlacementStoriesPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Preview Picture Area */}
+                      {/* Preview reel embed */}
                       <div className="relative aspect-[9/13] w-full bg-slate-900 overflow-hidden">
-                        {previewUrl ? (
-                          <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                        {formEmbedUrl ? (
+                          <iframe
+                            src={formEmbedUrl}
+                            className="w-full h-full border-0 bg-black"
+                            allowFullScreen
+                            scrolling="no"
+                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                            title={formData.studentName || 'Instagram Reel preview'}
+                          />
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-slate-900 text-white">
                             <Instagram className="w-8 h-8 text-slate-400 mb-1 opacity-80" />
                             <p className="text-xs font-bold">{formData.studentName || 'Student Name'}</p>
-                            <p className="text-[10px] text-slate-400">{formData.company || 'Company'}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">Paste a reel URL to preview</p>
                           </div>
                         )}
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/60 pointer-events-none" />
-
-                        {/* Preview Badges */}
-                        <div className="absolute top-2 left-2 right-2 flex flex-wrap gap-1 z-10">
-                          {formData.companyBadge && (
-                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-600/90 text-white">
-                              {formData.companyBadge}
-                            </span>
-                          )}
-                          {formData.badge && (
-                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/95 text-white">
-                              {formData.badge}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Preview Play Icon */}
-                        <div className="absolute inset-0 flex items-center justify-center z-10">
-                          <div className="w-10 h-10 rounded-full bg-white/25 backdrop-blur-md border border-white/40 flex items-center justify-center text-white">
-                            <Play className="w-4 h-4 fill-white ml-0.5" />
-                          </div>
-                        </div>
-
-                        {/* Preview Bottom Text */}
-                        <div className="absolute bottom-2 left-2 right-2 z-10 text-white">
-                          <div className="bg-black/65 backdrop-blur-md rounded-lg p-2 border border-white/10">
-                            <p className="text-[8px] text-amber-300 font-bold uppercase">
-                              {formData.company || 'COMPANY'}
-                            </p>
-                            <h5 className="text-[10px] font-black text-white leading-tight">
-                              {formData.studentName || 'Student Name'}
-                            </h5>
-                            <p className="text-[8px] text-gray-300">{formData.role || 'Data Analyst'}</p>
-                          </div>
-                        </div>
                       </div>
 
                       {/* Preview Bottom Action Bar */}

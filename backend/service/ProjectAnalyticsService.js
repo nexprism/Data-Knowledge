@@ -10,12 +10,20 @@ import QuizSubmission from '../models/QuizSubmission.js';
 import AssignmentSubmission from '../models/assignmentSubmission.js';
 
 class ProjectAnalyticsService {
-  async getProjectSummary() {
+  async getProjectSummary({ from, to } = {}) {
+    const end = to ? new Date(to) : new Date();
+    const start = from ? new Date(from) : new Date(end);
+    if (!from) {
+      start.setDate(start.getDate() - 90);
+    }
+    const orderDateMatch = { createdAt: { $gte: start, $lte: end } };
+
     const totalCourses = await Course.countDocuments({ isDeleted: false });
     const totalBundles = await CourseBundle.countDocuments({ isDeleted: false });
     const totalUsers = await User.countDocuments({});
     const totalEnrollments = await CourseEnrollment.countDocuments({});
     const totalRevenue = await Order.aggregate([
+      { $match: orderDateMatch },
       { $group: { _id: null, revenue: { $sum: { $toDouble: '$grandTotal' } } } }
     ]);
     return {

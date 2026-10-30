@@ -868,34 +868,66 @@ function StudentDetail() {
                       <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                         {enrollment.course?.subtitle || "No subtitle available"}
                       </p>
-                      {/* Drip Setting Button */}
-                      <button
-                        className="inline-flex items-center px-3 py-1.5 bg-rose-100 text-rose-700 rounded-md text-xs font-medium hover:bg-rose-200 transition-colors mb-2"
-                        onClick={() =>
-                          setConfirmDrip({
-                            courseId: enrollment.course._id,
-                            courseTitle: enrollment.course?.title || "this course",
-                          })
-                        }
-                      >
-                        <XCircle className="w-3 h-3 mr-1" />
-                        Disable Drip
-                      </button>
-                      {/* Disable Drip for Module Button */}
-                      <button
-                        className="inline-flex items-center px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-md text-xs font-medium hover:bg-yellow-200 transition-colors mb-2 ml-2"
-                        onClick={() =>
-                          setModuleDripPopup({
-                            courseId: enrollment.course._id,
-                            courseTitle: enrollment.course?.title || "this course",
-                          })
-                        }
-                      >
-                        <XCircle className="w-3 h-3 mr-1" />
-                        Disable Module Drip
-                      </button>
 
-                      <div className="flex sm:flex-row items-center sm:items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <button
+                          type="button"
+                          className="inline-flex items-center px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-xs font-medium hover:bg-rose-100 transition-colors"
+                          onClick={() =>
+                            setConfirmDrip({
+                              courseId: enrollment.course._id,
+                              courseTitle: enrollment.course?.title || "this course",
+                            })
+                          }
+                        >
+                          <XCircle className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                          Disable Drip
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-medium hover:bg-amber-100 transition-colors"
+                          onClick={() =>
+                            setModuleDripPopup({
+                              courseId: enrollment.course._id,
+                              courseTitle: enrollment.course?.title || "this course",
+                            })
+                          }
+                        >
+                          <XCircle className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                          Disable Module Drip
+                        </button>
+                      </div>
+
+                      {enrollment.certificateIssued && (
+                        <div className="inline-flex flex-wrap items-center gap-2 mb-4">
+                          <span className="inline-flex items-center text-sm text-green-600">
+                            <Award className="w-4 h-4 mr-1" />
+                            Certified
+                          </span>
+                          <button
+                            type="button"
+                            className="inline-flex items-center px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-200 transition-colors"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (data?._id && enrollment.course?._id) {
+                                await downloadCertificateByUserAndCourse(
+                                  dispatch,
+                                  data._id,
+                                  enrollment.course._id,
+                                  `certificate-${enrollment.course?.title || "course"}.pdf`
+                                );
+                              }
+                            }}
+                            title="Download Certificate"
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            Download
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-gray-100">
                         <a
                           href={enrollment.course?._id ? `/courses/edit/${enrollment.course._id}` : "#"}
                           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -903,46 +935,26 @@ function StudentDetail() {
                           View Course
                           <ArrowRight className="w-4 h-4 ml-1" />
                         </a>
-                        {enrollment.certificateIssued && (
-                          <div className="inline-flex items-center gap-2">
-                            <span className="inline-flex items-center text-sm text-green-600">
-                              <Award className="w-4 h-4 mr-1" />
-                              Certified
-                            </span>
-                            <button
-                              className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-200 transition-colors"
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (data?._id && enrollment.course?._id) {
-                                  await downloadCertificateByUserAndCourse(
-                                    dispatch,
-                                    data._id,
-                                    enrollment.course._id,
-                                    `certificate-${enrollment.course?.title || "course"}.pdf`
-                                  );
-                                }
-                              }}
-                              title="Download Certificate"
-                            >
-                              <Download className="w-3 h-3 mr-1" />
-                              Download
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Add enrolledAt and accessExpiry */}
-
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                          onClick={() =>
+                            setConfirmRemove({
+                              id: enrollment._id,
+                              title: enrollment.course?.title || "this course",
+                            })
+                          }
+                          disabled={removingEnrollmentId === enrollment._id}
+                        >
+                          {removingEnrollmentId === enrollment._id ? (
+                            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent animate-spin rounded-full mr-2" />
+                          ) : (
+                            <XCircle className="w-4 h-4 mr-1.5 shrink-0" />
+                          )}
+                          Remove Enrollment
+                        </button>
                       </div>
                     </div>
-                    <button
-                      className="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 transition-colors mb-2"
-                      onClick={() => setConfirmRemove({ id: enrollment._id, title: enrollment.course?.title || "this course" })}
-                      disabled={removingEnrollmentId === enrollment._id}
-                    >
-                      <XCircle className="w-3 h-3 mr-1" />
-                      Remove Enrollment
-                    </button>
                   </div>
                 ))}
               </div>

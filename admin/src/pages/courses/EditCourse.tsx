@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchCourseById, updateCourse } from "../../store/slices/course";
+import { fetchCourseById, fetchCourseCurriculum, updateCourse } from "../../store/slices/course";
 import CourseMembershipTiersEditor from "../../components/CourseMembershipTiersEditor";
 import CategorySubcategoryDropdowns from "../../components/CategorySubcategoryDropdowns";
 import { RootState, AppDispatch } from "../../store";
@@ -467,9 +467,15 @@ const EditCourse = () => {
   useEffect(() => {
     if (courseId) {
       const token = localStorage.getItem("token") || "";
-      dispatch(fetchCourseById({ courseId, token }));
+      dispatch(fetchCourseById({ courseId, token, view: "adminEditor" }));
     }
   }, [courseId, dispatch]);
+
+  useEffect(() => {
+    if (courseId && activeTab === "modules") {
+      dispatch(fetchCourseCurriculum({ courseId }));
+    }
+  }, [courseId, activeTab, dispatch]);
 
   // Always process course data when it changes
   const parseEditorData = (data: any) => {

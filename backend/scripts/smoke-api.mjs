@@ -1,5 +1,5 @@
 /**
- * Opt-in HTTP smoke tests for Redis migration validation.
+ * Opt-in HTTP smoke tests for API auth, settings, and core routes.
  * Does not print passwords, tokens, OTP values, or Mongo/API secrets.
  *
  * Required to run:
@@ -255,12 +255,6 @@ try {
     if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
     const settings = await jsonFetch(`${base}/settings`, { method: "GET", headers }, adminJar);
     record("admin GET /settings", settings.res.status === 200, `HTTP ${settings.res.status}`);
-    const redisRoute = await jsonFetch(`${base}/settings/redis/status`, { method: "GET", headers }, adminJar);
-    record(
-      "admin Redis route removed",
-      redisRoute.res.status === 404,
-      `HTTP ${redisRoute.res.status} (expect 404)`
-    );
   } else {
     record("admin login/settings", true, "skipped (SMOKE_ADMIN_EMAIL/PASSWORD)");
   }

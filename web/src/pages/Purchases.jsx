@@ -51,11 +51,85 @@ const Purchases = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const formatEnrollmentId = (id) =>
+    `#${id?.slice(-8).toUpperCase() || 'P-0000'}`
+
+  const formatAcquisitionDate = (enrolledAt) =>
+    enrolledAt
+      ? new Date(enrolledAt)
+          .toLocaleDateString('en-US', {
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+          })
+          .toUpperCase()
+      : 'N/A'
+
+  const formatAmount = (pricePaid) =>
+    pricePaid !== undefined ? `₹${pricePaid.toLocaleString()}` : 'FREE'
+
+  const statusBadgeClass = (status) =>
+    status === 'active' || status === 'COMPLETED'
+      ? 'border-amber-300 bg-amber-100 text-amber-900'
+      : 'border-slate-200 bg-slate-100 text-slate-700'
+
+  const renderPurchaseActions = (item) => (
+    <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2">
+      {item.certificate && (
+        <a
+          href={
+            item.certificate.certificate_url?.startsWith('http')
+              ? item.certificate.certificate_url
+              : `${baseUrl}/${item.certificate.certificate_url?.replace(/^\/+/, '')}`
+          }
+          target="_blank"
+          rel="noreferrer"
+          className="font-jetbrains text-[10px] font-bold text-amber-800 hover:text-slate-950 uppercase tracking-wider transition-colors bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-full border border-amber-300/60 flex items-center gap-1 min-h-[36px]"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="12" cy="8" r="7" />
+            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+          </svg>
+          <span>Certificate</span>
+        </a>
+      )}
+      <button
+        type="button"
+        onClick={() => setSelectedReceipt(item)}
+        className="font-jetbrains text-[10px] font-bold text-slate-700 hover:text-slate-950 uppercase tracking-wider transition-colors px-3 py-2 rounded-full bg-slate-100 hover:bg-amber-100 hover:border-amber-300 border border-slate-200 flex items-center gap-1.5 shadow-2xs min-h-[36px]"
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        <span>{t('receipt') || 'Receipt'}</span>
+      </button>
+    </div>
+  )
+
+  const renderStatusRow = (item) => (
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      <span
+        className={`text-[9px] font-jetbrains font-bold px-3 py-0.5 rounded-full border ${statusBadgeClass(item.status)}`}
+      >
+        {item.status?.toUpperCase() || 'PENDING'}
+      </span>
+      {item.iscompleted && (
+        <span className="text-[9px] font-jetbrains text-amber-700 uppercase tracking-widest font-black flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shrink-0" />
+          Certification Issued
+        </span>
+      )}
+    </div>
+  )
+
   return (
-    <div className="min-h-screen bg-slate-50 relative pb-16">
+    <div className="min-h-screen bg-slate-50 relative pb-24 sm:pb-16">
       <DashboardHeader />
       
-      <main className="pt-24 pb-12 px-6 md:px-12">
+      <main className="pt-24 pb-12 px-4 sm:px-6 md:px-12 min-w-0">
         <div className="max-w-[1600px] mx-auto space-y-10">
           
           {/* HEADER SECTION */}
@@ -78,12 +152,12 @@ const Purchases = () => {
             <div className="col-span-12 space-y-6 bento-ledger">
                
                {/* Main Card Wrapper */}
-               <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden min-h-[440px] relative">
+               <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden min-h-[280px] lg:min-h-[440px] relative">
                   
-                  {/* Table Header Bar */}
-                  <div className="grid grid-cols-12 px-8 py-5 border-b border-slate-200/80 bg-slate-100/80 z-20">
+                  {/* Table Header Bar — desktop only */}
+                  <div className="hidden lg:grid grid-cols-12 px-6 xl:px-8 py-5 border-b border-slate-200/80 bg-slate-100/80 z-20">
                      <div className="col-span-2 font-jetbrains text-xs text-slate-700 uppercase tracking-widest font-black">ID</div>
-                     <div className="col-span-5 font-jetbrains text-xs text-slate-700 uppercase tracking-widest font-black">{t('moduleArchive') || 'Module Archive'}</div>
+                     <div className="col-span-5 font-jetbrains text-xs text-slate-700 uppercase tracking-widest font-black min-w-0">{t('moduleArchive') || 'Module Archive'}</div>
                      <div className="col-span-2 font-jetbrains text-xs text-slate-700 uppercase tracking-widest font-black text-center">{t('acquisition') || 'Acquisition'}</div>
                      <div className="col-span-1 font-jetbrains text-xs text-slate-700 uppercase tracking-widest font-black text-right">{t('amount') || 'Amount'}</div>
                      <div className="col-span-2 font-jetbrains text-xs text-slate-700 uppercase tracking-widest font-black text-right">{t('actions') || 'Actions'}</div>
@@ -113,72 +187,75 @@ const Purchases = () => {
                      </div>
                   )}
 
-                  {/* Table Rows */}
+                  {/* Mobile / tablet card rows */}
+                  <div className="lg:hidden divide-y divide-slate-100">
+                     {currentItems.map((item, i) => (
+                        <article
+                           key={item._id || i}
+                           className="ledger-row p-4 sm:p-5 bg-white hover:bg-blue-50/40 transition-colors group space-y-4"
+                        >
+                           <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                 <p className="font-jetbrains text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1">
+                                    {formatEnrollmentId(item._id)}
+                                 </p>
+                                 <h3 className="font-inter text-base sm:text-lg text-slate-900 font-bold group-hover:text-[#3498db] transition-colors leading-snug break-words">
+                                    {item.course?.title || (item.error ? 'Legacy Module (Deleted)' : 'Protocol Error')}
+                                 </h3>
+                              </div>
+                              <p className="font-jetbrains text-sm text-slate-900 font-black tracking-tight shrink-0">
+                                 {formatAmount(item.pricePaid)}
+                              </p>
+                           </div>
+
+                           {renderStatusRow(item)}
+
+                           <div>
+                              <p className="font-jetbrains text-[9px] text-slate-400 uppercase tracking-widest font-bold mb-0.5">
+                                 {t('acquisition') || 'Acquisition'}
+                              </p>
+                              <p className="font-jetbrains text-xs text-slate-600 font-medium uppercase tracking-wider">
+                                 {formatAcquisitionDate(item.enrolledAt)}
+                              </p>
+                           </div>
+
+                           {renderPurchaseActions(item)}
+                        </article>
+                     ))}
+                  </div>
+
+                  {/* Desktop table rows */}
                   {currentItems.map((item, i) => (
-                     <div key={item._id || i} className="ledger-row grid grid-cols-12 items-center px-8 py-6 bg-white hover:bg-blue-50/40 transition-colors group border-b border-slate-100 last:border-0 relative">
-                        {/* Enrollment ID */}
-                        <div className="col-span-2 font-jetbrains text-xs text-slate-500 group-hover:text-[#3498db] transition-colors font-bold uppercase tracking-wider">
-                           #{item._id?.slice(-8).toUpperCase() || 'P-0000'}
+                     <div
+                        key={`desktop-${item._id || i}`}
+                        className="ledger-row hidden lg:grid grid-cols-12 items-center px-6 xl:px-8 py-6 bg-white hover:bg-blue-50/40 transition-colors group border-b border-slate-100 last:border-0 relative min-w-0"
+                     >
+                        <div className="col-span-2 font-jetbrains text-xs text-slate-500 group-hover:text-[#3498db] transition-colors font-bold uppercase tracking-wider truncate pr-2">
+                           {formatEnrollmentId(item._id)}
                         </div>
 
-                        {/* Course Info */}
-                        <div className="col-span-5 space-y-1.5">
-                           <h3 className="font-inter not- text-lg md:text-xl text-slate-900 font-bold group-hover:text-[#3498db] transition-colors leading-snug">
+                        <div className="col-span-5 space-y-1.5 min-w-0 pr-4">
+                           <h3 className="font-inter text-lg xl:text-xl text-slate-900 font-bold group-hover:text-[#3498db] transition-colors leading-snug break-words">
                               {item.course?.title || (item.error ? 'Legacy Module (Deleted)' : 'Protocol Error')}
                            </h3>
-                           <div className="flex items-center gap-3">
-                              <span className={`text-[9px] font-jetbrains font-bold px-3 py-0.5 rounded-full border ${
-                                item.status === 'active' || item.status === 'COMPLETED'
-                                  ? 'border-amber-300 bg-amber-100 text-amber-900' 
-                                  : 'border-slate-200 bg-slate-100 text-slate-700'
-                              }`}>{item.status?.toUpperCase() || 'PENDING'}</span>
-                              
-                              {item.iscompleted && (
-                                <span className="text-[9px] font-jetbrains text-amber-700 uppercase tracking-widest font-black flex items-center gap-1.5">
-                                   <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                                   Certification Issued
-                                </span>
-                              )}
-                           </div>
+                           {renderStatusRow(item)}
                         </div>
 
-                        {/* Acquisition Date */}
                         <div className="col-span-2 font-jetbrains text-xs text-slate-600 font-medium uppercase tracking-wider text-center">
-                           {item.enrolledAt ? new Date(item.enrolledAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).toUpperCase() : 'N/A'}
+                           {formatAcquisitionDate(item.enrolledAt)}
                         </div>
 
-                        {/* Amount Paid */}
                         <div className="col-span-1 font-jetbrains text-sm text-slate-900 font-black text-right tracking-tight">
-                           {item.pricePaid !== undefined ? `₹${item.pricePaid.toLocaleString()}` : 'FREE'}
+                           {formatAmount(item.pricePaid)}
                         </div>
 
-                        {/* Actions */}
-                        <div className="col-span-2 flex justify-end items-center gap-2 transition-all duration-500">
-                           {item.certificate && (
-                              <a 
-                                href={item.certificate.certificate_url?.startsWith('http') ? item.certificate.certificate_url : `${baseUrl}/${item.certificate.certificate_url?.replace(/^\/+/, '')}`} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="font-jetbrains text-[10px] font-bold text-amber-800 hover:text-slate-950 uppercase tracking-wider transition-colors bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-full border border-amber-300/60 flex items-center gap-1"
-                              >
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
-                                <span>Certificate</span>
-                              </a>
-                           )}
-                           <button 
-                             onClick={() => setSelectedReceipt(item)}
-                             className="font-jetbrains text-[10px] font-bold text-slate-700 hover:text-slate-950 uppercase tracking-wider transition-colors px-3 py-1.5 rounded-full bg-slate-100 hover:bg-amber-100 hover:border-amber-300 border border-slate-200 flex items-center gap-1.5 shadow-2xs"
-                           >
-                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                             <span>{t('receipt') || 'Receipt'}</span>
-                           </button>
-                        </div>
+                        <div className="col-span-2 min-w-0">{renderPurchaseActions(item)}</div>
                      </div>
                   ))}
                </div>
 
                {/* PAGINATION CONTROLLER */}
-               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
+               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 pr-14 sm:pr-0">
                   <p className="font-jetbrains text-xs text-slate-500 font-medium uppercase tracking-[0.2em]">
                     Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, enrollments.length)} of {enrollments.length} Acquisitions
                   </p>

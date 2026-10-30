@@ -142,12 +142,6 @@ const StudentList: React.FC = () => {
   const { students, loading, error, pagination, searchQuery, filters } =
     useAppSelector((state) => state.students);
 
-  // Add this after the useAppSelector line
-  console.log("Pagination state:", pagination);
-  console.log("Total pages:", pagination.totalPages);
-  console.log("Current page:", pagination.page);
-  console.log("Total items:", pagination.total);
-
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -195,7 +189,7 @@ const StudentList: React.FC = () => {
     // Set isActive based on status filter
     if (localFilters.status === "active") {
       activeFilters.isActive = true;
-
+    } else if (localFilters.status === "inactive") {
       activeFilters.isActive = false;
     }
 

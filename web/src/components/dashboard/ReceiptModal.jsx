@@ -100,7 +100,7 @@ const ReceiptModal = ({ isOpen, onClose, enrollment, user }) => {
         </div>
 
         {/* Scrollable Printable Receipt Content */}
-        <div className="p-8 md:p-10 overflow-y-auto" id="printable-receipt">
+        <div className="p-4 sm:p-8 md:p-10 overflow-y-auto" id="printable-receipt">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 border-b border-slate-200 pb-8">
             <div className="flex items-center gap-3.5">
@@ -169,8 +169,8 @@ const ReceiptModal = ({ isOpen, onClose, enrollment, user }) => {
           </div>
 
           {/* Itemized Table */}
-          <div className="py-6 border-b border-slate-200">
-            <table className="w-full text-left">
+          <div className="py-6 border-b border-slate-200 overflow-x-auto -mx-2 px-2">
+            <table className="w-full min-w-[280px] text-left">
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="font-jetbrains text-[10px] font-bold uppercase tracking-wider text-slate-500 pb-3">Item Description</th>

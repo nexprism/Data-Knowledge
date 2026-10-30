@@ -490,7 +490,6 @@ export const getMyProfile = async (req, res) => {
 //       } catch {}
 //     }
 
-//     // 🔄 Update Redis cache
 //     const userCacheData = {
 //       _id: updatedUser._id,
 //       email: updatedUser.email,

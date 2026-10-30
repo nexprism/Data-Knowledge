@@ -16,6 +16,15 @@ import CoursePlan from "../models/CoursePlan.js";
 
 const courseService = new CourseService();
 
+async function getLessonIdsForCourse(courseId) {
+  if (!mongoose.Types.ObjectId.isValid(courseId)) {
+    return [];
+  }
+  const courseObjId = new mongoose.Types.ObjectId(courseId);
+  return Lesson.find({ section: courseObjId, isDeleted: { $ne: true } })
+    .distinct("_id");
+}
+
 // Helper to parse accessDuration string
 function parseAccessDuration(durationStr) {
   // //console.log("Parsing access duration:", durationStr);
@@ -398,54 +407,6 @@ export const createCourse = async (req, res) => {
       //console.log("No valid course plans provided in request.");
     }
 
-
-
-
-
-    // const courseCacheData = {
-    //   _id: course._id,
-    //   title: course.title,
-    //   subtitle: course.subtitle,
-    //   slug: course.slug,
-    //   description: course.description,
-    //   seoMetaDescription: course.seoMetaDescription,
-    //   thumbnail: course.thumbnail,
-    //   coverImage: course.coverImage,
-    //   demoVideo: course.demoVideo,
-    //   categoryId: course.categoryId,
-    //   subCategoryId: course.subCategoryId,
-    //   level: course.level,
-    //   price: course.price.toString(),
-    //   currency: course.currency,
-    //   duration: course.duration,
-    //   instructorId: course.instructorId,
-    //   isPublished: course.isPublished,
-    //   enrollmentType: course.enrollmentType,
-    //   maxStudents: course.maxStudents,
-    //   salesCount: course.salesCount,
-    //   tags: course.tags,
-    //   prerequisites: course.prerequisites,
-    //   completionCriteria: course.completionCriteria,
-    //   certificateTemplate: course.certificateTemplate,
-    //   isDownloadable: course.isDownloadable,
-    //   courseForum: course.courseForum,
-    //   isSubscription: course.isSubscription,
-    //   isPrivate: course.isPrivate,
-    //   enableWaitlist: course.enableWaitlist,
-    //   accessPeriod: course.accessPeriod,
-    //   languages: course.languages,
-    //   topic: course.topic,
-    //   timeZone: course.timeZone,
-    //   support: course.support,
-    //   isDeleted: course.isDeleted,
-    //   deletedAt: course.deletedAt,
-    //   createdAt: course.createdAt,
-    //   updatedAt: course.updatedAt,
-    // };
-
-    // await redis.setEx(`course:${courseId}`, 3600, JSON.stringify(courseCacheData));
-    // //console.log('🗂️ Redis cache updated for course:', courseId);
-    // //console.log("Created course:", course);
     return res.status(201).json({
       success: true,
       message: "✅ Course created successfully",
@@ -524,11 +485,52 @@ async function isUserEnrolledInCourse(userId, courseId) {
   }
 }
 
+/** Full curriculum tree for admin (heavy aggregate). */
+export const getCourseCurriculum = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isAdminUser =
+      req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    if (!isAdminUser) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required',
+        data: {},
+      });
+    }
+    const course = await courseService.getById(id, { view: 'full' });
+    if (!course || course.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found',
+        data: {},
+      });
+    }
+    if (res.locals) {
+      res.locals.docCount = course.modules?.length ?? 0;
+    }
+    return res.status(200).json({
+      success: true,
+      message: '✅ Course curriculum fetched successfully',
+      data: { course },
+      err: {},
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch curriculum',
+      data: {},
+      err: error.message,
+    });
+  }
+};
+
 // Enhanced getCourseById with VdoCipher OTP fetching - FIXED PLATFORM NAME
 export const getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
     const isDetailPage = req.query.isdetailpage === "true";
+    const view = req.query.view || "";
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -542,8 +544,14 @@ export const getCourseById = async (req, res) => {
     const userAgent = req.headers['user-agent'];
     const clientIP = req.ip || req.connection.remoteAddress;
 
-    // //console.log(`🔄 Fetching course ${id} and processing VdoCipher videos...`);
-    const course = await courseService.getById(id);
+    const isAdminUserEarly =
+      req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const useAdminEditor =
+      view === 'adminEditor' && isAdminUserEarly;
+
+    const course = await courseService.getById(id, {
+      view: useAdminEditor ? 'adminEditor' : 'full',
+    });
     if (!course || course.isDeleted) {
       return res.status(404).json({
         success: false,
@@ -569,8 +577,8 @@ export const getCourseById = async (req, res) => {
       }
     }
 
-    // Skip VdoCipher OTP processing for detail page (data not sent)
-    if (course && course.modules && !isDetailPage) {
+    // Skip VdoCipher OTP for admin editor and public detail pages (student player loads OTP separately)
+    if (course && course.modules && !isDetailPage && !isAdminUser) {
 
       let vdoCipherVideos = 0;
       let successfulOTPs = 0;
@@ -663,14 +671,25 @@ export const getCourseById = async (req, res) => {
       }
     }
 
-    // --- filter enrolledStudents ---
+    // --- enrolled students: count-only for admin; full id list for student-facing flows ---
     if (course && course._id) {
       const CourseEnrollment = (await import("../models/CourseEnrollment.js")).default;
-      const activeEnrollments = await CourseEnrollment.find({
-        courseId: course._id,
-        status: 'active'
-      }).select('userId').lean();
-      course.enrolledStudents = activeEnrollments.map(e => e.userId?.toString());
+      if (isAdminUser) {
+        course.enrolledStudentsCount = await CourseEnrollment.countDocuments({
+          courseId: course._id,
+          status: 'active',
+        });
+        course.enrolledStudents = [];
+      } else {
+        const activeEnrollments = await CourseEnrollment.find({
+          courseId: course._id,
+          status: 'active',
+        })
+          .select('userId')
+          .limit(5000)
+          .lean();
+        course.enrolledStudents = activeEnrollments.map((e) => e.userId?.toString());
+      }
     }
 
     // Check if current user is enrolled
@@ -1291,11 +1310,21 @@ export const getAllCourses = async (req, res) => {
       coursePosition = "",
       slider = "",
       list = "",
+      adminList = "",
+      view = "",
       ...filterParams
     } = req.query;
 
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
+    let pageNum = parseInt(page, 10);
+    let limitNum = parseInt(limit, 10);
+
+    const resolvedView =
+      view ||
+      (adminList === "true" || list === "true" ? "adminList" : "full");
+
+    if (resolvedView === "adminList" || resolvedView === "adminTable") {
+      limitNum = Math.min(Number.isFinite(limitNum) ? limitNum : 10, 500);
+    }
 
     const filter = {};
 
@@ -1347,10 +1376,14 @@ export const getAllCourses = async (req, res) => {
       filter,
       search,
       courseposition,
+      view: resolvedView,
     });
 
+    const skipPlans =
+      resolvedView === "adminList" || resolvedView === "adminTable";
+
     // --- Force populate plans for each course in response (even if already done in service) ---
-    if (courses?.data && Array.isArray(courses.data)) {
+    if (!skipPlans && courses?.data && Array.isArray(courses.data)) {
       const CoursePlan = (await import('../models/CoursePlan.js')).default;
       const courseIds = courses.data.map(c => c._id);
       const plans = await CoursePlan.find({ courseId: { $in: courseIds } }).lean();
@@ -1386,6 +1419,37 @@ export const getAllCourses = async (req, res) => {
         title: c.title,
         thumbnail: c.thumbnail,
       }));
+    }
+
+    if (
+      (resolvedView === "adminList" || resolvedView === "adminTable") &&
+      courses?.data &&
+      Array.isArray(courses.data)
+    ) {
+      courses.data = courses.data.map((c) => {
+        const plain = c.toObject ? c.toObject() : { ...c };
+        return {
+          _id: plain._id,
+          title: plain.title,
+          thumbnail: plain.thumbnail,
+          description: plain.description,
+          isPublished: plain.isPublished,
+          publishDate: plain.publishDate,
+          coursePosition: plain.coursePosition,
+          level: plain.level,
+          createdAt: plain.createdAt,
+          updatedAt: plain.updatedAt,
+          categoryId: plain.categoryId,
+          subCategoryId: plain.subCategoryId,
+          instructorId: plain.instructorId,
+          enrolledStudentsCount: plain.enrolledStudentsCount,
+          duration: plain.duration,
+          slug: plain.slug,
+        };
+      });
+      if (res.locals) {
+        res.locals.docCount = courses.data.length;
+      }
     }
 
     // If list=true, only return _id, title, thumbnail, description, isEnrolled, enrolledStudentsCount, duration, plans, level, demoVideo
@@ -2038,24 +2102,35 @@ export const getCourseAttachments = async (req, res) => {
 
   try {
     let data = [];
+    const lessonIds = await getLessonIdsForCourse(courseId);
 
     switch (type) {
       case 'video':
-        data = await VideoLesson.find({ isDeleted: false }).populate({
+        if (lessonIds.length === 0) {
+          data = [];
+          break;
+        }
+        data = await VideoLesson.find({
+          isDeleted: false,
+          lessonId: { $in: lessonIds },
+        }).populate({
           path: 'lessonId',
-          match: { courseId },
           populate: { path: 'moduleId' },
         });
-        data = data.filter(item => item.lessonId);
         break;
 
       case 'text':
-        data = await TextLesson.find({ isDeleted: false }).populate({
-          path: 'lessonId',
-          match: { courseId },
+        data = await TextLesson.find({
+          isActive: true,
+          course: courseId,
+        }).populate({
+          path: 'lesson',
           populate: { path: 'moduleId' },
         });
-        data = data.filter(item => item.lessonId);
+        data = data.map((item) => ({
+          ...item.toObject(),
+          lessonId: item.lesson,
+        }));
         break;
 
       case 'file':
@@ -2083,15 +2158,18 @@ export const getCourseAttachments = async (req, res) => {
 
 
       case 'external_link':
+        if (lessonIds.length === 0) {
+          data = [];
+          break;
+        }
         data = await VideoLesson.find({
           sourcePlatform: 'external_link',
           isDeleted: false,
+          lessonId: { $in: lessonIds },
         }).populate({
           path: 'lessonId',
-          match: { courseId },
           populate: { path: 'moduleId' },
         });
-        data = data.filter(item => item.lessonId);
         break;
 
       default:
@@ -2511,43 +2589,48 @@ export const getAllCourseAttachments = async (req, res) => {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
 
-    // 🎥 Video Lessons
-    const videoLessons = await VideoLesson.find({ isDeleted: false })
-      .populate({
-        path: 'lessonId',
-        select: 'title moduleId section type',
-        populate: { path: 'moduleId', select: 'title' },
-        options: { strictPopulate: false }
-      })
-      .lean();
+    const lessonIds = await getLessonIdsForCourse(courseId);
+
+    // 🎥 Video Lessons (scoped to course lessons)
+    const videoLessons =
+      lessonIds.length > 0
+        ? await VideoLesson.find({
+            isDeleted: false,
+            lessonId: { $in: lessonIds },
+          })
+            .populate({
+              path: 'lessonId',
+              select: 'title moduleId section type',
+              populate: { path: 'moduleId', select: 'title' },
+              options: { strictPopulate: false },
+            })
+            .lean()
+        : [];
 
     const filteredVideos = videoLessons
-      .filter(v =>
-        v.lessonId?.section?.toString() === courseId &&
-        v.lessonId?.type === 'video-lesson'
-      )
-      .map(v => ({
+      .filter((v) => v.lessonId && v.lessonId.type === 'video-lesson')
+      .map((v) => ({
         ...v,
         moduleId: v.lessonId?.moduleId?._id || null,
         type: 'video-lesson',
       }));
 
     // 🧾 Text Lessons
-    const textLessons = await TextLesson.find({ isActive: true })
+    const textLessons = await TextLesson.find({
+      isActive: true,
+      course: courseId,
+    })
       .populate({
         path: 'lesson',
         select: 'title moduleId section type',
         populate: { path: 'moduleId', select: 'title' },
-        options: { strictPopulate: false }
+        options: { strictPopulate: false },
       })
       .lean();
 
     const filteredTexts = textLessons
-      .filter(t =>
-        t.lesson?.section?.toString() === courseId &&
-        t.lesson?.type === 'text'
-      )
-      .map(t => ({
+      .filter((t) => t.lesson && t.lesson.type === 'text')
+      .map((t) => ({
         ...t,
         moduleId: t.lesson?.moduleId?._id || null,
         type: 'text',

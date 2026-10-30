@@ -637,33 +637,6 @@ export const getAllNews = async (req, res) => {
       status: status || "active",
     };
 
-    // Cache disabled - always fetch fresh data from database
-    // const redis = await initRedis();
-    // const cacheKey = `news:all:${JSON.stringify(options)}`;
-    // const cached = await redis.get(cacheKey);
-
-    // if (cached) {
-    //   const cachedData = JSON.parse(cached);
-
-    //   // Clean image URLs in cached data too (important for consistency)
-    //   const cleanedData = {
-    //     ...cachedData,
-    //     data: cachedData.data.map(news => ({
-    //       ...news,
-    //       image: cleanImageUrl(news.image),
-    //       // agar thumbnail, featuredImage ya multiple images ho to yahan add karo
-    //       // thumbnail: cleanImageUrl(news.thumbnail),
-    //     })),
-    //   };
-
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "News fetched from cache",
-    //     data: cleanedData,
-    //     fromCache: true,
-    //   });
-    // }
-
     let result = await NewsService.getAll(options);
 
     // Clean image URLs before sending response
@@ -676,9 +649,6 @@ export const getAllNews = async (req, res) => {
         // images: news.images?.map(img => cleanImageUrl(img)), // array ho to
       })),
     };
-
-    // Cache disabled - no longer caching results
-    // await redis.setEx(cacheKey, 300, JSON.stringify(result)); // 5 minutes
 
     return res.status(200).json({
       success: true,
@@ -702,18 +672,7 @@ export const getNewsById = async (req, res) => {
     const { id } = req.params;
     const userId = req.user?._id;
 
-    // Cache disabled - always fetch fresh data from database
-    // const redis = await initRedis();
-    // const cacheKey = `news:${id}`;
-    // const cached = await redis.get(cacheKey);
-
-    let news;
-    // if (cached) {
-    //   news = JSON.parse(cached);
-    // } else {
-    news = await NewsService.getById(id);
-    // await redis.setEx(cacheKey, 300, JSON.stringify(news)); // Cache for 5 minutes
-    // }
+    let news = await NewsService.getById(id);
 
     // Track view and add user interaction status if user is authenticated
     if (userId) {
@@ -728,8 +687,6 @@ export const getNewsById = async (req, res) => {
         const interaction = await NewsService.checkUserInteraction(id, userId);
         news.userInteraction = interaction;
 
-        // Cache disabled - no need to clear cache
-        // await redis.del(cacheKey);
       } catch (err) {
         console.error("Error tracking view or checking user interaction:", err);
 
@@ -770,18 +727,7 @@ export const getNewsBySlug = async (req, res) => {
     const { slug } = req.params;
     const userId = req.user?._id;
 
-    // Cache disabled - always fetch fresh data from database
-    // const redis = await initRedis();
-    // const cacheKey = `news:slug:${slug}`;
-    // const cached = await redis.get(cacheKey);
-
-    let news;
-    // if (cached) {
-    //   news = JSON.parse(cached);
-    // } else {
-    news = await NewsService.getBySlug(slug);
-    // await redis.setEx(cacheKey, 300, JSON.stringify(news)); // Cache for 5 minutes
-    // }
+    let news = await NewsService.getBySlug(slug);
 
     // Increment views and track user if authenticated
     if (userId) {
@@ -807,9 +753,6 @@ export const getNewsBySlug = async (req, res) => {
 
     // Populate user data in interactions
     news = await NewsService.populateUserInteractions(news);
-
-    // Cache disabled - no need to clear cache
-    // await redis.del(cacheKey);
 
     return res.status(200).json({
       success: true,

@@ -34,13 +34,24 @@ const CourseNotificationSender: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const [courseSearch, setCourseSearch] = useState("");
+
   useEffect(() => {
-    // Fetch courses when component mounts
-    dispatch(fetchCourses({ page: 1, limit: 100000 }) as any);
-    
-    // Clear notification state on mount
     dispatch(clearNotificationState());
   }, [dispatch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch(
+        fetchCourses({
+          page: 1,
+          limit: 20,
+          search: courseSearch.trim() || undefined,
+        }) as any
+      );
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [dispatch, courseSearch]);
 
   useEffect(() => {
     if (success) {
@@ -158,6 +169,13 @@ const CourseNotificationSender: React.FC = () => {
                 <BookOpen className="w-4 h-4 inline mr-2" />
                 Select Course *
               </label>
+              <input
+                type="text"
+                placeholder="Search courses by title..."
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                className="w-full mb-3 px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
               <select
                 name="courseId"
                 value={form.courseId}

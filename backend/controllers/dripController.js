@@ -2,9 +2,35 @@ import DripRule from '../models/DripRule.js';
 import DripTarget from '../models/DripTarget.js';
 import mongoose from 'mongoose';
 
+const normalizeDripScheduleFields = (fields) => {
+    const next = { ...fields };
+    delete next.unlockTime;
+
+    if (next.dripType === 'specific_date') {
+        next.referenceType = 'date';
+        if (next.referenceId === '' || next.referenceId === null) {
+            delete next.referenceId;
+        }
+        if (next.unlockDate) {
+            const parsed = new Date(next.unlockDate);
+            if (Number.isNaN(parsed.getTime())) {
+                return { error: 'Invalid unlock date or time' };
+            }
+            next.unlockDate = parsed;
+        }
+    }
+
+    return { data: next };
+};
+
 // Create Drip Rule + Target (supports bulk targetId)
 export const createDripRule = async (req, res) => {
     try {
+        const normalized = normalizeDripScheduleFields(req.body);
+        if (normalized.error) {
+            return res.status(400).json({ success: false, message: normalized.error });
+        }
+
         let {
             dripType,
             referenceType,
@@ -15,7 +41,7 @@ export const createDripRule = async (req, res) => {
             conditionOperator,
             targetType,
             targetId
-        } = req.body;
+        } = normalized.data;
 
         // --- Sanitize referenceId and targetId ---
         // If array, filter out empty/invalid values; if string and empty, set to undefined
@@ -130,8 +156,6 @@ export const createDripRule = async (req, res) => {
             });
             dripTargets.push(target);
         }
-
-        // Invalidate Redis cache
 
         // --- Return only the newly created dripTargets (with populated dripRule) ---
         const populatedTargets = await DripTarget.find({
@@ -250,10 +274,6 @@ export const getDripForTarget = async (req, res) => {
 //         await DripTarget.deleteMany({ dripRuleId: id });
 //         await DripRule.findByIdAndDelete(id);
 
-//         // Invalidate Redis cache
-//         const redis = await initRedis();
-//         await redis.del('dripRules:all');
-
 //         res.json({ success: true, message: 'Drip rule and associated targets deleted' });
 //     } catch (error) {
 //         res.status(500).json({ error: 'Failed to delete drip rule' });
@@ -262,7 +282,11 @@ export const getDripForTarget = async (req, res) => {
 
 export const updateDripRuleByReferenceId = async (req, res) => {
     const { targetID } = req.params;
-    let updateFields = req.body;
+    const normalized = normalizeDripScheduleFields(req.body);
+    if (normalized.error) {
+        return res.status(400).json({ success: false, message: normalized.error });
+    }
+    let updateFields = normalized.data;
 
     if (!mongoose.Types.ObjectId.isValid(targetID)) {
         return res.status(400).json({ success: false, message: 'Invalid targetID' });
@@ -280,13 +304,21 @@ export const updateDripRuleByReferenceId = async (req, res) => {
         delete updateFields.referenceId;
     }
 
+    // Do not overwrite rule linkage / target fields on the rule document
+    delete updateFields.targetId;
+    delete updateFields.targetType;
+
     try {
         const target = await DripTarget.findOne({
             targetId: targetID
         }).populate('dripRuleId');
 
+        if (!target?.dripRuleId) {
+            return res.status(404).json({ success: false, message: 'Drip rule not found for the given targetId' });
+        }
+
         const dripRule = await DripRule.findOneAndUpdate(
-            { _id: target.dripRuleId },
+            { _id: target.dripRuleId._id || target.dripRuleId },
             { $set: updateFields },
             { new: true }
         );
@@ -294,8 +326,6 @@ export const updateDripRuleByReferenceId = async (req, res) => {
         if (!dripRule) {
             return res.status(404).json({ success: false, message: 'Drip rule not found for the given targetId' });
         }
-
-        // Invalidate Redis cache
 
         res.status(200).json({
             success: true,
@@ -317,8 +347,6 @@ export const deleteDripRule = async (req, res) => {
 
         // Delete the DripRule itself
         await DripRule.findByIdAndDelete(id);
-
-        // Invalidate Redis cache
 
         res.json({ success: true, message: 'Drip rule and associated targets deleted' });
     } catch (error) {

@@ -10,6 +10,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import adminTimingMiddleware from "./middlewares/adminTimingMiddleware.js";
 
 // Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -193,8 +194,8 @@ app.use((req, res, next) => {
 });
 
 // API Routes
-app.use("/api/v1", routes);
-app.use("/", routes);
+app.use("/api/v1", adminTimingMiddleware, routes);
+app.use("/", adminTimingMiddleware, routes);
 
 // Global error handler — preserves CORS headers and returns JSON instead of crashing with HTML 500
 app.use((err, req, res, next) => {

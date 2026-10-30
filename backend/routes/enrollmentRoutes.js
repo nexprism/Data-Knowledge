@@ -164,11 +164,27 @@ router.get(
     try {
       const { courseId } = req.params;
       // You may want to validate ObjectId here
-      const enrollments = await enrollmentService.getAllEnrollments({ courseId });
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 20;
+      const result = await enrollmentService.getAllEnrollments(
+        { courseId },
+        { page, limit }
+      );
+      if (res.locals) {
+        res.locals.docCount = result.data?.length ?? 0;
+      }
       res.status(200).json({
         success: true,
         message: 'Course enrollments fetched successfully',
-        data: enrollments,
+        data: {
+          enrollments: result.data,
+          pagination: {
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages,
+          },
+        },
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

@@ -431,6 +431,11 @@ const authSlice = createSlice({
         state.refreshToken = action.payload.refreshToken ?? null;
         state.isAuthenticated = true;
         state.error = null;
+        try {
+          sessionStorage.setItem("adminAuthVerifiedAt", String(Date.now()));
+        } catch {
+          /* ignore */
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.loginStatus = "failed";

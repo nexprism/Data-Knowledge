@@ -994,8 +994,8 @@ const DashboardCoursePlayer = () => {
                                                         id="course-video-iframe"
                                                         src={videoSrc}
                                                         className={`w-full h-full border-0 absolute inset-0 z-0 transition-all duration-300 pointer-events-none ${
-                                                            isYouTube ? 'scale-[1.28] sm:scale-[1.16] origin-center' : ''
-                                                        } ${isObscured ? 'opacity-0 filter blur-xl' : 'opacity-100'}`}
+                                                            isObscured ? 'opacity-0 filter blur-xl' : 'opacity-100'
+                                                        }`}
                                                         allowFullScreen
                                                         allow="autoplay; encrypted-media; fullscreen"
                                                         title={selectedLesson.title}

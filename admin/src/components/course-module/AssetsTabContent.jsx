@@ -172,15 +172,14 @@ const AssetsTabContent = ({ courseID }) => {
     <>
       {/* Modals */}
       {openQuiz && (
-        <div className="fixed inset-0 bg-black/40  backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
-          <div className="relative  bg-white dark:bg-white/[0.03] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 animate-fade-in-up">
-            <button
-              onClick={() => setOpenQuiz(null)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition-colors"
-              aria-label="Close Quiz"
-            >
-              <XCircle className="w-7 h-7" />
-            </button>
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99999] flex items-center justify-center p-3 sm:p-6"
+          onClick={() => setOpenQuiz(null)}
+        >
+          <div
+            className="relative w-full max-w-6xl max-h-[92vh] flex flex-col min-h-0 overflow-hidden rounded-2xl shadow-2xl bg-white dark:bg-[#182131]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Quiz
               sectionId={courseID}
               lesson={openQuiz?.lessonId}
@@ -387,11 +386,14 @@ const AssetsTabContent = ({ courseID }) => {
                       </span>
                     </span>
 
-                    {item?.duration && (
+                    {item?.duration != null && item?.duration !== "" && (
                       <span className="flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5 text-gray-400" />
                         <span className="font-medium">
-                          Duration: {item?.duration}
+                          Duration:{" "}
+                          {typeof item.duration === "number"
+                            ? `${item.duration} min`
+                            : item.duration}
                         </span>
                       </span>
                     )}

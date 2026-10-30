@@ -8,20 +8,6 @@ export const createSubCategory = async (req, res) => {
 
     const subCategory = await subCategoryService.create(req.body);
 
-    const subCategoryId = subCategory._id.toString();
-    const subCategoryCacheData = {
-      _id: subCategory._id,
-      name: subCategory.name,
-      slug: subCategory.slug,
-      categoryId: subCategory.categoryId,
-      status: subCategory.status,
-      isDeleted: subCategory.isDeleted,
-      createdAt: subCategory.createdAt,
-      updatedAt: subCategory.updatedAt,
-    };
-
-    //console.log('🗂️ Redis cache updated for subcategory:', subCategoryId);
-
     return res.status(201).json({
       success: true,
       message: '✅ SubCategory created successfully',
@@ -67,18 +53,6 @@ export const getSubCategoryById = async (req, res) => {
 
 
     const subCategory = await subCategoryService.getById(id);
-    const subCategoryCacheData = {
-      _id: subCategory._id,
-      name: subCategory.name,
-      slug: subCategory.slug,
-      categoryId: subCategory.categoryId,
-      status: subCategory.status,
-      isDeleted: subCategory.isDeleted,
-      createdAt: subCategory.createdAt,
-      updatedAt: subCategory.updatedAt,
-    };
-
-    //console.log('🗂️ SubCategory data cached in Redis:', id);
 
     return res.status(200).json({
       success: true,
@@ -140,20 +114,6 @@ export const updateSubCategory = async (req, res) => {
     }
 
     const updatedSubCategory = await subCategoryService.updateById(id, req.body);
-
-    const subCategoryId = updatedSubCategory._id.toString();
-    const subCategoryCacheData = {
-      _id: updatedSubCategory._id,
-      name: updatedSubCategory.name,
-      slug: updatedSubCategory.slug,
-      categoryId: updatedSubCategory.categoryId,
-      status: updatedSubCategory.status,
-      isDeleted: updatedSubCategory.isDeleted,
-      createdAt: updatedSubCategory.createdAt,
-      updatedAt: updatedSubCategory.updatedAt,
-    };
-
-    //console.log('🗂️ Redis cache updated for subcategory:', subCategoryId);
 
     return res.status(200).json({
       success: true,

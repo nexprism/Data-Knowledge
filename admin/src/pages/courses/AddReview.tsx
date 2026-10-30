@@ -236,7 +236,8 @@ const AddReview = () => {
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
-              <table className="w-full text-left">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left">
                 <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 text-xs uppercase font-bold">
                   <tr>
                     <th className="px-6 py-4">Student</th>
@@ -276,6 +277,7 @@ const AddReview = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )
         ) : (

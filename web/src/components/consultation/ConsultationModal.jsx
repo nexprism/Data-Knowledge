@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -94,6 +95,12 @@ const ConsultationModal = ({ isOpen, onClose }) => {
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const redirectTimerRef = useRef(null);
 
+  const handleClose = useCallback(() => {
+    if (typeof onClose === 'function') {
+      onClose();
+    }
+  }, [onClose]);
+
   // Lock background scroll and listen for Escape key when modal is open
   useEffect(() => {
     if (!isOpen) return;
@@ -103,7 +110,7 @@ const ConsultationModal = ({ isOpen, onClose }) => {
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -112,7 +119,7 @@ const ConsultationModal = ({ isOpen, onClose }) => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   // Autofill user details if logged in
   useEffect(() => {
@@ -456,14 +463,14 @@ I have booked a session:
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
       data-lenis-prevent
@@ -486,9 +493,9 @@ I have booked a session:
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onClose();
+              handleClose();
             }}
-            className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer z-10"
+            className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer z-50 pointer-events-auto"
             aria-label="Close"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1136,7 +1143,7 @@ I have booked a session:
 
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-inter text-xs font-bold uppercase tracking-wider py-3 px-6 rounded-xl transition-all cursor-pointer"
                 >
                   Done
@@ -1174,7 +1181,8 @@ I have booked a session:
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

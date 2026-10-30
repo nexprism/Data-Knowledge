@@ -210,10 +210,6 @@ export default class ForumRepository {
         ).populate('createdBy', 'fullName profilePicture');
       }
 
-      // Cache invalidation (legacy; no Redis)
-      if (updatedThread) {
-      }
-
       return {
         thread: updatedThread,
         message: isLiked ? 'Thread unliked' : 'Thread liked'

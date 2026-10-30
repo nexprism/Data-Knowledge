@@ -124,6 +124,56 @@ const CONDITION_OPERATORS = [
   { value: "AND", label: "AND", description: "All conditions must be met" },
 ];
 
+const DEFAULT_UNLOCK_TIME = "09:00";
+
+const formatDateForInput = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+const formatTimeForInput = (value) => {
+  if (!value) return DEFAULT_UNLOCK_TIME;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return DEFAULT_UNLOCK_TIME;
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${min}`;
+};
+
+/** Build UTC ISO string from local date + time (admin picker is local timezone). */
+const combineUnlockDateTime = (dateStr, timeStr) => {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-").map((part) => parseInt(part, 10));
+  const [hours, minutes] = (timeStr || DEFAULT_UNLOCK_TIME)
+    .split(":")
+    .map((part) => parseInt(part, 10));
+  const local = new Date(
+    year,
+    month - 1,
+    day,
+    Number.isFinite(hours) ? hours : 9,
+    Number.isFinite(minutes) ? minutes : 0,
+    0,
+    0
+  );
+  if (Number.isNaN(local.getTime())) return "";
+  return local.toISOString();
+};
+
+const formatScheduledPreview = (dateStr, timeStr) => {
+  const iso = combineUnlockDateTime(dateStr, timeStr);
+  if (!iso) return "";
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
+
 const DripPopup = ({
   onSubmit,
   onClose,
@@ -172,6 +222,7 @@ const DripPopup = ({
     referenceId: "",
     delayDays: 0,
     unlockDate: "",
+    unlockTime: DEFAULT_UNLOCK_TIME,
     requiredScore: "",
     conditionOperator: "AND",
     targetType: targetType || "lesson",
@@ -204,7 +255,8 @@ const DripPopup = ({
         referenceType: data.dripRuleId.referenceType || "",
         referenceId: data.dripRuleId.referenceId || "",
         delayDays: data.dripRuleId.delayDays || 0,
-        unlockDate: data.dripRuleId.unlockDate || "",
+        unlockDate: formatDateForInput(data.dripRuleId.unlockDate),
+        unlockTime: formatTimeForInput(data.dripRuleId.unlockDate),
         requiredScore: data.dripRuleId.requiredScore || "",
         conditionOperator: data.dripRuleId.conditionOperator || "AND",
         targetType: data.targetType || "lesson",
@@ -276,12 +328,40 @@ const DripPopup = ({
 
   const handleSubmit = async () => {
     if (form.dripType) {
+      if (form.dripType === "specific_date") {
+        if (!form.unlockDate) {
+          setPopup({
+            isVisible: true,
+            message: "Please select an unlock date.",
+            type: "error",
+          });
+          return;
+        }
+        if (!form.unlockTime) {
+          setPopup({
+            isVisible: true,
+            message: "Please select an unlock time.",
+            type: "error",
+          });
+          return;
+        }
+      }
+
       try {
         const dripRuleData = {
           ...form,
           targetType: form.targetType,
           targetId: form.targetId, // can be array
         };
+
+        if (form.dripType === "specific_date") {
+          dripRuleData.unlockDate = combineUnlockDateTime(
+            form.unlockDate,
+            form.unlockTime
+          );
+          dripRuleData.referenceType = "date";
+        }
+        delete dripRuleData.unlockTime;
 
         console.log("Creating drip rule with data:", dripRuleData);
 
@@ -835,25 +915,43 @@ const DripPopup = ({
 
               {/* Unlock Date */}
               {form.dripType === "specific_date" && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="block text-sm font-semibold text-gray-900 dark:text-white/90">
-                    Unlock Date
+                    Unlock Date &amp; Time
                   </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="date"
-                      name="unlockDate"
-                      value={
-                        form.unlockDate
-                          ? form.unlockDate.slice(0, 10) // Show only YYYY-MM-DD
-                          : ""
-                      }
-                      onChange={handleChange}
-                      className="w-full pl-12 pr-4 py-3 border dark:text-white/70 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                      required
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                      <input
+                        type="date"
+                        name="unlockDate"
+                        value={form.unlockDate || ""}
+                        onChange={handleChange}
+                        className="w-full pl-12 pr-4 py-3 border dark:text-white/70 dark:border-gray-700 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-white/[0.03]"
+                        required
+                      />
+                    </div>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                      <input
+                        type="time"
+                        name="unlockTime"
+                        value={form.unlockTime || DEFAULT_UNLOCK_TIME}
+                        onChange={handleChange}
+                        className="w-full pl-12 pr-4 py-3 border dark:text-white/70 dark:border-gray-700 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-white/[0.03]"
+                        required
+                      />
+                    </div>
                   </div>
+                  {form.unlockDate && form.unlockTime && (
+                    <p className="text-xs text-gray-600 dark:text-white/60">
+                      Content unlocks on:{" "}
+                      <span className="font-semibold text-[#1b6294] dark:text-blue-400">
+                        {formatScheduledPreview(form.unlockDate, form.unlockTime)}
+                      </span>{" "}
+                      (your local timezone)
+                    </p>
+                  )}
                 </div>
               )}
 

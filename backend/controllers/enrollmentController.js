@@ -46,18 +46,32 @@ export const createFreeEnrollment = async (req, res) => {
 
 export const getAllEnrollments = async (req, res) => {
   try {
-    const { userId, courseId, courseBundel } = req.query;
+    const { userId, courseId, courseBundel, page, limit } = req.query;
     const options = { userId, courseId, courseBundel };
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
 
-    const cacheKey = `enrollments:all:${JSON.stringify(options)}`;
+    const result = await enrollmentService.getAllEnrollments(options, {
+      page: pageNum,
+      limit: limitNum,
+    });
 
-
-    const enrollments = await enrollmentService.getAllEnrollments(options);
+    if (res.locals) {
+      res.locals.docCount = result.data?.length ?? 0;
+    }
 
     res.status(200).json({
       success: true,
       message: 'Enrollments fetched successfully',
-      data: enrollments,
+      data: {
+        enrollments: result.data,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+        },
+      },
     });
   } catch (error) {
     console.error('getAllEnrollments Error:', error);

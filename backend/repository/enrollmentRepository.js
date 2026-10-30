@@ -503,27 +503,71 @@ class EnrollmentRepository {
     }
   }
 
-  async findAll(filters = {}) {
-    try {
-      const query = {};
-      if (filters.userId) query.userId = filters.userId;
-      if (filters.courseId) query.courseId = filters.courseId;
-      if (filters.courseBundle) query.courseBundle = filters.courseBundle;
+  _enrollmentListQuery(filters = {}) {
+    const query = {};
+    if (filters.userId) query.userId = filters.userId;
+    if (filters.courseId) query.courseId = filters.courseId;
+    if (filters.courseBundle) query.courseBundle = filters.courseBundle;
+    return query;
+  }
 
-      return await CourseEnrollment.find(query)
-        .populate({ path: 'userId', select: 'name email', options: { strictPopulate: false } })
-        .populate({ path: 'courseId', select: 'title slug', options: { strictPopulate: false } })
-        .populate({ path: 'courseBundle', select: 'title slug', options: { strictPopulate: false } })
-        .populate({ path: 'orderId', select: 'orderNo subTotal discount gstRate grandTotal invoice_url', options: { strictPopulate: false } });
+  _enrollmentListQueryBuilder(filterQuery) {
+    return CourseEnrollment.find(filterQuery)
+      .populate({
+        path: 'userId',
+        select: 'fullName name email profilePicture phone',
+        options: { strictPopulate: false },
+      })
+      .populate({ path: 'courseId', select: 'title slug', options: { strictPopulate: false } })
+      .populate({ path: 'courseBundle', select: 'title slug', options: { strictPopulate: false } })
+      .populate({
+        path: 'orderId',
+        select: 'orderNo subTotal discount gstRate grandTotal invoice_url',
+        options: { strictPopulate: false },
+      });
+  }
+
+  async findAllPaginated(filters = {}, page = 1, limit = 20) {
+    try {
+      const query = this._enrollmentListQuery(filters);
+      const cappedLimit = Math.min(Math.max(1, limit), 100);
+      const skip = (Math.max(1, page) - 1) * cappedLimit;
+
+      const [data, total] = await Promise.all([
+        this._enrollmentListQueryBuilder(query)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(cappedLimit)
+          .lean(),
+        CourseEnrollment.countDocuments(query),
+      ]);
+
+      return {
+        data,
+        total,
+        page: Math.max(1, page),
+        limit: cappedLimit,
+        totalPages: Math.ceil(total / cappedLimit) || 1,
+      };
     } catch (error) {
       throw new Error(`Error fetching enrollments: ${error.message}`);
     }
   }
 
+  /** @deprecated Prefer findAllPaginated */
+  async findAll(filters = {}) {
+    const result = await this.findAllPaginated(filters, 1, 100);
+    return result.data;
+  }
+
   async findById(id) {
     try {
       const enrollment = await CourseEnrollment.findById(id)
-        .populate({ path: 'userId', select: 'name email', options: { strictPopulate: false } })
+        .populate({
+          path: 'userId',
+          select: 'fullName name email profilePicture phone',
+          options: { strictPopulate: false },
+        })
         .populate({ path: 'courseId', select: 'title slug', options: { strictPopulate: false } })
         .populate({ path: 'courseBundle', select: 'title slug', options: { strictPopulate: false } })
         .populate({ path: 'orderId', select: 'orderNo subTotal discount gstRate grandTotal invoice_url', options: { strictPopulate: false } });

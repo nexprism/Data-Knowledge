@@ -33,9 +33,11 @@ class EnrollmentService {
     }
   }
 
-  async getAllEnrollments(filters) {
+  async getAllEnrollments(filters, pagination = {}) {
     try {
-      return await enrollmentRepo.findAll(filters);
+      const page = pagination.page ?? 1;
+      const limit = pagination.limit ?? 20;
+      return await enrollmentRepo.findAllPaginated(filters, page, limit);
     } catch (error) {
       throw new Error(`Failed to fetch enrollments: ${error.message}`);
     }

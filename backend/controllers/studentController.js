@@ -7,7 +7,7 @@ const userService = new UserService();
 export const getAllStudents = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const search = req.query.search?.trim();
     const filter = { role: 'student' };
 
@@ -50,6 +50,10 @@ export const getAllStudents = async (req, res) => {
     const sort = { createdAt: -1 };
 
     const { users, total } = await userService.getAllUsers(page, limit, filter, sort);
+
+    if (res.locals) {
+      res.locals.docCount = users?.length ?? 0;
+    }
 
     return res.status(200).json({
       success: true,
@@ -95,7 +99,10 @@ export const getStudentById = async (req, res) => {
 
     // Fetch enrollments from CourseEnrollment collection
     const enrollments = await CourseEnrollment.find({ userId: student._id })
-      .populate('courseId') // <-- Correct field name
+      .populate({
+        path: 'courseId',
+        select: 'title slug thumbnail isPublished',
+      })
       .lean();
 
     // Map enrollments to include accessExpiry and enrolledAt, and rename courseId to course

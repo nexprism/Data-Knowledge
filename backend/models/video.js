@@ -206,4 +206,7 @@ videoLessonSchema.methods.getEmbedHtml = function(options = {}) {
   return `<iframe width="${width}" height="${height}" src="${embedUrl}" frameborder="0" allowfullscreen></iframe>`;
 };
 
+videoLessonSchema.index({ lessonId: 1, isDeleted: 1 });
+videoLessonSchema.index({ sourcePlatform: 1, isDeleted: 1, lessonId: 1 });
+
 export default mongoose.model('VideoLesson', videoLessonSchema);

@@ -49,10 +49,24 @@ const NotificationDashboard: React.FC = () => {
     timestamp: string;
   } | null>(null);
 
+  const [courseSearch, setCourseSearch] = useState("");
+
   useEffect(() => {
-    dispatch(fetchCourses({ page: 1, limit: 100000 }) as any);
     dispatch(clearNotificationState());
   }, [dispatch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch(
+        fetchCourses({
+          page: 1,
+          limit: 20,
+          search: courseSearch.trim() || undefined,
+        }) as any
+      );
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [dispatch, courseSearch]);
 
   const handleTypeChange = (type: 'global' | 'course') => {
     setNotificationType(type);
@@ -270,6 +284,13 @@ const NotificationDashboard: React.FC = () => {
                     <BookOpen className="w-4 h-4 inline mr-2" />
                     Select Target Course *
                   </label>
+                  <input
+                    type="text"
+                    placeholder="Search courses by title..."
+                    value={courseSearch}
+                    onChange={(e) => setCourseSearch(e.target.value)}
+                    className="w-full mb-3 px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
                   <select
                     name="courseId"
                     value={form.courseId}

@@ -403,10 +403,6 @@ export const updateJobPost = async (req, res) => {
 
     const jobPost = await jobPostService.update(id, updateData);
 
-    // Update Redis cache
-    if (jobPost && jobPost.createdBy) {
-    }
-
     return res.status(200).json({
       success: true,
       message: 'Job post updated successfully',

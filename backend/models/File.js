@@ -41,5 +41,8 @@ const fileSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+fileSchema.index({ courseId: 1, active: 1 });
+fileSchema.index({ lessonId: 1, active: 1 });
+
 const File = mongoose.model('File', fileSchema);
 export default File;

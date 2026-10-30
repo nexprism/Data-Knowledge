@@ -264,16 +264,26 @@ const Navbar = ({ isLoaded }) => {
       >
         <div
           ref={innerNavRef}
-          className="flex items-center justify-between bg-white/90 rounded-[2rem] md:rounded-full px-4 md:px-6 !py-3 border border-slate-200/80 shadow-sm backdrop-blur-2xl relative z-20 overflow-hidden will-change-[padding,background-color]"
+          className="flex items-center justify-between gap-2 sm:gap-3 bg-white/90 rounded-[2rem] md:rounded-full px-3 sm:px-4 md:px-6 !py-3 border border-slate-200/80 shadow-sm backdrop-blur-2xl relative z-20 min-w-0 will-change-[padding,background-color]"
         >
 
-          <Link to="/" ref={logoRef} className="flex items-center hover:opacity-90 transition-opacity gap-2.5 sm:gap-3 text-slate-900 group">
-            <img src="/data_knowlege/logo/logo.png" alt="Data Knowledge Logo" className="h-9 md:h-11 w-auto object-contain rounded-full shadow-xs shrink-0" />
-            <div className="flex flex-col text-left">
-              <span className="font-outfit font-black text-sm sm:text-base md:text-lg tracking-tight text-slate-900 leading-none group-hover:text-[#3498db] transition-colors whitespace-nowrap">
+          <Link
+            to="/"
+            ref={logoRef}
+            className="flex items-center hover:opacity-90 transition-opacity gap-2 sm:gap-2.5 md:gap-3 text-slate-900 group min-w-0 shrink"
+            aria-label="Data Knowledge — home"
+          >
+            <img
+              src="/data_knowlege/logo/logo.png"
+              alt=""
+              className="h-9 sm:h-9 md:h-11 w-auto object-contain rounded-full shadow-xs shrink-0"
+            />
+            {/* Wordmark hidden on very small screens so Dashboard / Sign In stays readable */}
+            <div className="hidden sm:flex flex-col text-left min-w-0 overflow-hidden">
+              <span className="font-outfit font-black text-sm sm:text-base md:text-lg tracking-tight text-slate-900 leading-none group-hover:text-[#3498db] transition-colors truncate">
                 DATA <span className="text-[#3498db]">KNOWLEDGE</span>
               </span>
-              <span className="text-[7.5px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-tight whitespace-nowrap">
+              <span className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-tight truncate">
                 Classes & Training
               </span>
             </div>
@@ -305,19 +315,43 @@ const Navbar = ({ isLoaded }) => {
             ))}
           </div>
 
-          <div ref={buttonsWrapRef} className="flex items-center gap-3">
+          <div ref={buttonsWrapRef} className="flex items-center gap-1.5 sm:gap-3 shrink-0">
 
             <Link
-              to={token ? "/dashboard" : "/login"}
-              className="relative group bg-[#3498db] text-white font-bold px-6 py-2.5 rounded-full font-inter text-[10px] uppercase tracking-[0.2em] overflow-hidden transition-all duration-300 hover:bg-[#2980b9] hover:scale-[1.05] active:scale-95 shadow-md shadow-[#3498db]/30 flex items-center justify-center gap-2"
+              to={token ? '/dashboard' : '/login'}
+              className="relative group bg-[#3498db] text-white font-bold h-10 px-3.5 sm:px-6 rounded-full font-inter text-xs sm:text-[10px] sm:uppercase tracking-normal sm:tracking-[0.2em] overflow-hidden transition-all duration-300 hover:bg-[#2980b9] hover:scale-[1.05] active:scale-95 shadow-md shadow-[#3498db]/30 flex items-center justify-center gap-1.5 shrink-0 max-w-[46vw] sm:max-w-none"
             >
-              <span className="relative z-10">{token ? t('dashboard') : t('signIn')}</span>
+              <svg
+                className="w-4 h-4 shrink-0 relative z-10 opacity-95"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                aria-hidden="true"
+              >
+                {token ? (
+                  <>
+                    <rect x="3" y="3" width="7" height="9" rx="1" />
+                    <rect x="14" y="3" width="7" height="5" rx="1" />
+                    <rect x="14" y="12" width="7" height="9" rx="1" />
+                    <rect x="3" y="16" width="7" height="5" rx="1" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points="10 17 15 12 10 7" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="15" y1="12" x2="3" y2="12" strokeLinecap="round" strokeLinejoin="round" />
+                  </>
+                )}
+              </svg>
+              <span className="relative z-10 truncate">{token ? t('dashboard') : t('signIn')}</span>
               <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out skew-x-12" />
             </Link>
 
             <button
               onClick={toggleMenu}
-              className="xl:hidden w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex flex-col items-center justify-center gap-[5px] relative z-[130] group hover:bg-[#3498db]/15 hover:border-[#3498db]/40 transition-colors"
+              aria-label="Open menu"
+              className="xl:hidden w-10 h-10 shrink-0 rounded-full bg-slate-100 border border-slate-200 flex flex-col items-center justify-center gap-[5px] relative z-[130] group hover:bg-[#3498db]/15 hover:border-[#3498db]/40 transition-colors"
             >
               <span ref={line1Ref} className="w-4 h-[2px] bg-slate-800 transition-colors group-hover:bg-[#3498db]" />
               <span ref={line2Ref} className="w-5 h-[2px] bg-slate-800 transition-colors group-hover:bg-[#3498db]" />

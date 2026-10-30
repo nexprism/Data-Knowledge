@@ -141,8 +141,6 @@ export const updateAssignment = async (req, res) => {
       updateData
     );
 
-    // //console.log("Redis updated successfully for assignment update");
-
     res
       .status(200)
       .json({
@@ -158,8 +156,6 @@ export const updateAssignment = async (req, res) => {
 export const deleteAssignment = async (req, res) => {
   try {
     await assignmentService.deleteAssignment(req.params.id);
-
-    // //console.log("Redis updated successfully for assignment deletion");
 
     res
       .status(200)

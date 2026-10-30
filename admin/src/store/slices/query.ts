@@ -24,6 +24,7 @@ interface QueryState {
   error: string | null;
   queries: Query[]; // for list
   query: Query | null; // for single query
+  newQueriesTotal: number;
 }
 
 const initialState: QueryState = {
@@ -31,6 +32,7 @@ const initialState: QueryState = {
   error: null,
   queries: [],
   query: null,
+  newQueriesTotal: 0,
 };
 
 // Create a new query (public)
@@ -52,10 +54,25 @@ export const createQuery = createAsyncThunk(
 // Get all queries (admin)
 export const getAllQueries = createAsyncThunk(
   "query/getAllQueries",
-  async (token: string | undefined, { rejectWithValue }) => {
+  async (
+    args:
+      | string
+      | { status?: string; page?: number; limit?: number; search?: string }
+      | undefined,
+    { rejectWithValue }
+  ) => {
     try {
+      const params =
+        typeof args === "string" || args === undefined
+          ? {}
+          : {
+              status: args.status,
+              page: args.page,
+              limit: args.limit,
+              search: args.search,
+            };
       const authToken =
-        token ||
+        (typeof args === "string" ? args : undefined) ||
         localStorage.getItem("accessToken") ||
         localStorage.getItem("token") ||
         "";
@@ -65,6 +82,7 @@ export const getAllQueries = createAsyncThunk(
       }
       const response = await axiosInstance.get("/queries", {
         headers,
+        params,
       });
       return response.data;
     } catch (error: any) {
@@ -176,7 +194,22 @@ const querySlice = createSlice({
       })
       .addCase(getAllQueries.fulfilled, (state, action) => {
         state.loading = false;
-        state.queries = action.payload.data || [];
+        const list = action.payload?.data || [];
+        const total = action.payload?.total ?? list.length;
+        const arg = action.meta.arg;
+        const isBadgePoll =
+          arg &&
+          typeof arg === "object" &&
+          arg.status === "new" &&
+          (arg.limit ?? 10) <= 1;
+        if (isBadgePoll) {
+          state.newQueriesTotal = total;
+        } else {
+          state.queries = list;
+          if (typeof arg === "object" && arg?.status === "new") {
+            state.newQueriesTotal = total;
+          }
+        }
       })
       .addCase(getAllQueries.rejected, (state, action) => {
         state.loading = false;

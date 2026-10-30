@@ -277,18 +277,6 @@ export const getAllCertificates = async (req, res) => {
 
 export const getCertificateById = async (req, res) => {
   try {
-    // const cacheKey = `certificate:${req.params.id}`;
-    // const cached = await redis.get(cacheKey);
-
-    // if (cached) {
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: 'Certificate fetched from cache',
-    //     data: JSON.parse(cached),
-    //     fromCache: true
-    //   });
-    // }
-
     const certificate = await certificateService.getCertificateById(
       req.params.id
     );
@@ -298,7 +286,6 @@ export const getCertificateById = async (req, res) => {
         .json({ success: false, message: "Certificate not found" });
     }
 
-    // await redis.setEx(cacheKey, 300, JSON.stringify(certificate));
     res.status(200).json({
       success: true,
       message: "Certificate fetched successfully",

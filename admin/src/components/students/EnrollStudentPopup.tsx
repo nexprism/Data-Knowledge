@@ -32,12 +32,14 @@ const EnrollStudentPopup: React.FC<EnrollStudentPopupProps> = ({ open, onClose, 
   const [studentSearch, setStudentSearch] = useState("");
   const [studentOptions, setStudentOptions] = useState<any[]>([]);
   const [studentLoading, setStudentLoading] = useState(false);
+  const [courseSearch, setCourseSearch] = useState("");
+  const courseSearchTimeout = useRef<NodeJS.Timeout | null>(null);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
-      dispatch(fetchCourses({ limit: 1000 }));
+      dispatch(fetchCourses({ page: 1, limit: 20 }));
       setSelectedStudent(studentId || "");
       setSelectedCourse("");
       setSubmitted(false);
@@ -61,7 +63,8 @@ const EnrollStudentPopup: React.FC<EnrollStudentPopupProps> = ({ open, onClose, 
         const params = new URLSearchParams();
         if (studentSearch) params.append("search", studentSearch);
         params.append("sort", JSON.stringify({ createdAt: "desc" }));
-        params.append("limit", "200000");
+        params.append("page", "1");
+        params.append("limit", "20");
         const res = await axiosInstance.get(
           `${API_BASE_URL}/students?${params.toString()}`
         );
@@ -76,6 +79,23 @@ const EnrollStudentPopup: React.FC<EnrollStudentPopupProps> = ({ open, onClose, 
       if (searchTimeout.current) clearTimeout(searchTimeout.current);
     };
   }, [studentSearch, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (courseSearchTimeout.current) clearTimeout(courseSearchTimeout.current);
+    courseSearchTimeout.current = setTimeout(() => {
+      dispatch(
+        fetchCourses({
+          page: 1,
+          limit: 20,
+          search: courseSearch.trim() || undefined,
+        })
+      );
+    }, 400);
+    return () => {
+      if (courseSearchTimeout.current) clearTimeout(courseSearchTimeout.current);
+    };
+  }, [courseSearch, open, dispatch]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -214,6 +234,16 @@ const EnrollStudentPopup: React.FC<EnrollStudentPopupProps> = ({ open, onClose, 
               >
                 Course
               </label>
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search courses..."
+                  value={courseSearch}
+                  onChange={(e) => setCourseSearch(e.target.value)}
+                  className="w-full pl-9 p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                />
+              </div>
               <select
                 id="course-select"
                 className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50"

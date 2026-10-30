@@ -171,12 +171,18 @@ class UserService {
   }
 
 
-  async getAllUsers(page = 1, limit = 10, filter = {}, sort = {}) {
+  async getAllUsers(page = 1, limit = 10, filter = {}, sort = {}, options = {}) {
     try {
-      const skip = (page - 1) * limit;
-      const users = await this.userRepository.findMany(filter, sort, skip, limit);
-      const total = await this.userRepository.count(filter);
-      return { users, page, limit, total };
+      const cappedLimit = Math.min(Math.max(1, limit), 100);
+      const skip = (page - 1) * cappedLimit;
+      const listSelect =
+        options.listSelect ||
+        "fullName name email phone status isActive isBanned isShadowBanned profilePicture createdAt updatedAt role";
+      const [users, total] = await Promise.all([
+        this.userRepository.findMany(filter, sort, skip, cappedLimit, listSelect),
+        this.userRepository.count(filter),
+      ]);
+      return { users, page, limit: cappedLimit, total };
     } catch (error) {
       console.error("getAllUsers error:", error);
       throw error;

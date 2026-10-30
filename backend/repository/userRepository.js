@@ -117,14 +117,13 @@ class UserRepository extends CrudRepository {
     }
   }
 
-  async findMany(filter = {}, sort = {}, skip = 0, limit = 10) {
+  async findMany(filter = {}, sort = {}, skip = 0, limit = 10, select = null) {
     try {
-      const result = await this.model
-        .find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean();
+      let query = this.model.find(filter).sort(sort).skip(skip).limit(limit);
+      if (select) {
+        query = query.select(select);
+      }
+      const result = await query.lean();
       return result;
     } catch (error) {
       console.error("❌ Error in findMany:", error);

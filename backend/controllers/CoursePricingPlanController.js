@@ -13,23 +13,6 @@ export const createPricingPlan = async (req, res) => {
 
     const pricingPlan = await pricingPlanService.create(pricingPlanData);
 
-    const planId = pricingPlan._id.toString();
-    const planCacheData = {
-      _id: pricingPlan._id,
-      course: pricingPlan.course,
-      type: pricingPlan.type,
-      price: pricingPlan.price.toString(),
-      discount: pricingPlan.discount,
-      durationInDays: pricingPlan.durationInDays,
-      currency: pricingPlan.currency,
-      isActive: pricingPlan.isActive,
-      features: pricingPlan.features,
-      createdAt: pricingPlan.createdAt,
-      updatedAt: pricingPlan.updatedAt,
-    };
-
-    //console.log('🗂️ Redis cache updated for pricing plan:', planId);
-
     return res.status(201).json({
       success: true,
       message: '✅ Pricing plan created successfully',
@@ -77,21 +60,6 @@ export const getPricingPlanById = async (req, res) => {
 
 
     const pricingPlan = await pricingPlanService.getById(id);
-    const planCacheData = {
-      _id: pricingPlan._id,
-      course: pricingPlan.course,
-      type: pricingPlan.type,
-      price: pricingPlan.price.toString(),
-      discount: pricingPlan.discount,
-      durationInDays: pricingPlan.durationInDays,
-      currency: pricingPlan.currency,
-      isActive: pricingPlan.isActive,
-      features: pricingPlan.features,
-      createdAt: pricingPlan.createdAt,
-      updatedAt: pricingPlan.updatedAt,
-    };
-
-    //console.log('🗂️ Pricing plan data cached in Redis:', id);
 
     return res.status(200).json({
       success: true,
@@ -179,21 +147,6 @@ export const getPricingPlansByCourseId = async (req, res) => {
 
 
     const pricingPlans = await pricingPlanService.getByCourseId(courseId);
-    const plansCacheData = pricingPlans.map(plan => ({
-      _id: plan._id,
-      course: plan.course,
-      type: plan.type,
-      price: plan.price.toString(),
-      discount: plan.discount,
-      durationInDays: plan.durationInDays,
-      currency: plan.currency,
-      isActive: plan.isActive,
-      features: plan.features,
-      createdAt: plan.createdAt,
-      updatedAt: plan.updatedAt,
-    }));
-
-    //console.log('🗂️ Pricing plans data cached in Redis for course:', courseId);
 
     return res.status(200).json({
       success: true,
@@ -240,23 +193,6 @@ export const updatePricingPlan = async (req, res) => {
     };
 
     const updatedPlan = await pricingPlanService.updateById(id, updateData);
-
-    const planId = updatedPlan._id.toString();
-    const planCacheData = {
-      _id: updatedPlan._id,
-      course: updatedPlan.course,
-      type: updatedPlan.type,
-      price: updatedPlan.price.toString(),
-      discount: updatedPlan.discount,
-      durationInDays: updatedPlan.durationInDays,
-      currency: updatedPlan.currency,
-      isActive: updatedPlan.isActive,
-      features: updatedPlan.features,
-      createdAt: updatedPlan.createdAt,
-      updatedAt: updatedPlan.updatedAt,
-    };
-
-    //console.log('🗂️ Redis cache updated for pricing plan:', planId);
 
     return res.status(200).json({
       success: true,

@@ -448,15 +448,20 @@ const checkSpecificDate = (unlockDate) => {
     const now = new Date();
     const unlock = new Date(unlockDate);
 
+    const msRemaining = unlock - now;
+
     return {
         satisfied: now >= unlock,
         reason: now >= unlock ?
-            'Unlock date reached' :
-            `Content unlocks on ${unlock.toLocaleDateString()}`,
+            'Unlock date and time reached' :
+            `Content unlocks on ${unlock.toLocaleString()}`,
         details: {
             unlockDate: unlock,
             currentDate: now,
-            daysRemaining: Math.ceil((unlock - now) / (1000 * 60 * 60 * 24))
+            daysRemaining: msRemaining > 0
+                ? Math.ceil(msRemaining / (1000 * 60 * 60 * 24))
+                : 0,
+            msRemaining: msRemaining > 0 ? msRemaining : 0
         }
     };
 };

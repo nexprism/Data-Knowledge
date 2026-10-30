@@ -81,18 +81,6 @@ export const getMySubmissions = async (req, res) => {
 export const getMySubmissionByAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    // const cacheKey = `submission:${req.user._id}:${assignmentId}`;
-    // const redis = await initRedis();
-    // const cached = await redis.get(cacheKey);
-
-    // if (cached) {
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "Submission fetched from cache",
-    //     data: JSON.parse(cached),
-    //     fromCache: true,
-    //   });
-    // }
 
     const submission = await service.getSubmission(req.user._id, assignmentId);
     if (!submission) {
@@ -101,8 +89,6 @@ export const getMySubmissionByAssignment = async (req, res) => {
         message: "Submission not found for this user and assignment",
       });
     }
-
-    // await redis.setEx(cacheKey, 300, JSON.stringify(submission));
 
     res.status(200).json({
       success: true,

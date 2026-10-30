@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { createCourse, getCourseById, getAllCourses, updateCourse, deleteCourse, getCourseContents, getCourseAttachments,getMyCourses,getCoursesByCategory,getCourseBySlug ,getAllCourseAttachments ,filterCourses, sortCourses, disableDripForUser, addContentSection, updateContentSection, deleteContentSection, reorderContentSections, getContentSections, updateCourseBranding, getCourseLandingPage, uploadCourseEditorImage, uploadCourseEditorVideo, addReview, deleteReview, updateReview, duplicateCourseController } from '../controllers/CourseController.js';
+import { createCourse, getCourseById, getCourseCurriculum, getAllCourses, updateCourse, deleteCourse, getCourseContents, getCourseAttachments,getMyCourses,getCoursesByCategory,getCourseBySlug ,getAllCourseAttachments ,filterCourses, sortCourses, disableDripForUser, addContentSection, updateContentSection, deleteContentSection, reorderContentSections, getContentSections, updateCourseBranding, getCourseLandingPage, uploadCourseEditorImage, uploadCourseEditorVideo, addReview, deleteReview, updateReview, duplicateCourseController } from '../controllers/CourseController.js';
 // import { createCourse, getCourseById, getAllCourses, updateCourse, deleteCourse, getCourseContents, getCourseAttachments,getMyCourses  } from '../controllers/CourseController.js';
 import accessTokenAutoRefresh from '../middlewares/accessTokenAutoRefresh.js';
 import passport from 'passport';
@@ -120,6 +120,14 @@ courseRouter.get(
 courseRouter.get('/slug/:slug', optionalAuthenticate, getCourseBySlug);
 courseRouter.get('/landing/:slug', getCourseLandingPage);
 courseRouter.get('/category/:categoryId', getCoursesByCategory);
+
+courseRouter.get(
+  '/:id/curriculum',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isAdmin,
+  getCourseCurriculum
+);
 
 // Get a course by ID (public with optional auth for enrollment check)
 courseRouter.get('/:id', optionalAuthenticate, getCourseById);

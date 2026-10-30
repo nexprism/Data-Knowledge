@@ -42,14 +42,19 @@ interface PaginationData {
 
 export const fetchCourses = createAsyncThunk<
   PaginationData,
-  { page?: number; limit?: number } | undefined
+  { page?: number; limit?: number; search?: string; adminList?: boolean } | undefined
 >(
   "course/fetchCourses",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const { page = 1, limit = 10 } = params;
+      const { page = 1, limit = 10, search = "", adminList = true } = params;
       const response = await axiosInstance.get("/courses/", {
-        params: { page, limit },
+        params: {
+          page,
+          limit,
+          ...(search ? { search } : {}),
+          ...(adminList ? { adminList: "true" } : {}),
+        },
         headers: {
           "Content-Type": "application/json",
         },
@@ -79,19 +84,33 @@ export const fetchCourses = createAsyncThunk<
 export const fetchCourseById = createAsyncThunk(
   "course/fetchCourseById",
   async (
-    { courseId, token }: { courseId: string; token: string },
+    {
+      courseId,
+      token,
+      view = "adminEditor",
+    }: { courseId: string; token?: string; view?: "adminEditor" | "full" },
     { rejectWithValue }
   ) => {
     try {
-      const response = await axiosInstance.get(
-        `/courses/${courseId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
+      const response = await axiosInstance.get(`/courses/${courseId}`, {
+        params: view === "adminEditor" ? { view: "adminEditor" } : {},
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      return response.data?.data?.course;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchCourseCurriculum = createAsyncThunk(
+  "course/fetchCourseCurriculum",
+  async ({ courseId }: { courseId: string }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get(`/courses/${courseId}/curriculum`);
       return response.data?.data?.course;
     } catch (error: any) {
       return rejectWithValue(error.response?.data || error.message);
@@ -145,22 +164,36 @@ export const fetchCourseAttachments = createAsyncThunk(
 );
 
 export const fetchCourseEnrollments = createAsyncThunk<
-  any,
-  { courseId: string },
+  {
+    enrollments: any[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  },
+  { courseId: string; page?: number; limit?: number },
   { rejectValue: string }
->("course/fetchCourseEnrollments", async ({ courseId }, { rejectWithValue }) => {
+>("course/fetchCourseEnrollments", async ({ courseId, page = 1, limit = 20 }, { rejectWithValue }) => {
   try {
     const token = localStorage.getItem("token") || "";
     const response = await axiosInstance.get(
       `/enrollment/courses/${courseId}/enrollments`,
       {
+        params: { page, limit },
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       }
     );
-    return response.data?.data || [];
+    const payload = response.data?.data;
+    if (Array.isArray(payload)) {
+      return {
+        enrollments: payload,
+        pagination: { total: payload.length, page: 1, limit: payload.length, totalPages: 1 },
+      };
+    }
+    return {
+      enrollments: payload?.enrollments || [],
+      pagination: payload?.pagination || { total: 0, page: 1, limit: 20, totalPages: 0 },
+    };
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || "Failed to fetch enrollments");
   }
@@ -260,6 +293,18 @@ const courseSlice = createSlice({
       .addCase(fetchCourseById.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload;
+      })
+      .addCase(fetchCourseCurriculum.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+      })
+      .addCase(fetchCourseCurriculum.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCourseCurriculum.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       })
       .addCase(fetchCourseById.rejected, (state, action) => {
         state.loading = false;

@@ -78,6 +78,29 @@ const getCourseThumbnail = (thumbnail?: string) => {
   return `${VITE_IMAGE_URL}/${thumbnail.replace(/^\/+/, '')}`;
 };
 
+type EnrollmentUser = {
+  fullName?: string;
+  name?: string;
+  email?: string;
+};
+
+const getEnrollmentStudentName = (user?: EnrollmentUser | null) => {
+  if (!user) return "Unknown User";
+  const display = user.fullName?.trim() || user.name?.trim();
+  if (display) return display;
+  if (user.email) {
+    const local = user.email.split("@")[0] || user.email;
+    return local
+      .replace(/[._-]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+  return "Unknown User";
+};
+
+const getEnrollmentStudentInitial = (user?: EnrollmentUser | null) => {
+  return getEnrollmentStudentName(user).charAt(0).toUpperCase();
+};
+
 const CourseList: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -92,10 +115,18 @@ const CourseList: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   // State for enrollments modal
-  const [enrollmentsModal, setEnrollmentsModal] = useState({ 
-    open: false, 
-    enrollments: [], 
-    courseTitle: "" 
+  const [enrollmentsModal, setEnrollmentsModal] = useState<{
+    open: boolean;
+    enrollments: any[];
+    courseTitle: string;
+    courseId: string;
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }>({
+    open: false,
+    enrollments: [],
+    courseTitle: "",
+    courseId: "",
+    pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
   });
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
@@ -119,18 +150,18 @@ const CourseList: React.FC = () => {
   const [duplicating, setDuplicating] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
-      dispatch(fetchCourses({ page, limit }));
+      dispatch(
+        fetchCourses({
+          page,
+          limit,
+          search: searchInput.trim() || undefined,
+        })
+      );
     }, 500);
     return () => clearTimeout(timer);
   }, [dispatch, page, limit, searchInput, statusFilter]);
-
-  // Fetch on mount
-  useEffect(() => {
-    dispatch(fetchCourses({ page, limit }));
-  }, [dispatch, page, limit]);
 
   // Extract courses from the correct data structure
   const courses: Course[] = Array.isArray(data?.courses) ? data.courses : [];
@@ -203,23 +234,37 @@ const CourseList: React.FC = () => {
     return pages;
   };
 
-  const handleShowEnrollments = async (course: Course) => {
+  const loadEnrollmentsPage = async (courseId: string, courseTitle: string, page = 1) => {
     setEnrollmentsLoading(true);
     try {
-      const result = await dispatch(fetchCourseEnrollments({ courseId: course._id }) as any);
+      const result = await dispatch(
+        fetchCourseEnrollments({ courseId, page, limit: 20 }) as any
+      );
+      const payload = result.payload || {
+        enrollments: [],
+        pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+      };
       setEnrollmentsModal({
         open: true,
-        enrollments: result.payload || [],
-        courseTitle: course.title,
+        enrollments: payload.enrollments || [],
+        courseTitle,
+        courseId,
+        pagination: payload.pagination,
       });
     } catch {
       setEnrollmentsModal({
         open: true,
         enrollments: [],
-        courseTitle: course.title,
+        courseTitle,
+        courseId,
+        pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
       });
     }
     setEnrollmentsLoading(false);
+  };
+
+  const handleShowEnrollments = async (course: Course) => {
+    await loadEnrollmentsPage(course._id, course.title, 1);
   };
 
   // Remove enrollment handler
@@ -854,10 +899,24 @@ const CourseList: React.FC = () => {
 
       {/* Enhanced Enrollments Modal */}
       {enrollmentsModal.open && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden my-auto">
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm"
+          onClick={() =>
+            setEnrollmentsModal({
+              open: false,
+              enrollments: [],
+              courseTitle: "",
+              courseId: "",
+              pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+            })
+          }
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col min-h-0 overflow-hidden my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-5 sm:p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   Course Enrollments
@@ -868,14 +927,22 @@ const CourseList: React.FC = () => {
               </div>
               <button
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                onClick={() => setEnrollmentsModal({ open: false, enrollments: [], courseTitle: "" })}
+                onClick={() =>
+                  setEnrollmentsModal({
+                    open: false,
+                    enrollments: [],
+                    courseTitle: "",
+                    courseId: "",
+                    pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+                  })
+                }
               >
                 <XCircle className="w-6 h-6" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6">
+            <div className="flex-1 min-h-0 flex flex-col p-5 sm:p-6 overflow-hidden">
               {enrollmentsLoading ? (
                 <div className="flex justify-center items-center py-16">
                   <div className="flex items-center gap-3">
@@ -884,9 +951,9 @@ const CourseList: React.FC = () => {
                   </div>
                 </div>
               ) : enrollmentsModal.enrollments.length > 0 ? (
-                <>
+                <div className="flex flex-col flex-1 min-h-0 gap-5">
                   {/* Enrollments Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
                     <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-600 rounded-lg">
@@ -894,7 +961,7 @@ const CourseList: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                            {enrollmentsModal.enrollments.length}
+                            {enrollmentsModal.pagination.total}
                           </p>
                           <p className="text-sm text-blue-600 dark:text-blue-400">Total Enrollments</p>
                         </div>
@@ -945,60 +1012,61 @@ const CourseList: React.FC = () => {
                   </div>
 
                   {/* Enrollments Table */}
-                  <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="overflow-x-auto max-h-96">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                  <div className="flex-1 min-h-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
                           <tr>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
+                            <th className="w-12 px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
                               #
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
+                            <th className="min-w-[220px] px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
                               Student
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
-                              Email
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
+                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
                               Status
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
-                              Enrolled Date
+                            <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
+                              Enrolled
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
+                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
                               Expires
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
+                            <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
                               Source
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300">
+                            <th className="w-[120px] px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-800 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
                               Actions
                             </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                          {enrollmentsModal.enrollments.map((enroll, idx) => (
-                            <tr key={enroll._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                          {enrollmentsModal.enrollments.map((enroll, idx) => {
+                            const studentName = getEnrollmentStudentName(enroll.userId);
+                            return (
+                            <tr key={enroll._id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                              <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                                 {idx + 1}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-gradient-to-br from-[#1b6294] to-[#16517a] rounded-full flex items-center justify-center">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-[#1b6294] to-[#16517a] rounded-full flex items-center justify-center">
                                     <span className="text-white text-sm font-semibold">
-                                      {enroll.userId?.fullName ? enroll.userId.fullName.charAt(0).toUpperCase() : 'U'}
+                                      {getEnrollmentStudentInitial(enroll.userId)}
                                     </span>
                                   </div>
-                                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {enroll.userId?.fullName || 'Unknown User'}
-                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                      {studentName}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                      {enroll.userId?.email || "—"}
+                                    </p>
+                                  </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                                {enroll.userId?.email || "-"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize ${
                                   enroll.status === 'active' 
                                     ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                     : enroll.status === 'completed'
@@ -1010,42 +1078,102 @@ const CourseList: React.FC = () => {
                                   {enroll.status || 'Unknown'}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                              <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 {enroll.enrolledAt ? new Date(enroll.enrolledAt).toLocaleDateString('en-US', {
                                   year: 'numeric',
                                   month: 'short',
                                   day: 'numeric'
                                 }) : "-"}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                              <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 {enroll.accessExpiry ? new Date(enroll.accessExpiry).toLocaleDateString('en-US', {
                                   year: 'numeric',
                                   month: 'short',
                                   day: 'numeric'
                                 }) : "Lifetime"}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                                  {enroll.enrollmentSource || "Razorpay"}
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 capitalize">
+                                  {enroll.enrollmentSource || "razorpay"}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 text-right sticky right-0 bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.12)]">
                                 <button
-                                  className="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 transition-colors"
-                                  onClick={() => setConfirmRemove({ id: enroll._id, name: enroll.userId?.fullName || enroll.userId?.email || "this user" })}
+                                  type="button"
+                                  className="inline-flex items-center justify-center px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
+                                  onClick={() =>
+                                    setConfirmRemove({
+                                      id: enroll._id,
+                                      name: studentName,
+                                    })
+                                  }
                                   disabled={removingEnrollmentId === enroll._id}
+                                  title="Remove enrollment"
                                 >
-                                  <XCircle className="w-3 h-3 mr-1" />
-                                  Remove Enrollment
+                                  {removingEnrollmentId === enroll._id ? (
+                                    <span className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                      Remove
+                                    </>
+                                  )}
                                 </button>
                               </td>
                             </tr>
-                          ))}
+                          );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                </>
+                  {enrollmentsModal.pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between shrink-0 pt-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Page {enrollmentsModal.pagination.page} of{" "}
+                        {enrollmentsModal.pagination.totalPages} (
+                        {enrollmentsModal.pagination.total} total)
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            enrollmentsLoading ||
+                            enrollmentsModal.pagination.page <= 1
+                          }
+                          className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 disabled:opacity-50"
+                          onClick={() =>
+                            loadEnrollmentsPage(
+                              enrollmentsModal.courseId,
+                              enrollmentsModal.courseTitle,
+                              enrollmentsModal.pagination.page - 1
+                            )
+                          }
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            enrollmentsLoading ||
+                            enrollmentsModal.pagination.page >=
+                              enrollmentsModal.pagination.totalPages
+                          }
+                          className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 disabled:opacity-50"
+                          onClick={() =>
+                            loadEnrollmentsPage(
+                              enrollmentsModal.courseId,
+                              enrollmentsModal.courseTitle,
+                              enrollmentsModal.pagination.page + 1
+                            )
+                          }
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="text-center py-16">
                   <Users className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -1057,7 +1185,7 @@ const CourseList: React.FC = () => {
           </div>
           {/* Remove Enrollment Confirmation Popup */}
           {confirmRemove && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
               <div className="bg-white rounded-xl shadow-lg p-8 max-w-sm w-full">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Remove Course Access

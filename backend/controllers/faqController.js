@@ -73,20 +73,8 @@ export const getFAQById = async (req, res) => {
 export const getCourseFAQs = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const cacheKey = `faqs:course:${courseId}`;
-
-    // const cached = await redis.get(cacheKey);
-    // if (cached) {
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: 'Course FAQs fetched from cache',
-    //     data: JSON.parse(cached),
-    //     fromCache: true
-    //   });
-    // }
 
     const faqs = await faqService.getFAQsByCourseId(courseId);
-    // await redis.setEx(cacheKey, 300, JSON.stringify(faqs));
 
     res.status(200).json({
       success: true,

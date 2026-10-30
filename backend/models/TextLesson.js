@@ -73,5 +73,8 @@ textLessonSchema.pre('save', function (next) {
 });
 
 
+textLessonSchema.index({ course: 1, isActive: 1 });
+textLessonSchema.index({ lesson: 1, isActive: 1 });
+
 const TextLesson = mongoose.models.TextLesson || mongoose.model('TextLesson', textLessonSchema);
 export default TextLesson;

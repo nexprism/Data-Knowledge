@@ -39,11 +39,26 @@ const ProtectedRoute = () => {
 
             const isCookieSession = token === "cookie-session";
 
-            // Always hit the server to get the REAL user & role.
-            // This prevents anyone from faking their role in localStorage/Redux.
+            const verifiedAt = sessionStorage.getItem("adminAuthVerifiedAt");
+            const recentlyVerified =
+              verifiedAt &&
+              Date.now() - Number(verifiedAt) < 5 * 60 * 1000 &&
+              isAuthenticated &&
+              currentUser;
+
+            if (recentlyVerified) {
+              setServerVerified(true);
+              return;
+            }
+
             const result = await dispatch(checkAuthStatus());
 
             if (checkAuthStatus.fulfilled.match(result)) {
+                try {
+                    sessionStorage.setItem("adminAuthVerifiedAt", String(Date.now()));
+                } catch {
+                    /* ignore */
+                }
                 // /me may not return `role` — fall back to localStorage (set at login)
                 const serverRole =
                     result.payload?.user?.role || localStorage.getItem("role");

@@ -103,6 +103,8 @@ company: {
 // Indexes
 userSchema.index({ email: 1, status: 'active' });
 userSchema.index({ role: 1 });
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ role: 1, isActive: 1, createdAt: -1 });
 userSchema.index({ passwordResetToken: 1 });
 userSchema.index({ passwordResetExpiry: 1 });
 

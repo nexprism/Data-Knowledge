@@ -35,6 +35,7 @@ const SecurityIncidents = () => {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Security Incidents</h1>
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full leading-normal">
           <thead>
             <tr>
@@ -98,8 +99,9 @@ const SecurityIncidents = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
-      <div className="flex justify-between items-center mt-4">
+      <div className="flex flex-wrap justify-between items-center gap-3 mt-4">
         <button
           onClick={handlePreviousPage}
           disabled={page <= 1}

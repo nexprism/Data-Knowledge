@@ -26,14 +26,6 @@ export const createTicket = async (req, res) => {
 
     const ticket = await ticketService.create(ticketData);
 
-    // Cache to Redis (same as before)
-    const ticketId = ticket._id.toString();
-    const ticketCacheData = {
-      ...ticket.toObject()
-    };
-
-    //console.log('🗂️ Redis cache updated for ticket:', ticketId);
-
     return res.status(201).json({
       success: true,
       message: '✅ Support ticket created successfully',
@@ -70,45 +62,7 @@ export const getTicketById = async (req, res) => {
       });
     }
 
-    // if (cachedTicket) {
-    //   //console.log('🚀 Ticket data retrieved from Redis cache');
-    //   const ticketData = JSON.parse(cachedTicket);
-      
-    //   // Check access permissions
-    //   if (!isUserAdmin && ticketData.userId.toString() !== userId.toString()) {
-    //     return res.status(403).json({
-    //       success: false,
-    //       message: 'Access denied. You can only view your own tickets.',
-    //       data: {},
-    //       err: { message: 'Unauthorized access' },
-    //     });
-    //   }
-
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: '✅ Ticket retrieved successfully',
-    //     data: { ticket: ticketData },
-    //     err: {},
-    //   });
-    // }
-
     const ticket = await ticketService.getById(id, userId, isUserAdmin);
-    const ticketCacheData = {
-      _id: ticket._id,
-      userId: ticket.userId,
-      subject: ticket.subject,
-      category: ticket.category,
-      description: ticket.description,
-      status: ticket.status,
-      priority: ticket.priority,
-      messages: ticket.messages,
-      attachments: ticket.attachments,
-      isDeleted: ticket.isDeleted,
-      createdAt: ticket.createdAt,
-      updatedAt: ticket.updatedAt,
-    };
-
-    //console.log('🗂️ Ticket data cached in Redis:', id);
 
     return res.status(200).json({
       success: true,
@@ -212,24 +166,6 @@ export const updateTicket = async (req, res) => {
     }
 
     const updatedTicket = await ticketService.updateById(id, req.body, userId, isUserAdmin);
-
-    const ticketId = updatedTicket._id.toString();
-    const ticketCacheData = {
-      _id: updatedTicket._id,
-      userId: updatedTicket.userId,
-      subject: updatedTicket.subject,
-      category: updatedTicket.category,
-      description: updatedTicket.description,
-      status: updatedTicket.status,
-      priority: updatedTicket.priority,
-      messages: updatedTicket.messages,
-      attachments: updatedTicket.attachments,
-      isDeleted: updatedTicket.isDeleted,
-      createdAt: updatedTicket.createdAt,
-      updatedAt: updatedTicket.updatedAt,
-    };
-
-    //console.log('🗂️ Redis cache updated for ticket:', ticketId);
 
     return res.status(200).json({
       success: true,

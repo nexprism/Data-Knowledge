@@ -121,9 +121,12 @@ class CourseService {
     }
   }
 
-  async getById(id) {
+  async getById(id, options = {}) {
     try {
-      const course = await this.repository.findById(id);
+      const course =
+        options.view === 'adminEditor'
+          ? await this.repository.findByIdAdminEditor(id)
+          : await this.repository.findById(id);
       if (!course) {
         throw new Error("Course not found");
       }
@@ -229,8 +232,14 @@ class CourseService {
       }
 
       const coursesWithPagination = await this.repository.findAll(options);
+      const skipPlans =
+        options.view === "adminList" || options.view === "adminTable";
       // --- Populate plans for each course here ---
-      if (coursesWithPagination?.data && Array.isArray(coursesWithPagination.data)) {
+      if (
+        !skipPlans &&
+        coursesWithPagination?.data &&
+        Array.isArray(coursesWithPagination.data)
+      ) {
         const CoursePlan = (await import("../models/CoursePlan.js")).default;
         const courseIds = coursesWithPagination.data.map(c => c._id);
         // Match both string and ObjectId courseId in CoursePlan

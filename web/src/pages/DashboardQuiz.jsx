@@ -354,8 +354,8 @@ const DashboardQuiz = () => {
                                     ) : leaderboard.length === 0 ? (
                                         <p className="text-slate-500">No rankings available yet.</p>
                                     ) : (
-                                        <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-                                            <table className="w-full text-sm text-left">
+                                        <div className="bg-white border rounded-xl overflow-hidden shadow-sm overflow-x-auto">
+                                            <table className="w-full min-w-[320px] text-sm text-left">
                                                 <thead className="bg-slate-50 text-slate-600 font-mono text-[10px] uppercase tracking-wider">
                                                     <tr>
                                                         <th className="px-4 py-3">Rank</th>

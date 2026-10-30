@@ -10,27 +10,6 @@ export const createCoupon = async (req, res) => {
 
     const coupon = await couponService.create(req.body);
 
-    const couponId = coupon._id.toString();
-    const couponCacheData = {
-      _id: coupon._id,
-      code: coupon.code,
-      description: coupon.description,
-      discountType: coupon.discountType,
-      discountAmount: coupon.discountAmount,
-      discountPercent: coupon.discountPercent,
-      maxDiscountValue: coupon.maxDiscountValue,
-      minOrderAmount: coupon.minOrderAmount,
-      usageLimit: coupon.usageLimit,
-      usageLimitPerUser: coupon.usageLimitPerUser,
-      startDate: coupon.startDate,
-      endDate: coupon.endDate,
-      isActive: coupon.isActive,
-      createdAt: coupon.createdAt,
-      updatedAt: coupon.updatedAt,
-    };
-
-    //console.log('🗂️ Redis cache updated for coupon:', couponId);
-
     return res.status(201).json({
       success: true,
       message: ' Coupon created successfully',
@@ -77,26 +56,6 @@ export const getCouponById = async (req, res) => {
 
 
     const coupon = await couponService.getById(id);
-    const couponCacheData = {
-      _id: coupon._id,
-      code: coupon.code,
-      description: coupon.description,
-      discountType: coupon.discountType,
-      discountAmount: coupon.discountAmount,
-      discountPercent: coupon.discountPercent,
-      maxDiscountValue: coupon.maxDiscountValue,
-      minOrderAmount: coupon.minOrderAmount,
-      usageLimit: coupon.usageLimit,
-      usageLimitPerUser: coupon.usageLimitPerUser,
-      startDate: coupon.startDate,
-      endDate: coupon.endDate,
-      isActive: coupon.isActive,
-      applicableCourses: coupon.applicableCourses,
-      createdAt: coupon.createdAt,
-      updatedAt: coupon.updatedAt,
-    };
-
-    //console.log('🗂️ Coupon data cached in Redis:', id);
 
     return res.status(200).json({
       success: true,
@@ -182,28 +141,6 @@ export const updateCoupon = async (req, res) => {
     }
 
     const updatedCoupon = await couponService.updateById(id, req.body);
-
-    const couponId = updatedCoupon._id.toString();
-    const couponCacheData = {
-      _id: updatedCoupon._id,
-      code: updatedCoupon.code,
-      description: updatedCoupon.description,
-      discountType: updatedCoupon.discountType,
-      discountAmount: updatedCoupon.discountAmount,
-      discountPercent: updatedCoupon.discountPercent,
-      maxDiscountValue: updatedCoupon.maxDiscountValue,
-      minOrderAmount: updatedCoupon.minOrderAmount,
-      usageLimit: updatedCoupon.usageLimit,
-      usageLimitPerUser: updatedCoupon.usageLimitPerUser,
-      startDate: updatedCoupon.startDate,
-      endDate: updatedCoupon.endDate,
-      isActive: updatedCoupon.isActive,
-      applicableCourses: updatedCoupon.applicableCourses,
-      createdAt: updatedCoupon.createdAt,
-      updatedAt: updatedCoupon.updatedAt,
-    };
-
-    //console.log('🗂️ Redis cache updated for coupon:', couponId);
 
     return res.status(200).json({
       success: true,

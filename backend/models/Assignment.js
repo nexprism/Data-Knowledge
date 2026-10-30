@@ -64,6 +64,9 @@ const assignmentSchema = new mongoose.Schema({
   }
 });
 
+assignmentSchema.index({ courseId: 1 });
+assignmentSchema.index({ lessonId: 1 });
+
 const Assignment = mongoose.models.Assignment || mongoose.model('Assignment', assignmentSchema);
 
 
