@@ -1,5 +1,4 @@
 import JobPostService from '../service/jobPostService.js';
-import { initRedis } from '../config/redisClient.js';
 import emailService from '../utils/emailService.js';
 import notificationService from '../service/notificationService.js';
 import User from '../models/user.js';
@@ -101,10 +100,7 @@ export const createJobPost = async (req, res) => {
 
     const jobPost = await jobPostService.create(jobPostData);
 
-    const redis = await initRedis();
     // Invalidate all jobposts cache and user's jobposts cache
-    await redis.del('jobposts:all*');
-    await redis.del(`jobposts:user:${req.user._id}*`);
 
     return res.status(201).json({
       success: true,
@@ -304,11 +300,7 @@ export const submitProposal = async (req, res) => {
     }
 
     // Invalidate job cache for this job and all jobposts lists
-    const redis = await initRedis();
-    await redis.del(`jobpost:${jobId}`);
-    await redis.del('jobposts:all*');
     if (updatedJob && updatedJob.createdBy) {
-      await redis.del(`jobposts:user:${updatedJob.createdBy}*`);
     }
 
     return res.status(200).json({
@@ -412,13 +404,8 @@ export const updateJobPost = async (req, res) => {
     const jobPost = await jobPostService.update(id, updateData);
 
     // Update Redis cache
-    const redis = await initRedis();
-    await redis.del(`jobpost:${id}`);
-    await redis.del('jobposts:all*');
     if (jobPost && jobPost.createdBy) {
-      await redis.del(`jobposts:user:${jobPost.createdBy}*`);
     }
-    await redis.setEx(`jobpost:${id}`, 300, JSON.stringify(jobPost));
 
     return res.status(200).json({
       success: true,
@@ -441,11 +428,7 @@ export const deleteJobPost = async (req, res) => {
     const job = await jobPostService.getById(id);
     await jobPostService.delete(id);
 
-    const redis = await initRedis();
-    await redis.del('jobposts:all*');
-    await redis.del(`jobpost:${id}`);
     if (job && job.createdBy) {
-      await redis.del(`jobposts:user:${job.createdBy}*`);
     }
 
     return res.status(200).json({
@@ -464,21 +447,10 @@ export const deleteJobPost = async (req, res) => {
 export const getJobPostById = async (req, res) => {
   try {
     const { id } = req.params;
-    const redis = await initRedis();
     const cacheKey = `jobpost:${id}`;
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: 'Job post fetched from cache',
-        data: JSON.parse(cached),
-        fromCache: true
-      });
-    }
 
     const jobPost = await jobPostService.getById(id);
-    await redis.setEx(cacheKey, 300, JSON.stringify(jobPost));
 
     return res.status(200).json({
       success: true,
@@ -620,11 +592,7 @@ export const setAdminApprovalStatus = async (req, res) => {
     }
 
     // Invalidate cache
-    const redis = await initRedis();
-    await redis.del(`jobpost:${id}`);
-    await redis.del('jobposts:all*');
     if (updated && updated.createdBy) {
-      await redis.del(`jobposts:user:${updated.createdBy._id || updated.createdBy}*`);
     }
 
     return res.status(200).json({

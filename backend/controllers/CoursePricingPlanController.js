@@ -1,5 +1,4 @@
 import CoursePricingPlanService from '../service/CoursePricingPlanService.js';
-import { initRedis } from '../config/redisClient.js';
 
 const pricingPlanService = new CoursePricingPlanService();
 
@@ -14,7 +13,6 @@ export const createPricingPlan = async (req, res) => {
 
     const pricingPlan = await pricingPlanService.create(pricingPlanData);
 
-    const redis = await initRedis();
     const planId = pricingPlan._id.toString();
     const planCacheData = {
       _id: pricingPlan._id,
@@ -30,7 +28,6 @@ export const createPricingPlan = async (req, res) => {
       updatedAt: pricingPlan.updatedAt,
     };
 
-    await redis.setEx(`pricingPlan:${planId}`, 3600, JSON.stringify(planCacheData));
     //console.log('🗂️ Redis cache updated for pricing plan:', planId);
 
     return res.status(201).json({
@@ -78,18 +75,6 @@ export const getPricingPlanById = async (req, res) => {
       });
     }
 
-    const redis = await initRedis();
-    const cachedPlan = await redis.get(`pricingPlan:${id}`);
-    if (cachedPlan) {
-      //console.log('🚀 Pricing plan data retrieved from Redis cache');
-      const planData = JSON.parse(cachedPlan);
-      return res.status(200).json({
-        success: true,
-        message: '✅ Pricing plan retrieved successfully',
-        data: { pricingPlan: planData },
-        err: {},
-      });
-    }
 
     const pricingPlan = await pricingPlanService.getById(id);
     const planCacheData = {
@@ -106,7 +91,6 @@ export const getPricingPlanById = async (req, res) => {
       updatedAt: pricingPlan.updatedAt,
     };
 
-    await redis.setEx(`pricingPlan:${id}`, 3600, JSON.stringify(planCacheData));
     //console.log('🗂️ Pricing plan data cached in Redis:', id);
 
     return res.status(200).json({
@@ -193,18 +177,6 @@ export const getPricingPlansByCourseId = async (req, res) => {
       });
     }
 
-    const redis = await initRedis();
-    const cachedPlans = await redis.get(`pricingPlans:course:${courseId}`);
-    if (cachedPlans) {
-      //console.log('🚀 Pricing plans data retrieved from Redis cache for course:', courseId);
-      const plansData = JSON.parse(cachedPlans);
-      return res.status(200).json({
-        success: true,
-        message: '✅ Pricing plans retrieved successfully',
-        data: { pricingPlans: plansData },
-        err: {},
-      });
-    }
 
     const pricingPlans = await pricingPlanService.getByCourseId(courseId);
     const plansCacheData = pricingPlans.map(plan => ({
@@ -221,7 +193,6 @@ export const getPricingPlansByCourseId = async (req, res) => {
       updatedAt: plan.updatedAt,
     }));
 
-    await redis.setEx(`pricingPlans:course:${courseId}`, 3600, JSON.stringify(plansCacheData));
     //console.log('🗂️ Pricing plans data cached in Redis for course:', courseId);
 
     return res.status(200).json({
@@ -270,7 +241,6 @@ export const updatePricingPlan = async (req, res) => {
 
     const updatedPlan = await pricingPlanService.updateById(id, updateData);
 
-    const redis = await initRedis();
     const planId = updatedPlan._id.toString();
     const planCacheData = {
       _id: updatedPlan._id,
@@ -286,7 +256,6 @@ export const updatePricingPlan = async (req, res) => {
       updatedAt: updatedPlan.updatedAt,
     };
 
-    await redis.setEx(`pricingPlan:${planId}`, 3600, JSON.stringify(planCacheData));
     //console.log('🗂️ Redis cache updated for pricing plan:', planId);
 
     return res.status(200).json({
@@ -338,8 +307,6 @@ export const deletePricingPlan = async (req, res) => {
 
     const deletedPlan = await pricingPlanService.softDeleteById(id);
 
-    const redis = await initRedis();
-    await redis.del(`pricingPlan:${id}`);
     //console.log('🗑️ Pricing plan cache cleared:', id);
 
     return res.status(200).json({

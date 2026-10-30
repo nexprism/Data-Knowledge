@@ -1,20 +1,6 @@
 import videoLessonService from '../service/videoLessonService.js';
 import fs from "fs";
 import path from "path";
-import { initRedis } from '../config/redisClient.js';
-
-const flushVideoCaches = async () => {
-  try {
-    const redis = await initRedis();
-    await redis.del('lessons:all*');
-    const lessonKeys = await redis.keys('lesson:*');
-    if (lessonKeys && lessonKeys.length > 0) await redis.del(lessonKeys);
-    const courseKeys = await redis.keys('course*');
-    if (courseKeys && courseKeys.length > 0) await redis.del(courseKeys);
-  } catch (err) {
-    console.warn('Redis cache flush error:', err.message);
-  }
-};
 
 class VideoLessonController {
   // Create a new video lesson with file upload
@@ -42,7 +28,6 @@ class VideoLessonController {
       );
 
       if (result.success) {
-        await flushVideoCaches();
         return res.status(201).json({
           success: true,
           data: result.data,
@@ -93,7 +78,6 @@ class VideoLessonController {
       );
 
       if (result.success) {
-        await flushVideoCaches();
         return res.status(200).json({
           success: true,
           data: result.data,
@@ -236,7 +220,6 @@ class VideoLessonController {
       const result = await videoLessonService.deleteVideoLesson(id);
       
       if (result.success) {
-        await flushVideoCaches();
         return res.status(200).json({
           success: true,
           message: result.message

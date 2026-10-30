@@ -1,11 +1,8 @@
 import pageService from "../service/pageService.js";
-import { initRedis } from "../config/redisClient.js";
 
 export const createPage = async (req, res) => {
   try {
     const page = await pageService.createPage(req.body);
-    const redis = await initRedis();
-    await redis.del("pages:all*");
 
     res.status(201).json({
       success: true,
@@ -19,21 +16,10 @@ export const createPage = async (req, res) => {
 
 export const getAllPages = async (req, res) => {
   try {
-    const redis = await initRedis();
     const cacheKey = `pages:all`;
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: "📦 Pages fetched from cache",
-        fromCache: true,
-        data: JSON.parse(cached),
-      });
-    }
 
     const pages = await pageService.getAllPages();
-    await redis.setEx(cacheKey, 300, JSON.stringify(pages));
 
     res.status(200).json({
       success: true,
@@ -75,9 +61,6 @@ export const updatePage = async (req, res) => {
       });
     }
 
-    const redis = await initRedis();
-    await redis.del("pages:all*");
-    await redis.del(`page:${req.params.id}`);
 
     res.status(200).json({
       success: true,
@@ -93,9 +76,6 @@ export const deletePage = async (req, res) => {
   try {
     await pageService.deletePage(req.params.id);
 
-    const redis = await initRedis();
-    await redis.del("pages:all*");
-    await redis.del(`page:${req.params.id}`);
 
     res.status(200).json({
       success: true,

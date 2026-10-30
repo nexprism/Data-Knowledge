@@ -11,7 +11,6 @@ import { Server } from 'socket.io';
 import app from './app.js';
 import { connectToDatabase } from './db/connect.js';
 import { ServerConfig } from './config/server.config.js';
-import { initRedis } from './config/redisClient.js';
 import videoSocketHandler from './sockets/videoSocketHandler.js';
 import jwt from 'jsonwebtoken';
 import Message from './models/Message.js';
@@ -578,13 +577,12 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start server after initializing DB + Redis
+// Start server after initializing DB
 const PORT = process.env.PORT || ServerConfig.port || 4000;
 
 const startServer = async () => {
   try {
     await connectToDatabase();
-    await initRedis();
     server.listen(PORT, () => {
       console.log(`🚀 Server + WebSocket running on port ${PORT}`);
     });

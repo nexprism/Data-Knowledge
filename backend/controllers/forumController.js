@@ -25,7 +25,6 @@ export const getMyThreads = async (req, res) => {
   }
 };
 import ForumService from "../service/forumService.js";
-import { initRedis } from "../config/redisClient.js";
 import ForumThread from "../models/ForumThread.js";
 import ForumReply from "../models/ForumReply.js";
 import User from "../models/user.js"; // Add this import
@@ -95,8 +94,6 @@ export const createThread = async (req, res) => {
 
 
 
-    const redis = await initRedis();
-    await redis.del(`forum:threads:${threadData.courseId}*`);
 
     res
       .status(201)
@@ -128,17 +125,7 @@ export const getAllThreads = async (req, res) => {
     };
 
     const cacheKey = `forum:threads:${courseId}:${JSON.stringify(options)}`;
-    const redis = await initRedis();
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: "Threads from cache",
-        ...JSON.parse(cached),
-        fromCache: true,
-      });
-    }
 
     const threads = await forumService.getAllThreads(options);
 
@@ -150,7 +137,6 @@ export const getAllThreads = async (req, res) => {
       return !shadowIds.includes(creatorId);
     }).map(t => sanitizeThread(t, userIdStr));
 
-    await redis.setEx(cacheKey, 300, JSON.stringify({ ...threads, data: filteredThreads }));
 
     const total = filteredThreads.length;
     res.status(200).json({
@@ -171,16 +157,7 @@ export const getThreadById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const redis = await initRedis();
-    const cached = await redis.get(`forum:thread:${id}`);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        data: JSON.parse(cached),
-        fromCache: true,
-      });
-    }
 
     const thread = await forumService.getThreadById(id);
     if (!thread) {
@@ -192,7 +169,6 @@ export const getThreadById = async (req, res) => {
     const userIdStr = req.user?._id.toString();
     const sanitized = sanitizeThread(thread, userIdStr);
 
-    await redis.setEx(`forum:thread:${id}`, 300, JSON.stringify(sanitized));
     res.status(200).json({ success: true, data: sanitized });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -220,17 +196,10 @@ export const updateThread = async (req, res) => {
 
     const updated = await forumService.updateThread(id, threadData, userId, isAdmin);
 
-    const redis = await initRedis();
-    await redis.del(`forum:thread:${id}`);
-    await redis.del(`forum:thread:admin:${id}`);
-    await redis.del(`forum:threads:${updated.courseId}*`);
-    await redis.del(`forum:threads:*`);
-    await redis.del(`forum:replies:${id}*`);
 
     const cacheKey = updated.courseId
       ? `forum:tags:${updated.courseId}`
       : 'forum:tags:all';
-    await redis.del(cacheKey);
 
     const sanitized = sanitizeThread(updated, userId.toString());
     res
@@ -249,9 +218,6 @@ export const deleteThread = async (req, res) => {
 
     const deleted = await forumService.deleteThread(id, userId, isAdmin);
 
-    const redis = await initRedis();
-    await redis.del(`forum:threads:*`);
-    await redis.del(`forum:thread:${id}`);
 
     res
       .status(200)
@@ -272,9 +238,6 @@ export const pinThread = async (req, res) => {
 
     const updated = await forumService.pinThread(id, isPinned);
 
-    const redis = await initRedis();
-    await redis.del(`forum:threads:*`);
-    await redis.del(`forum:thread:${id}`);
 
     res.status(200).json({
       success: true,
@@ -326,8 +289,6 @@ export const likeThread = async (req, res) => {
       }
     }
 
-    const redis = await initRedis();
-    await redis.del(`forum:thread:${id}`);
 
     const sanitized = sanitizeThread(result.thread, userId.toString());
     res
@@ -422,8 +383,6 @@ export const createReply = async (req, res) => {
       }
     }
 
-    const redis = await initRedis();
-    await redis.del(`forum:replies:${threadId}*`);
 
     res
       .status(201)
@@ -491,8 +450,6 @@ export const updateReply = async (req, res) => {
 
     const updated = await forumService.updateReply(id, replyData, userId);
 
-    const redis = await initRedis();
-    await redis.del(`forum:replies:*`);
 
     const sanitized = sanitizeReply(updated, userId.toString());
     res
@@ -511,8 +468,6 @@ export const deleteReply = async (req, res) => {
 
     const deleted = await forumService.deleteReply(id, userId, isAdmin);
 
-    const redis = await initRedis();
-    await redis.del(`forum:replies:*`);
 
     res
       .status(200)
@@ -529,8 +484,6 @@ export const likeReply = async (req, res) => {
 
     const result = await forumService.likeReply(id, userId);
 
-    const redis = await initRedis();
-    await redis.del(`forum:replies:*`);
 
     const sanitized = sanitizeReply(result.reply, userId.toString());
     res
@@ -761,8 +714,6 @@ export const getAllTags = async (req, res) => {
       ? `forum:tags:${courseId}`
       : 'forum:tags:all';
 
-    const redis = await initRedis();
-    const cached = await redis.get(cacheKey);
 
     // if (cached) {
     //   return res.status(200).json({
@@ -775,7 +726,6 @@ export const getAllTags = async (req, res) => {
 
     const tags = await forumService.getAllTags(courseId);
 
-    await redis.setEx(cacheKey, 600, JSON.stringify(tags)); // Cache for 10 minutes
 
     res.status(200).json({
       success: true,
@@ -1000,8 +950,6 @@ export const updateThreadOpenSource = async (req, res) => {
       return res.status(404).json({ success: false, message: "Thread not found" });
     }
 
-    const redis = await initRedis();
-    await redis.del(`forum:threads:${updatedThread.courseId}*`);
 
     const sanitized = sanitizeThread(updatedThread, req.user?._id?.toString());
     res.status(200).json({
@@ -1019,17 +967,8 @@ export const getThreadByIdAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const redis = await initRedis();
 
     // Check Redis cache first
-    const cached = await redis.get(`forum:thread:admin:${id}`);
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        data: JSON.parse(cached),
-        fromCache: true,
-      });
-    }
 
     const thread = await forumService.getThreadByIdAdmin(id);
 
@@ -1040,12 +979,6 @@ export const getThreadByIdAdmin = async (req, res) => {
     }
 
     const sanitized = sanitizeThread(thread, req.user?._id?.toString());
-
-    await redis.setEx(
-      `forum:thread:admin:${id}`,
-      300,
-      JSON.stringify(sanitized)
-    );
 
     return res.status(200).json({ success: true, data: sanitized });
   } catch (err) {

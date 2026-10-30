@@ -10,7 +10,6 @@ import Certificate from "../models/Certificate.js";
 import UserService from "../service/userService.js";
 import User from "../models/user.js";
 import { Token } from "../utils/index.js"; // contains generateToken, setTokensCookies, etc.
-import { initRedis } from "../config/redisClient.js";
 import emailService from '../utils/emailService.js';
 import notificationService from '../utils/notificationService.js';
 import jwt from 'jsonwebtoken';
@@ -3091,18 +3090,7 @@ export const buyNow = async (req, res) => {
     //   oldAccessTokenExp = decoded?.exp ? decoded.exp * 1000 : null;
     // }
 
-    const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } =
-      await Token.generateTokens(guestUser);
-
-    const redis = await initRedis();
-
-    if (redis) {
-      const accessTTL = Math.max(1, Math.floor((accessTokenExp - Date.now()) / 1000));
-      const refreshTTL = Math.max(1, Math.floor((refreshTokenExp - Date.now()) / 1000));
-
-      await redis.set(`accessToken:${accessToken}`, "valid", { EX: accessTTL });
-      await redis.set(`refreshToken:${refreshToken}`, userId.toString(), { EX: refreshTTL });
-    }
+    const { accessToken, refreshToken } = await Token.generateTokens(guestUser);
 
     Token.setTokensCookies(res, accessToken, refreshToken);
 

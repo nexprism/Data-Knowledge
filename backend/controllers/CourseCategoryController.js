@@ -1,5 +1,4 @@
 import CourseCategoryService from '../service/CourseCategoryService.js';
-import { initRedis } from '../config/redisClient.js';
 import { upload } from '../middlewares/upload-middleware.js'; // Import upload middleware
 import path from 'path';
 import fs from 'fs/promises'; // For file system operations
@@ -31,7 +30,6 @@ export const createCategory = async (req, res) => {
 
     const category = await categoryService.create(categoryData);
 
-    const redis = await initRedis();
     const categoryId = category._id.toString();
     const categoryCacheData = {
       _id: category._id,
@@ -44,7 +42,6 @@ export const createCategory = async (req, res) => {
       updatedAt: category.updatedAt
     };
 
-    await redis.setEx(`category:${categoryId}`, 3600, JSON.stringify(categoryCacheData));
     //console.log('🗂️ Redis cache updated for category:', categoryId);
 
     return res.status(201).json({
@@ -200,7 +197,6 @@ export const updateCategory = async (req, res) => {
 
     const updatedCategory = await categoryService.updateById(id, updateData);
 
-    const redis = await initRedis();
     const categoryId = updatedCategory._id.toString();
     const categoryCacheData = {
       _id: updatedCategory._id,
@@ -213,7 +209,6 @@ export const updateCategory = async (req, res) => {
       updatedAt: updatedCategory.updatedAt
     };
 
-    await redis.setEx(`category:${categoryId}`, 3600, JSON.stringify(categoryCacheData));
     //console.log('🗂️ Redis cache updated for category:', categoryId);
 
     return res.status(200).json({
@@ -266,8 +261,6 @@ export const deleteCategory = async (req, res) => {
 
     const deletedCategory = await categoryService.softDeleteById(id);
 
-    const redis = await initRedis();
-    await redis.del(`category:${id}`);
     //console.log('🗑️ Category cache cleared:', id);
 
     return res.status(200).json({

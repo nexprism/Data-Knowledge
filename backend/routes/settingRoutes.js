@@ -5,14 +5,10 @@ import {
   getTaxAndPaymentSettingsController,
   updateTaxAndPaymentSettingsController,
   calculatePricingPreviewController,
-  getRedisStatusController,
-  toggleRedisController,
-  testRedisConnectionController,
-  flushRedisCacheController,
 } from '../controllers/settingController.js';
 import accessTokenAutoRefresh from '../middlewares/accessTokenAutoRefresh.js';
 import passport from 'passport';
-import { isAdmin, isSuperAdmin } from '../middlewares/isAdmin.js';
+import { isAdmin } from '../middlewares/isAdmin.js';
 
 const router = express.Router();
 
@@ -20,39 +16,6 @@ const router = express.Router();
 // Public read for student checkout & preview
 router.get('/tax-payment', getTaxAndPaymentSettingsController);
 router.post('/calculate-preview', calculatePricingPreviewController);
-
-// Redis Connection & Cache Management (Super Admin only)
-router.get(
-  '/redis/status',
-  accessTokenAutoRefresh,
-  passport.authenticate('jwt', { session: false }),
-  isSuperAdmin,
-  getRedisStatusController
-);
-
-router.post(
-  '/redis/toggle',
-  accessTokenAutoRefresh,
-  passport.authenticate('jwt', { session: false }),
-  isSuperAdmin,
-  toggleRedisController
-);
-
-router.post(
-  '/redis/test',
-  accessTokenAutoRefresh,
-  passport.authenticate('jwt', { session: false }),
-  isSuperAdmin,
-  testRedisConnectionController
-);
-
-router.post(
-  '/redis/flush',
-  accessTokenAutoRefresh,
-  passport.authenticate('jwt', { session: false }),
-  isSuperAdmin,
-  flushRedisCacheController
-);
 
 // Admin-only update for tax & payment settings
 router.put(

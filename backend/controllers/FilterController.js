@@ -1,5 +1,4 @@
 import FilterService from '../service/FilterService.js';
-import { initRedis } from '../config/redisClient.js';
 
 
 const filterService = new FilterService();
@@ -7,8 +6,6 @@ const filterService = new FilterService();
 export const createFilter = async (req, res) => {
   try {
     const filter = await filterService.create(req.body);
-    const redis = await initRedis();
-    await redis.setEx(`filter:${filter._id}`, 3600, JSON.stringify(filter));
     return res.status(201).json({ success: true, message: 'Filter created', data: { filter } });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -18,13 +15,7 @@ export const createFilter = async (req, res) => {
 export const getFilterById = async (req, res) => {
   try {
     const { id } = req.params;
-    const redis = await initRedis();
-    const cached = await redis.get(`filter:${id}`);
-    if (cached) {
-      return res.status(200).json({ success: true, message: 'Filter from cache', data: { filter: JSON.parse(cached) } });
-    }
     const filter = await filterService.getById(id);
-    await redis.setEx(`filter:${id}`, 3600, JSON.stringify(filter));
     return res.status(200).json({ success: true, message: 'Filter retrieved', data: { filter } });
   } catch (err) {
     return res.status(404).json({ success: false, message: err.message });
@@ -50,8 +41,6 @@ export const updateFilter = async (req, res) => {
   try {
     const { id } = req.params;
     const updated = await filterService.updateById(id, req.body);
-    const redis = await initRedis();
-    await redis.setEx(`filter:${id}`, 3600, JSON.stringify(updated));
     return res.status(200).json({ success: true, message: 'Filter updated', data: { filter: updated } });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -62,8 +51,6 @@ export const deleteFilter = async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await filterService.softDeleteById(id);
-    const redis = await initRedis();
-    await redis.del(`filter:${id}`);
     return res.status(200).json({ success: true, message: 'Filter deleted (soft)', data: { filter: deleted } });
   } catch (err) {
     return res.status(404).json({ success: false, message: err.message });

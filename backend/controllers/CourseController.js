@@ -1,5 +1,4 @@
 import CourseService from "../service/CourseService.js";
-import { initRedis } from "../config/redisClient.js";
 import Course from '../models/Course.js';
 import Module from '../models/Module.js';
 import Lesson from '../models/Lesson.js';
@@ -1789,12 +1788,9 @@ export const updateCourse = async (req, res) => {
     // Refetch the fresh course with newly updated plans
     const freshCourse = await courseService.getById(id);
 
-    const redis = await initRedis();
     const courseId = (freshCourse?._id || updatedCourse._id || id).toString();
     if (freshCourse) {
-      await redis.setEx(`course:${courseId}`, 3600, JSON.stringify(freshCourse));
     } else {
-      await redis.del(`course:${courseId}`);
     }
 
     return res.status(200).json({
@@ -1848,8 +1844,6 @@ export const deleteCourse = async (req, res) => {
 
     const deletedCourse = await courseService.softDeleteById(id, req.user);
 
-    const redis = await initRedis();
-    await redis.del(`course:${id}`);
     // //console.log("🗑️ Course cache cleared:", id);
 
     return res.status(200).json({

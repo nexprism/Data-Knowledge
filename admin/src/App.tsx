@@ -117,9 +117,6 @@ const CreateCertificateTemplate = lazy(
 const ConsultationSlots = lazy(() => import("./pages/Consultations/ConsultationSlots"));
 const ConsultationBookings = lazy(() => import("./pages/Consultations/ConsultationBookings"));
 const TaxPaymentSettings = lazy(() => import("./pages/settings/TaxPaymentSettings"));
-const RedisSettings = lazy(() => import("./pages/settings/RedisSettings"));
-
-
 export default function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
 
@@ -327,9 +324,6 @@ export default function App() {
                 <Route path="/about-snapshot" element={<AboutSnapshotPage />} />
                 <Route path="/admin-users" element={<AdminUsersPage />} />
                 <Route path="/settings/tax-payment" element={<TaxPaymentSettings />} />
-                <Route path="/settings/redis" element={<RedisSettings />} />
-                <Route path="/redis-settings" element={<Navigate to="/settings/redis" replace />} />
-                <Route path="/redis" element={<Navigate to="/settings/redis" replace />} />
                 <Route path="/contact-management" element={<ContactManagement />} />
                 <Route path="/contact" element={<Navigate to="/contact-management" replace />} />
               </Route>

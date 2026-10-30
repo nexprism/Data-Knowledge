@@ -1,6 +1,5 @@
 
 import AssignmentSubmissionService from "../service/assignmentSubmissionService.js";
-import { initRedis } from "../config/redisClient.js";
 import Assignment from "../models/Assignment.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 
@@ -54,9 +53,6 @@ export const submitAssignment = async (req, res) => {
 
     const submission = await service.submit(payload); // Fixed: Call submit on service instance
 
-    const redis = await initRedis();
-    await redis.del(`submissions:user:${req.user._id}`);
-    await redis.del(`submissions:assignment:${payload.assignmentId}`);
 
     res.status(201).json({
       success: true,
@@ -122,20 +118,9 @@ export const getAllSubmissionsForAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.params;
     const cacheKey = `submissions:assignment:${assignmentId}`;
-    const redis = await initRedis();
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: "Submissions fetched from cache",
-        data: JSON.parse(cached),
-        fromCache: true,
-      });
-    }
 
     const submissions = await service.getAllByAssignment(assignmentId);
-    await redis.setEx(cacheKey, 300, JSON.stringify(submissions));
 
     res.status(200).json({
       success: true,
@@ -158,8 +143,6 @@ export const gradeSubmission = async (req, res) => {
       });
     }
 
-    const redis = await initRedis();
-    await redis.del("submissions:*");
 
     res.status(200).json({
       success: true,
@@ -182,8 +165,6 @@ export const deleteSubmission = async (req, res) => {
       });
     }
 
-    const redis = await initRedis();
-    await redis.del("submissions:*");
 
     res.status(200).json({
       success: true,
@@ -237,17 +218,7 @@ export const getSubmissionById = async (req, res) => {
   try {
     const { id } = req.params;
     const cacheKey = `submission:${id}`;
-    const redis = await initRedis();
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: "Submission fetched from cache",
-        data: JSON.parse(cached),
-        fromCache: true,
-      });
-    }
 
     const submission = await service.findById(id);
 
@@ -258,7 +229,6 @@ export const getSubmissionById = async (req, res) => {
       });
     }
 
-    await redis.setEx(cacheKey, 300, JSON.stringify(submission));
     res.status(200).json({
       success: true,
       message: "Submission fetched successfully",

@@ -46,11 +46,8 @@ import aboutSnapshotReducer from "./slices/aboutSnapshot";
 import mentorReducer from "./slices/mentor";
 import adminUsersReducer from "./slices/adminUsers";
 import contactReducer from "./slices/contactSlice";
-import redisReducer from "./slices/redisSlice";
-
 export const store = configureStore({
   reducer: {
-    redis: redisReducer,
     auth: authReducer,
     courseCategory: courseCategoryReducer,
     filter: filter,

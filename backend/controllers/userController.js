@@ -11,15 +11,12 @@ import CourseEnrollment from "../models/CourseEnrollment.js";
 import UserService from "../service/userService.js";
 import { getUserLeaderboard } from "../service/leaderboardService.js"; // <-- Add this import
 import { Token } from "../utils/index.js"; // contains generateToken, setTokensCookies, etc.
-import { initRedis } from "../config/redisClient.js";
 import emailService from "../utils/emailService.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import {
-  cleanupExpiredAccessTokensForUser,
-  getAllAccessTokensForUser,
-  blacklistAccessToken,
-} from "../utils/tokens/generateTokens.js";
+import { blacklistAccessToken } from "../utils/tokens/generateTokens.js";
+import { revokeActiveAccessTokensForUser } from "../services/tokenRevocationService.js";
+import { createEmailOtpChallenge, verifyEmailOtpChallenge } from "../services/emailOtpService.js";
 import UserRefreshToken from "../models/UserRefreshToken.js";
 import DeviceApproval from "../models/DeviceApproval.js";
 import LoginLog from "../models/LoginLog.js";
@@ -93,39 +90,7 @@ export const signup = async (req, res) => {
     }
 
     // Generate tokens
-    const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } = await Token.generateTokens(newUser, req.body.platform || "web", req.body.deviceId);
-
-    // Connect to Redis
-    const redis = await initRedis();
-
-    // Store tokens in Redis with TTL
-    if (redis) {
-      const accessTTL = Math.max(1, Math.floor((accessTokenExp - Date.now()) / 1000));
-      const refreshTTL = Math.max(1, Math.floor((refreshTokenExp - Date.now()) / 1000));
-
-      await redis.set(`accessToken:${accessToken}`, "valid", { EX: accessTTL });
-      await redis.set(`refreshToken:${refreshToken}`, userId, { EX: refreshTTL });
-    }
-
-    // Cache user data in Redis (expires in 1 hour)
-    await redis.setEx(
-      `user:${userId}`,
-      3600,
-      JSON.stringify({
-        _id: newUser._id,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        roles: newUser.roles,
-        profilePicture: newUser.profilePicture,
-        bio: newUser.bio,
-        phone: newUser.phone,
-        address: newUser.address,
-        company: newUser.company,
-        createdAt: newUser.createdAt,
-        updatedAt: newUser.updatedAt,
-        is_verify: newUser.is_verify, // Include is_verify in cache
-      })
-    );
+    const { accessToken, refreshToken } = await Token.generateTokens(newUser, req.body.platform || "web", req.body.deviceId);
 
     // Set tokens as HTTP-only cookies (no maxAge)
     Token.setTokensCookies(res, accessToken, refreshToken);
@@ -526,7 +491,6 @@ export const getMyProfile = async (req, res) => {
 //     }
 
 //     // 🔄 Update Redis cache
-//     const redis = await initRedis();
 //     const userCacheData = {
 //       _id: updatedUser._id,
 //       email: updatedUser.email,
@@ -546,10 +510,7 @@ export const getMyProfile = async (req, res) => {
 //       updatedAt: updatedUser.updatedAt,
 //     };
 
-//     await redis.setEx(`user:${userId}`, 3600, JSON.stringify(userCacheData));
 //     const userSessionKey = `user_session:${userId}`;
-//     if (await redis.exists(userSessionKey)) {
-//       await redis.setEx(userSessionKey, 3600, JSON.stringify(userCacheData));
 //     }
 
 //     return res.status(200).json({
@@ -761,35 +722,6 @@ export const updateProfile = async (req, res) => {
       try {
         await fs.unlink(oldImagePath);
       } catch { }
-    }
-
-    // Update Redis cache
-    const redis = await initRedis();
-    const userCacheData = {
-      _id: updatedUser._id,
-      email: updatedUser.email,
-      fullName: updatedUser.fullName,
-      roles: updatedUser.roles,
-      profilePicture: updatedUser.profilePicture,
-      bio: updatedUser.bio,
-      phone: updatedUser.phone,
-      location: updatedUser.location || '',
-      address: updatedUser.address,
-      company: updatedUser.company, // <-- add company object
-      education: updatedUser.education,
-      skills: updatedUser.skills,
-      enrolledCourses: updatedUser.enrolledCourses,
-      teachingCourses: updatedUser.teachingCourses,
-      qualifications: updatedUser.qualifications,
-      documentation: updatedUser.documentation,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
-    };
-
-    await redis.setEx(`user:${userId}`, 3600, JSON.stringify(userCacheData));
-    const sessionKey = `user_session:${userId}`;
-    if (await redis.exists(sessionKey)) {
-      await redis.setEx(sessionKey, 3600, JSON.stringify(userCacheData));
     }
 
     return res.status(200).json({
@@ -1008,38 +940,7 @@ export const login = async (req, res) => {
     }
 
     // Only generate tokens if everything is successful
-    const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } = await Token.generateTokens(user, platform || "web", deviceId);
-
-    // Connect to Redis
-    const redis = await initRedis();
-
-    // Store tokens in Redis with TTL
-    if (redis) {
-      const accessTTL = Math.max(1, Math.floor((accessTokenExp - Date.now()) / 1000));
-      const refreshTTL = Math.max(1, Math.floor((refreshTokenExp - Date.now()) / 1000));
-
-      await redis.set(`accessToken:${accessToken}`, "valid", { EX: accessTTL });
-      await redis.set(`refreshToken:${refreshToken}`, userId, { EX: refreshTTL });
-
-      // Cache user data in Redis (expires in 1 hour)
-      await redis.setEx(
-        `user:${userId}`,
-        3600,
-        JSON.stringify({
-          _id: user._id,
-          email: user.email,
-          fullName: user.fullName,
-          roles: user.roles,
-          profilePicture: user.profilePicture,
-          bio: user.bio,
-          phone: user.phone,
-          address: user.address,
-          company: user.company,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-        })
-      );
-    }
+    const { accessToken, refreshToken } = await Token.generateTokens(user, platform || "web", deviceId);
 
     // Set tokens as HTTP-only cookies (no maxAge)
     Token.setTokensCookies(res, accessToken, refreshToken);
@@ -1236,42 +1137,6 @@ export const blockUser = async (req, res) => {
     //   } successfully:`,
     //   updatedUser._id
     // );
-
-    // Connect to Redis
-    const redis = await initRedis();
-
-    // Update Redis cache with new user data
-    const userCacheData = {
-      _id: updatedUser._id,
-      email: updatedUser.email,
-      fullName: updatedUser.fullName,
-      roles: updatedUser.roles,
-      profilePicture: updatedUser.profilePicture,
-      bio: updatedUser.bio,
-      phone: updatedUser.phone,
-      address: updatedUser.address,
-      company: updatedUser.company, // <-- add company object
-      education: updatedUser.education,
-      skills: updatedUser.skills,
-      enrolledCourses: updatedUser.enrolledCourses,
-      teachingCourses: updatedUser.teachingCourses,
-      qualifications: updatedUser.qualifications,
-      isActive: updatedUser.isActive,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
-    };
-
-    // Cache updated user data (expires in 1 hour)
-    await redis.setEx(`user:${userId}`, 3600, JSON.stringify(userCacheData));
-
-    // Update user session cache if exists
-    const userSessionKey = `user_session:${userId}`;
-    const sessionExists = await redis.exists(userSessionKey);
-    if (sessionExists) {
-      await redis.setEx(userSessionKey, 3600, JSON.stringify(userCacheData));
-    }
-
-    //console.log("🗂️ Redis cache updated for user:", userId);
 
     return res.status(200).json({
       success: true,
@@ -1529,48 +1394,6 @@ export const resetPassword = async (req, res) => {
       data: {},
       err: error.message,
     });
-  }
-};
-
-// Helper function to invalidate all user tokens
-const invalidateUserTokens = async (userId) => {
-  try {
-    const redis = await initRedis();
-
-    // Get all refresh token keys
-    const refreshTokenKeys = await redis.keys(`refreshToken:*`);
-
-    // Find and delete tokens belonging to this user
-    for (const key of refreshTokenKeys) {
-      const storedUserId = await redis.get(key);
-      if (storedUserId === userId) {
-        await redis.del(key);
-        //console.log(`🗑️ Deleted refresh token: ${key}`);
-      }
-    }
-
-    // Get all access token keys
-    const accessTokenKeys = await redis.keys(`accessToken:*`);
-
-    // Delete all access tokens (more secure approach)
-    // In a production environment, you might want to maintain a user-token mapping
-    for (const key of accessTokenKeys) {
-      const tokenValue = await redis.get(key);
-      if (tokenValue === "valid") {
-        // You could implement additional logic here to check if token belongs to user
-        // For now, we'll clear user-specific cache
-      }
-    }
-
-    // Clear user cache and access token sets
-    await redis.del(`user:accessTokens:web:${userId}`);
-    await redis.del(`user:accessTokens:app:${userId}`);
-    await redis.del(`user:${userId}`);
-    await redis.del(`user_session:${userId}`);
-
-    //console.log(`🗑️ User tokens and cache cleared for: ${userId}`);
-  } catch (error) {
-    console.error("❌ Error invalidating user tokens:", error);
   }
 };
 
@@ -2172,27 +1995,7 @@ export const manageDeviceRequest = async (req, res) => {
       });
 
       // 3. Blacklist all other app access tokens for this user to force immediate logout
-      const previousTokens = await getAllAccessTokensForUser(deviceApproval.userId, "app");
-      if (previousTokens && previousTokens.length > 0) {
-        const now = Date.now();
-        const blacklistPromise = previousTokens.map((prevToken) => {
-          try {
-            const decoded = jwt.decode(prevToken);
-            const exp = decoded?.exp ? decoded.exp * 1000 : now + 1000 * 60 * 60;
-            return blacklistAccessToken(prevToken, exp);
-          } catch (e) {
-            return blacklistAccessToken(prevToken, now + 1000 * 60 * 60);
-          }
-        });
-        await Promise.all(blacklistPromise);
-
-        // Clear the app access token list from Redis
-        const redis = await initRedis();
-        if (redis) {
-          const key = `user:accessTokens:app:${deviceApproval.userId}`;
-          await redis.del(key);
-        }
-      }
+      await revokeActiveAccessTokensForUser(deviceApproval.userId, "app");
 
       // Also mark all other pending requests FOR THE SAME DEVICE as approved and active
       await DeviceApproval.updateMany(
@@ -2339,11 +2142,21 @@ export const sendOtpviaemail = async (req, res) => {
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Connect to Redis
-    const redis = await initRedis();
-
-    // Store OTP in Redis with 10-minute expiration
-    await redis.setEx(`otp:${email}`, 600, otp);
+    try {
+      await createEmailOtpChallenge(email, otp);
+    } catch (otpStoreError) {
+      if (otpStoreError.code === "OTP_RESEND_COOLDOWN") {
+        return res.status(429).json({
+          success: false,
+          is_exist: user ? true : false,
+          is_verify: user ? user.is_verify : false,
+          message: "Please wait before requesting another OTP.",
+          data: {},
+          err: { message: "OTP resend cooldown" },
+        });
+      }
+      throw otpStoreError;
+    }
 
     // Send OTP email
     try {
@@ -2460,37 +2273,7 @@ export const googleLogin = async (req, res) => {
       }
     }
 
-    const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } = await Token.generateTokens(newUser, platform || "web", deviceId);
-
-    const redis = await initRedis();
-
-    // Store tokens in Redis with TTL
-    if (redis) {
-      const accessTTL = Math.max(1, Math.floor((accessTokenExp - Date.now()) / 1000));
-      const refreshTTL = Math.max(1, Math.floor((refreshTokenExp - Date.now()) / 1000));
-
-      await redis.set(`accessToken:${accessToken}`, "valid", { EX: accessTTL });
-      await redis.set(`refreshToken:${refreshToken}`, userId, { EX: refreshTTL });
-    }
-
-    await redis.setEx(
-      `user:${userId}`,
-      3600,
-      JSON.stringify({
-        _id: newUser._id,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        roles: newUser.roles,
-        profilePicture: newUser.profilePicture,
-        bio: newUser.bio,
-        phone: newUser.phone,
-        address: newUser.address,
-        company: newUser.company,
-        createdAt: newUser.createdAt,
-        updatedAt: newUser.updatedAt,
-        is_verify: newUser.is_verify,
-      })
-    );
+    const { accessToken, refreshToken } = await Token.generateTokens(newUser, platform || "web", deviceId);
 
     Token.setTokensCookies(res, accessToken, refreshToken);
 
@@ -2534,22 +2317,17 @@ export const verifyOtpviaemail = async (req, res) => {
       });
     }
 
-    // Connect to Redis
-    const redis = await initRedis();
+    const verification = await verifyEmailOtpChallenge(email, otp);
 
-    // Get stored OTP
-    const storedOtp = await redis.get(`otp:${email}`);
-
-    if (!storedOtp) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP is invalid or expired",
-        data: {},
-        err: { message: "Invalid or expired OTP" },
-      });
-    }
-
-    if (storedOtp !== otp.toString()) {
+    if (!verification.ok) {
+      if (verification.reason === "expired" || verification.reason === "max_attempts") {
+        return res.status(400).json({
+          success: false,
+          message: "OTP is invalid or expired",
+          data: {},
+          err: { message: "Invalid or expired OTP" },
+        });
+      }
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
@@ -2557,9 +2335,6 @@ export const verifyOtpviaemail = async (req, res) => {
         err: { message: "OTP mismatch" },
       });
     }
-
-    // Delete OTP from Redis after successful verification
-    await redis.del(`otp:${email}`);
 
     return res.status(200).json({
       success: true,

@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-  signup, updateProfile, login, getUserById, blockUser, changeUserPassword, forgotPassword, resetPassword, getMyProfile, deleteDocument, getUserDashboard, deleteUser, getOverviewDashboard, deleteEducation, createUserByAdmin, logoutAllSessions, updateFcmToken, sendTestNotification, banOrShadowBanUser, unbanUser,   listDeviceApprovalRequests,
+  signup, updateProfile, login, logout, getUserById, blockUser, changeUserPassword, forgotPassword, resetPassword, getMyProfile, deleteDocument, getUserDashboard, deleteUser, getOverviewDashboard, deleteEducation, createUserByAdmin, logoutAllSessions, updateFcmToken, sendTestNotification, banOrShadowBanUser, unbanUser,   listDeviceApprovalRequests,
   manageDeviceRequest, checkDeviceApprovalStatus, requestDeviceApproval,
   searchUsers, sendOtpviaemail, verifyOtpviaemail, googleLogin, updateUserRole
 } from '../controllers/userController.js';
@@ -105,6 +105,13 @@ userRouter.delete('/education/:educationId',
 userRouter.get("/search", accessTokenAutoRefresh, passport.authenticate("jwt", { session: false }), searchUsers);
 
 userRouter.post('/login', login);
+userRouter.post(
+  '/logout',
+  accessTokenAutoRefresh,
+  passport.authenticate('jwt', { session: false }),
+  isUserBanned,
+  logout
+);
 userRouter.get('/user', accessTokenAutoRefresh, passport.authenticate("jwt", { session: false }), isUserBanned, getUserById);
 userRouter.get('/student-web-profile/:id', accessTokenAutoRefresh, passport.authenticate("jwt", { session: false }), isUserBanned, getStudentWebProfile);
 userRouter.put('/block-unblock', accessTokenAutoRefresh, passport.authenticate("jwt", { session: false }), isAdmin, blockUser);

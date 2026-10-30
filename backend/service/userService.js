@@ -447,95 +447,20 @@ class UserService {
 
   async logoutFromAllDevices(userId) {
     try {
-      const { initRedis } = await import("../config/redisClient.js");
-      const { cleanupExpiredAccessTokensForUser, getAllAccessTokensForUser, blacklistAccessToken } = await import("../utils/tokens/generateTokens.js");
-      const jwt = await import("jsonwebtoken");
+      const { cleanupExpiredAccessTokensForUser } = await import("../utils/tokens/generateTokens.js");
+      const { revokeActiveAccessTokensForUser } = await import("../services/tokenRevocationService.js");
       const UserRefreshToken = (await import("../models/UserRefreshToken.js")).default;
 
-      // Connect to Redis
-      const redis = await initRedis();
-
-      // Get all refresh token keys and find tokens belonging to this user
-      const refreshTokenKeys = await redis.keys(`refreshToken:*`);
-      const userAccessTokens = [];
-
-      for (const key of refreshTokenKeys) {
-        const storedUserId = await redis.get(key);
-        if (storedUserId === userId.toString()) {
-          // Extract the actual refresh token from the key
-          const refreshToken = key.replace('refreshToken:', '');
-
-          // Try to get associated access tokens (if your system stores this mapping)
-          // If not, we'll get them from the utility function
-          await redis.del(key);
-        }
-      }
-
-      // Cleanup expired tokens first for both platforms
       await cleanupExpiredAccessTokensForUser(userId, "web");
       await cleanupExpiredAccessTokensForUser(userId, "app");
-
-      // Get all active access tokens for the user from both platforms
-      const webTokens = await getAllAccessTokensForUser(userId, "web");
-      const appTokens = await getAllAccessTokensForUser(userId, "app");
-      const tokens = [...webTokens, ...appTokens];
-
-      // Blacklist all active access tokens immediately
-      for (const token of tokens) {
-        try {
-          const decoded = jwt.default.decode(token);
-          const exp = decoded?.exp ? decoded.exp * 1000 : Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now if no exp
-
-          // Blacklist the token with proper expiration
-          await blacklistAccessToken(token, exp);
-
-          // Also remove from Redis access token store
-          await redis.del(`accessToken:${token}`);
-
-          console.log(`🚫 Blacklisted access token for user: ${userId}`);
-        } catch (tokenError) {
-          console.error("❌ Error processing token:", tokenError);
-          // Continue with other tokens even if one fails
-        }
-      }
-
-      // Clear both Redis sets
-      await redis.del(`user:accessTokens:web:${userId}`);
-      await redis.del(`user:accessTokens:app:${userId}`);
-
-      // Delete all refresh tokens from database
+      await revokeActiveAccessTokensForUser(userId, "web");
+      await revokeActiveAccessTokensForUser(userId, "app");
       await UserRefreshToken.deleteMany({ userId });
-
-      // Get all access token keys from Redis and remove user's tokens
-      const accessTokenKeys = await redis.keys(`accessToken:*`);
-
-      for (const key of accessTokenKeys) {
-        try {
-          const token = key.replace('accessToken:', '');
-          const decoded = jwt.default.decode(token);
-
-          // Check if token belongs to this user
-          if (decoded && decoded.userId === userId.toString()) {
-            await redis.del(key);
-
-            // Ensure it's blacklisted
-            const exp = decoded.exp ? decoded.exp * 1000 : Date.now() + (24 * 60 * 60 * 1000);
-            await blacklistAccessToken(token, exp);
-          }
-        } catch (error) {
-          // Continue with other tokens
-          console.error("❌ Error processing access token key:", error);
-        }
-      }
-
-      // Clear user cache
-      await redis.del(`user:${userId}`);
-      await redis.del(`user_session:${userId}`);
 
       console.log(`✅ All sessions logged out and tokens blacklisted for user: ${userId}`);
       return {
         success: true,
-        message: "Successfully logged out from all devices and blacklisted all tokens"
+        message: "Successfully logged out from all devices and blacklisted all tokens",
       };
     } catch (error) {
       console.error("❌ Error in logoutFromAllDevices service:", error);

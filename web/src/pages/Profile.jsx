@@ -9,6 +9,7 @@ import SecuritySettings from '../components/profile/SecuritySettings'
 import ProfileTabs from '../components/profile/ProfileTabs'
 import AcademicInfo from '../components/profile/AcademicInfo'
 import { fetchUserProfile } from '../redux/slices/profileSlice'
+import { fetchMyEnrollments } from '../redux/slices/enrollmentSlice'
 import { useLanguage } from '../context/LanguageContext'
 
 const Profile = () => {
@@ -42,6 +43,7 @@ const Profile = () => {
 
   useEffect(() => {
     dispatch(fetchUserProfile())
+    dispatch(fetchMyEnrollments())
   }, [dispatch])
 
   useEffect(() => {

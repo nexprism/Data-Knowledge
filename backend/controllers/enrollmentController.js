@@ -1,6 +1,5 @@
 import enrollmentService from '../service/enrollmentService.js';
 import Course from '../models/Course.js';
-import { initRedis } from '../config/redisClient.js';
 import fcmTokenss from "../models/fcmTokens.js";
 import notificationService from "../utils/notificationService.js";
 import Notification from "../models/Notifications.js";
@@ -13,8 +12,6 @@ export const createEnrollment = async (req, res) => {
     }
     const enrollment = await enrollmentService.createEnrollment(req.body, res);
 
-    const redis = await initRedis();
-    await redis.del('enrollments:all*');
 
     res.status(201).json({
       success: true,
@@ -32,8 +29,6 @@ export const createFreeEnrollment = async (req, res) => {
   try {
     const enrollment = await enrollmentService.createFreeEnrollment(req.body, req, res);
 
-    const redis = await initRedis();
-    await redis.del('enrollments:all*');
 
     res.status(201).json({
       success: true,
@@ -54,21 +49,10 @@ export const getAllEnrollments = async (req, res) => {
     const { userId, courseId, courseBundel } = req.query;
     const options = { userId, courseId, courseBundel };
 
-    const redis = await initRedis();
     const cacheKey = `enrollments:all:${JSON.stringify(options)}`;
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: 'Enrollments fetched from cache',
-        data: JSON.parse(cached),
-        fromCache: true,
-      });
-    }
 
     const enrollments = await enrollmentService.getAllEnrollments(options);
-    await redis.setEx(cacheKey, 300, JSON.stringify(enrollments));
 
     res.status(200).json({
       success: true,
@@ -101,8 +85,6 @@ export const deleteEnrollment = async (req, res) => {
   try {
     await enrollmentService.deleteEnrollment(req.params.id);
 
-    const redis = await initRedis();
-    await redis.del('enrollments:all*');
 
     res.status(200).json({ success: true, message: 'Enrollment deleted successfully' });
   } catch (error) {
@@ -115,9 +97,6 @@ export const updateEnrollment = async (req, res) => {
     const updated = await enrollmentService.updateEnrollment(req.params.id, req.body);
     if (!updated) return res.status(404).json({ success: false, message: 'Enrollment not found' });
 
-    const redis = await initRedis();
-    await redis.del(`enrollment:${req.params.id}`);
-    await redis.del('enrollments:all*');
 
     res.status(200).json({ success: true, message: 'Enrollment updated successfully', data: updated });
   } catch (err) {
@@ -235,8 +214,6 @@ export const adminEnrollStudent = async (req, res) => {
           );
         }
 
-        const redis = await initRedis();
-        await redis.del('enrollments:all*');
 
         return res.status(200).json({
           success: true,
@@ -278,8 +255,6 @@ export const adminEnrollStudent = async (req, res) => {
       }
     }
 
-    const redis = await initRedis();
-    await redis.del('enrollments:all*');
 
     return res.status(201).json({
       success: true,
@@ -317,8 +292,6 @@ export const removeEnrollmentAndUpdateCourse = async (req, res) => {
 
     // Optionally, handle courseBundle similarly if needed
 
-    const redis = await initRedis();
-    await redis.del('enrollments:all*');
 
     return res.status(200).json({
       success: true,
@@ -426,9 +399,6 @@ export const updateAccessExpiry = async (req, res) => {
       .populate('courseBundleId', 'title');
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`enrollment:${id}`);
-    await redis.del('enrollments:all*');
 
     return res.status(200).json({
       success: true,

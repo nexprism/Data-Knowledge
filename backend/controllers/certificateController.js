@@ -1,5 +1,4 @@
 import certificateService from "../service/certificateService.js";
-import { initRedis } from "../config/redisClient.js";
 import courseProgressModel from "../models/Course.js";
 import quizSubmissionModel from "../models/QuizSubmission.js";
 import courseBundleModel from "../models/CourseBundle.js";
@@ -231,8 +230,6 @@ export const createCertificate = async (req, res) => {
       //console.log("No template found for certificate, skipping PDF generation");
     }
 
-    const redis = await initRedis();
-    await redis.del("certificates:all*");
 
     res.status(201).json({
       success: true,
@@ -263,21 +260,10 @@ export const getAllCertificates = async (req, res) => {
 
     const options = { page, limit, search, sortBy, sortOrder, filters };
 
-    const redis = await initRedis();
     const cacheKey = `certificates:all:${JSON.stringify(options)}`;
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: "Certificates fetched from cache",
-        data: JSON.parse(cached),
-        fromCache: true,
-      });
-    }
 
     const data = await certificateService.getAllCertificates(options);
-    await redis.setEx(cacheKey, 300, JSON.stringify(data));
 
     res.status(200).json({
       success: true,
@@ -291,7 +277,6 @@ export const getAllCertificates = async (req, res) => {
 
 export const getCertificateById = async (req, res) => {
   try {
-    const redis = await initRedis();
     // const cacheKey = `certificate:${req.params.id}`;
     // const cached = await redis.get(cacheKey);
 
@@ -347,9 +332,6 @@ export const updateCertificate = async (req, res) => {
       updateData
     );
 
-    const redis = await initRedis();
-    await redis.del("certificates:all*");
-    await redis.del(`certificate:${req.params.id}`);
 
     res.status(200).json({
       success: true,
@@ -375,9 +357,6 @@ export const deleteCertificate = async (req, res) => {
 
     await certificateService.deleteCertificate(req.params.id);
 
-    const redis = await initRedis();
-    await redis.del("certificates:all*");
-    await redis.del(`certificate:${req.params.id}`);
 
     res.status(200).json({
       success: true,

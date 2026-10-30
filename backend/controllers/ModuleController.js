@@ -1,5 +1,4 @@
 import ModuleService from '../service/ModuleService.js';
-import { initRedis } from '../config/redisClient.js';
 import mongoose from 'mongoose';
 import Module from '../models/Module.js';
 import NotificationService from "../service/notificationService.js";
@@ -36,8 +35,6 @@ export const createModule = async (req, res) => {
     };
     await NotificationService.notifyEnrolledUsers(module.courseId, notificationData);
 
-    const redis = await initRedis();
-    await redis.setEx(`module:${module._id}`, 3600, JSON.stringify(module));
     return res.status(201).json({ success: true, message: 'Module created', data: { module } });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -47,21 +44,7 @@ export const createModule = async (req, res) => {
 export const getModuleById = async (req, res) => {
   try {
     const { id } = req.params;
-    const redis = await initRedis();
-    const cached = await redis.get(`module:${id}`);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      // If courseId.modules exist but are plain IDs (strings), consider cache stale and fetch fresh
-      const courseModules = parsed?.courseId?.modules;
-      const firstIsId = Array.isArray(courseModules) && courseModules.length > 0 && typeof courseModules[0] === 'string';
-      if (!firstIsId) {
-        return res.status(200).json({ success: true, message: 'Module from cache', data: { module: parsed } });
-      }
-      // else fall through to fetch fresh populated module
-    }
-
     const module = await moduleService.getById(id);
-    await redis.setEx(`module:${id}`, 3600, JSON.stringify(module));
     return res.status(200).json({ success: true, message: 'Module retrieved', data: { module } });
   } catch (err) {
     return res.status(404).json({ success: false, message: err.message });
@@ -103,8 +86,6 @@ export const updateModule = async (req, res) => {
     }
 
     const updated = await moduleService.updateById(id, payload);
-    const redis = await initRedis();
-    await redis.setEx(`module:${id}`, 3600, JSON.stringify(updated));
     return res.status(200).json({ success: true, message: 'Module updated', data: { module: updated } });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -115,8 +96,6 @@ export const deleteModule = async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await moduleService.softDeleteById(id);
-    const redis = await initRedis();
-    await redis.del(`module:${id}`);
     return res.status(200).json({ success: true, message: 'Module deleted (soft)', data: { module: deleted } });
   } catch (err) {
     return res.status(404).json({ success: false, message: err.message });

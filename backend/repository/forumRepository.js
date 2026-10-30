@@ -1,7 +1,6 @@
 import ForumThread from '../models/ForumThread.js';
 import ForumReply from '../models/ForumReply.js';
 import User from '../models/user.js';
-import { initRedis } from '../config/redisClient.js';
 
 export default class ForumRepository {
   // Thread Repository Methods
@@ -18,18 +17,6 @@ export default class ForumRepository {
       const populatedThread = await ForumThread.findById(thread._id)
         .populate('createdBy', 'fullName profilePicture')
         .populate('courseId', 'title');
-
-      if (populatedThread) {
-        const redis = await initRedis();
-        await redis.del(`forum:threads:${populatedThread.courseId}*`);
-        await redis.del(`forum:threads:*`);
-
-        // Clear tag cache
-        const tagCacheKey = populatedThread.courseId
-          ? `forum:tags:${populatedThread.courseId}`
-          : 'forum:tags:all';
-        await redis.del(tagCacheKey);
-      }
 
       //console.log('ForumRepository.createThread success:', populatedThread);
       return populatedThread;
@@ -57,21 +44,6 @@ export default class ForumRepository {
       const updatedThread = await ForumThread.findByIdAndUpdate(id, data, { new: true })
         .populate('createdBy', 'fullName profilePicture')
         .populate('courseId', 'title');
-
-      // Clear Redis cache
-      if (updatedThread) {
-        const redis = await initRedis();
-        await redis.del(`forum:thread:${id}`);
-        await redis.del(`forum:thread:admin:${id}`);
-        await redis.del(`forum:threads:${updatedThread.courseId}*`);
-        await redis.del(`forum:threads:*`);
-
-        // Clear tag cache
-        const tagCacheKey = updatedThread.courseId
-          ? `forum:tags:${updatedThread.courseId}`
-          : 'forum:tags:all';
-        await redis.del(tagCacheKey);
-      }
 
       //console.log('ForumRepository.updateThread success:', updatedThread);
       return updatedThread;
@@ -150,11 +122,6 @@ export default class ForumRepository {
         .populate('courseId', 'title');
 
       if (updated) {
-        const redis = await initRedis();
-        await redis.del(`forum:thread:${id}`);
-        await redis.del(`forum:thread:admin:${id}`);
-        await redis.del(`forum:threads:${updated.courseId}*`);
-        await redis.del(`forum:threads:*`);
       }
 
       return updated;
@@ -207,22 +174,6 @@ export default class ForumRepository {
 
       const deletedThread = await ForumThread.findByIdAndDelete(id);
 
-      // Clear Redis cache
-      if (threadToDelete) {
-        const redis = await initRedis();
-        await redis.del(`forum:thread:${id}`);
-        await redis.del(`forum:thread:admin:${id}`);
-        await redis.del(`forum:threads:${threadToDelete.courseId}*`);
-        await redis.del(`forum:threads:*`);
-        await redis.del(`forum:replies:${id}*`);
-
-        // Clear tag cache
-        const tagCacheKey = threadToDelete.courseId
-          ? `forum:tags:${threadToDelete.courseId}`
-          : 'forum:tags:all';
-        await redis.del(tagCacheKey);
-      }
-
       //console.log('ForumRepository.deleteThread success:', deletedThread);
       return deletedThread;
     } catch (error) {
@@ -259,13 +210,8 @@ export default class ForumRepository {
         ).populate('createdBy', 'fullName profilePicture');
       }
 
-      // Clear Redis cache
+      // Cache invalidation (legacy; no Redis)
       if (updatedThread) {
-        const redis = await initRedis();
-        await redis.del(`forum:thread:${id}`);
-        await redis.del(`forum:thread:admin:${id}`);
-        await redis.del(`forum:threads:${updatedThread.courseId}*`);
-        await redis.del(`forum:threads:*`);
       }
 
       return {

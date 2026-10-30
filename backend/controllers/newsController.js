@@ -1,5 +1,4 @@
 import NewsService from "../service/newsService.js";
-import { initRedis } from "../config/redisClient.js";
 import mongoose from "mongoose";
 
 // Helper function to generate image URL from file path
@@ -427,8 +426,6 @@ export const createNews = async (req, res) => {
     const news = await NewsService.create(newsData);
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del("news:*");
 
     // Convert to plain object if needed
     let newsResponse = news;
@@ -1103,10 +1100,6 @@ export const updateNews = async (req, res) => {
     const news = await NewsService.update(id, updateData);
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
-    await redis.del(`news:slug:${news.slug}`);
-    await redis.del("news:*");
 
     // Convert to plain object if needed
     let newsResponse = news;
@@ -1137,12 +1130,8 @@ export const deleteNews = async (req, res) => {
     const news = await NewsService.delete(id);
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
-    await redis.del("news:*");
 
     return res.status(200).json({
       success: true,
@@ -1245,10 +1234,7 @@ export const incrementNewsStats = async (req, res) => {
     }
 
     // Clear cache for this news item
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1293,10 +1279,7 @@ export const likeNews = async (req, res) => {
     }
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1342,10 +1325,7 @@ export const unlikeNews = async (req, res) => {
     }
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1391,10 +1371,7 @@ export const toggleLike = async (req, res) => {
     news = await NewsService.populateUserInteractions(news);
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1433,10 +1410,7 @@ export const viewNews = async (req, res) => {
     news = await NewsService.populateUserInteractions(news);
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1473,10 +1447,7 @@ export const shareNews = async (req, res) => {
     news = await NewsService.populateUserInteractions(news);
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1523,10 +1494,7 @@ export const likeNewsByUserId = async (req, res) => {
     }
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1572,10 +1540,7 @@ export const viewNewsByUserId = async (req, res) => {
     }
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1621,10 +1586,7 @@ export const shareNewsByUserId = async (req, res) => {
     }
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del(`news:${id}`);
     if (news?.slug) {
-      await redis.del(`news:slug:${news.slug}`);
     }
 
     return res.status(200).json({
@@ -1921,8 +1883,6 @@ export const fetchWordPressNews = async (req, res) => {
     const result = await NewsService.fetchFromWordPress(url, 500);
 
     // Clear cache
-    const redis = await initRedis();
-    await redis.del("news:*");
 
     return res.status(200).json({
       success: true,

@@ -1,5 +1,4 @@
 import bundleService from '../service/course-bundle-service.js';
-import { initRedis } from '../config/redisClient.js';
 
 export const create = async (req, res) => {
   try {
@@ -33,8 +32,6 @@ export const create = async (req, res) => {
     };
     const result = await bundleService.create(bundleData, req.files);
 
-    const redis = await initRedis();
-    await redis.del('bundles:all*');
 
     res.status(201).json({
       success: true,
@@ -91,7 +88,6 @@ export const getAll = async (req, res) => {
       priceFiter
     };
 
-    const redis = await initRedis();
 
     // Fetch all bundles (no pagination)
     const result = await bundleService.getAll(options);
@@ -147,25 +143,14 @@ export const getAll = async (req, res) => {
 
 export const getOne = async (req, res) => {
   try {
-    const redis = await initRedis();
     const cacheKey = `bundle:${req.params.id}`;
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: 'Course bundle fetched from cache',
-        data: JSON.parse(cached),
-        fromCache: true
-      });
-    }
 
     const bundle = await bundleService.getById(req.params.id);
     if (!bundle) {
       return res.status(404).json({ success: false, message: 'Course bundle not found' });
     }
 
-    await redis.setEx(cacheKey, 300, JSON.stringify(bundle));
     res.status(200).json({
       success: true,
       message: 'Course bundle fetched successfully',
@@ -208,9 +193,6 @@ export const update = async (req, res) => {
     };
     const updated = await bundleService.update(req.params.id, bundleData, req.files);
 
-    const redis = await initRedis();
-    await redis.del('bundles:all*');
-    await redis.del(`bundle:${req.params.id}`);
 
     res.status(200).json({
       success: true,
@@ -226,9 +208,6 @@ export const deleteBundle = async (req, res) => {
   try {
     const deletedBundle = await bundleService.delete(req.params.id);
 
-    const redis = await initRedis();
-    await redis.del('bundles:all*');
-    await redis.del(`bundle:${req.params.id}`);
 
     res.status(200).json({
       success: true,

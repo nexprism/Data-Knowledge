@@ -261,13 +261,6 @@ const navItems: NavItem[] = [
     keywords: ["admins", "admin", "roles", "permissions", "rbac", "super", "access", "users"],
     superAdminOnly: true,
   },
-  {
-    icon: <Database className="w-5 h-5" />,
-    name: "Redis Management",
-    path: "/settings/redis",
-    keywords: ["redis", "cache", "server", "connectivity", "performance", "keys", "flush"],
-    superAdminOnly: true,
-  },
 ];
 
 const othersItems: NavItem[] = [];

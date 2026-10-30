@@ -5,7 +5,6 @@ import User from '../models/user.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import CourseEnrollment from '../models/CourseEnrollment.js';
 import { generatePdfForCertificate } from '../controllers/certificateController.js';
-import { initRedis } from '../config/redisClient.js';
 
 export const autoGenerateCertificate = async (userId, courseId, customTemplateId = null) => {
   try {
@@ -109,16 +108,6 @@ export const autoGenerateCertificate = async (userId, courseId, customTemplateId
         completedAt: new Date()
       }
     );
-
-    // 9. Clear cache
-    try {
-      const redis = await initRedis();
-      if (redis) {
-        await redis.del("certificates:all*");
-      }
-    } catch (cacheErr) {
-      // ignore cache errors
-    }
 
     console.log(`Successfully auto-generated certificate for student: ${student.fullName} in course: ${course.title}`);
     return certificate;

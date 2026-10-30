@@ -5,7 +5,6 @@ import CourseEnrollment from '../models/CourseEnrollment.js';
 import Course from '../models/Course.js';
 import CourseChatRoom from '../models/CourseChatRoom.js';
 import CoursePlan from '../models/CoursePlan.js';
-import { initRedis } from '../config/redisClient.js';
 
 /**
  * Derive a display name from an email address.
@@ -204,8 +203,6 @@ export const bulkEnrollFromExcel = async (req, res) => {
 
         // ── 4. Invalidate enrollment cache ───────────────────────────────────────
         try {
-            const redis = await initRedis();
-            await redis.del('enrollments:all*');
         } catch (_) { /* cache clear is non-critical */ }
 
         return res.status(200).json({
@@ -332,8 +329,6 @@ export const enrollFromMigration = async (req, res) => {
 
         // 4. Invalidate cache
         try {
-            const redis = await initRedis();
-            await redis.del('enrollments:all*');
         } catch (_) { }
 
         return res.status(200).json({
@@ -539,8 +534,6 @@ export const bulkEnrollSpecial = async (req, res) => {
 
         // 4. Cache clear
         try {
-            const redis = await initRedis();
-            await redis.del('enrollments:all*');
         } catch (_) { }
 
         return res.status(200).json({

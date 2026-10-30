@@ -1,5 +1,4 @@
 import TicketService from '../service/TicketService.js';
-import { initRedis } from '../config/redisClient.js';
 
 const ticketService = new TicketService();
 
@@ -28,13 +27,11 @@ export const createTicket = async (req, res) => {
     const ticket = await ticketService.create(ticketData);
 
     // Cache to Redis (same as before)
-    const redis = await initRedis();
     const ticketId = ticket._id.toString();
     const ticketCacheData = {
       ...ticket.toObject()
     };
 
-    await redis.setEx(`ticket:${ticketId}`, 3600, JSON.stringify(ticketCacheData));
     //console.log('🗂️ Redis cache updated for ticket:', ticketId);
 
     return res.status(201).json({
@@ -73,8 +70,6 @@ export const getTicketById = async (req, res) => {
       });
     }
 
-    const redis = await initRedis();
-    const cachedTicket = await redis.get(`ticket:${id}`);
     // if (cachedTicket) {
     //   //console.log('🚀 Ticket data retrieved from Redis cache');
     //   const ticketData = JSON.parse(cachedTicket);
@@ -113,7 +108,6 @@ export const getTicketById = async (req, res) => {
       updatedAt: ticket.updatedAt,
     };
 
-    await redis.setEx(`ticket:${id}`, 3600, JSON.stringify(ticketCacheData));
     //console.log('🗂️ Ticket data cached in Redis:', id);
 
     return res.status(200).json({
@@ -219,7 +213,6 @@ export const updateTicket = async (req, res) => {
 
     const updatedTicket = await ticketService.updateById(id, req.body, userId, isUserAdmin);
 
-    const redis = await initRedis();
     const ticketId = updatedTicket._id.toString();
     const ticketCacheData = {
       _id: updatedTicket._id,
@@ -236,7 +229,6 @@ export const updateTicket = async (req, res) => {
       updatedAt: updatedTicket.updatedAt,
     };
 
-    await redis.setEx(`ticket:${ticketId}`, 3600, JSON.stringify(ticketCacheData));
     //console.log('🗂️ Redis cache updated for ticket:', ticketId);
 
     return res.status(200).json({
@@ -297,8 +289,6 @@ export const updateTicketStatus = async (req, res) => {
 
     const updatedTicket = await ticketService.updateStatus(id, status);
 
-    const redis = await initRedis();
-    await redis.del(`ticket:${id}`);
     //console.log('🗑️ Ticket cache cleared for status update:', id);
 
     return res.status(200).json({
@@ -366,8 +356,6 @@ if(message && message != ''){
 
     const updatedTicket = await ticketService.addMessage(id, messageData, userId, isUserAdmin);
 
-    const redis = await initRedis();
-    await redis.del(`ticket:${id}`);
     //console.log('🗑️ Ticket cache cleared for message addition:', id);
 
     return res.status(200).json({
@@ -421,8 +409,6 @@ export const deleteMessage = async (req, res) => {
       isUserAdmin
     );
 
-    const redis = await initRedis();
-    await redis.del(`ticket:${id}`);
 
     return res.status(200).json({
       success: true,
@@ -469,8 +455,6 @@ export const deleteTicket = async (req, res) => {
 
     const deletedTicket = await ticketService.softDeleteById(id);
 
-    const redis = await initRedis();
-    await redis.del(`ticket:${id}`);
     //console.log('🗑️ Ticket cache cleared:', id);
 
     return res.status(200).json({

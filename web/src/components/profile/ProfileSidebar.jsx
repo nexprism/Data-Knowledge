@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useMemo, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { updateUserProfile } from '../../redux/slices/profileSlice'
 import { useLanguage } from '../../context/LanguageContext'
@@ -8,7 +8,22 @@ const ProfileSidebar = ({ compact = false }) => {
   const dispatch = useDispatch()
   const { t } = useLanguage()
   const { user, updateLoading } = useSelector((state) => state.profile)
+  const { enrollments } = useSelector((state) => state.enrollment)
   const fileInputRef = useRef(null)
+
+  // Match My Courses: count active CourseEnrollment rows, not User.enrolledCourses (often stale).
+  const enrolledCourseCount = useMemo(() => {
+    if (Array.isArray(enrollments) && enrollments.length > 0) {
+      return enrollments.filter((item) => item.course && !item.course.isDeleted).length
+    }
+    if (Array.isArray(user?.enrolledCourses) && user.enrolledCourses.length > 0) {
+      return user.enrolledCourses.length
+    }
+    if (typeof user?.stats?.enrolledCourses === 'number') {
+      return user.stats.enrolledCourses
+    }
+    return 0
+  }, [enrollments, user])
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -87,7 +102,7 @@ const ProfileSidebar = ({ compact = false }) => {
       {/* High-Density Stats Cluster */}
       <div className="grid grid-cols-1 gap-2.5 pt-4 border-t border-slate-100">
          {[
-            { label: t('coursesStat') || 'Courses', value: user?.enrolledCourses?.length || '0', icon: 'M12 2L2 7l10 5l10-5l-10-5z M2 17l10 5l10-5 M2 12l10 5l10-5' },
+            { label: t('coursesStat') || 'Courses', value: enrolledCourseCount, icon: 'M12 2L2 7l10 5l10-5l-10-5z M2 17l10 5l10-5 M2 12l10 5l10-5' },
             { label: t('postsStat') || 'Posts', value: '00', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
             { label: t('certificatesStat') || 'Certificates', value: user?.qualifications?.length || '0', icon: 'M12 15l-2 5l2 2l2-2l-2-5z M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z' },
          ].map((stat, i) => (

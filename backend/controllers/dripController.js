@@ -1,6 +1,5 @@
 import DripRule from '../models/DripRule.js';
 import DripTarget from '../models/DripTarget.js';
-import { initRedis } from '../config/redisClient.js';
 import mongoose from 'mongoose';
 
 // Create Drip Rule + Target (supports bulk targetId)
@@ -133,8 +132,6 @@ export const createDripRule = async (req, res) => {
         }
 
         // Invalidate Redis cache
-        const redis = await initRedis();
-        await redis.del('dripRules:all');
 
         // --- Return only the newly created dripTargets (with populated dripRule) ---
         const populatedTargets = await DripTarget.find({
@@ -156,18 +153,8 @@ export const createDripRule = async (req, res) => {
 // Get all drip rules with cache
 export const getAllDripRules = async (req, res) => {
     try {
-        const redis = await initRedis();
         const cacheKey = 'dripRules:all';
-        const cached = await redis.get(cacheKey);
 
-        if (cached) {
-            return res.status(200).json({
-                success: true,
-                message: 'Drip rules fetched from cache',
-                data: JSON.parse(cached),
-                fromCache: true
-            });
-        }
 
         const rules = await DripRule.find()
             .populate({
@@ -181,7 +168,6 @@ export const getAllDripRules = async (req, res) => {
 
         const data = { rules, targets };
 
-        await redis.setEx(cacheKey, 300, JSON.stringify(data)); // cache for 5 minutes
 
         res.json({
             success: true,
@@ -310,8 +296,6 @@ export const updateDripRuleByReferenceId = async (req, res) => {
         }
 
         // Invalidate Redis cache
-        const redis = await initRedis();
-        await redis.del('dripRules:all');
 
         res.status(200).json({
             success: true,
@@ -335,8 +319,6 @@ export const deleteDripRule = async (req, res) => {
         await DripRule.findByIdAndDelete(id);
 
         // Invalidate Redis cache
-        const redis = await initRedis();
-        await redis.del('dripRules:all');
 
         res.json({ success: true, message: 'Drip rule and associated targets deleted' });
     } catch (error) {

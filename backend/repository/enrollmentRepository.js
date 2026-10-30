@@ -4,7 +4,6 @@ import CourseBundle from '../models/CourseBundle.js';
 import UserService from "../service/userService.js";
 import User from "../models/user.js";
 import { Token } from "../utils/index.js"; // contains generateToken, setTokensCookies, etc.
-import { initRedis } from "../config/redisClient.js";
 import emailService from '../utils/emailService.js';
 
 import notificationService from "../utils/notificationService.js";
@@ -384,16 +383,6 @@ class EnrollmentRepository {
 
         const { accessToken, refreshToken, accessTokenExp, refreshTokenExp } =
           await Token.generateTokens(guestUser, oldAccessToken, oldAccessTokenExp);
-
-        const redis = await initRedis();
-
-        let accessTTL = Math.floor((accessTokenExp - Date.now()) / 1000);
-        let refreshTTL = Math.floor((refreshTokenExp - Date.now()) / 1000);
-        accessTTL = Number.isFinite(accessTTL) && accessTTL > 0 ? accessTTL : 1;
-        refreshTTL = Number.isFinite(refreshTTL) && refreshTTL > 0 ? refreshTTL : 1;
-
-        await redis.setEx(`accessToken:${accessToken}`, accessTTL, "valid");
-        await redis.setEx(`refreshToken:${refreshToken}`, refreshTTL, userId.toString());
 
         const currentTime = Date.now();
         const accessMaxAge = Math.max(1000, accessTokenExp - currentTime); // At least 1 second

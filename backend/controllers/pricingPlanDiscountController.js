@@ -1,5 +1,4 @@
 import PricingPlanDiscountService from '../service/pricingPlanDiscountService.js';
-import { initRedis } from '../config/redisClient.js';
 
 const pricingPlanDiscountService = new PricingPlanDiscountService();
 
@@ -17,8 +16,6 @@ export const createPricingPlanDiscount = async (req, res) => {
 
     const discount = await pricingPlanDiscountService.createPricingPlanDiscount(discountData);
 
-    const redis = await initRedis();
-    await redis.del('pricingPlanDiscounts:all*');
 
     res.status(201).json({ success: true, message: 'Pricing Plan Discount created', data: discount });
   } catch (err) {
@@ -50,15 +47,9 @@ export const getAllPricingPlanDiscounts = async (req, res) => {
     };
 
     const cacheKey = `pricingPlanDiscounts:all:${JSON.stringify(options)}`;
-    const redis = await initRedis();
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({ success: true, message: 'Pricing Plan Discounts from cache', ...JSON.parse(cached), fromCache: true });
-    }
 
     const discounts = await pricingPlanDiscountService.getAllPricingPlanDiscounts(options);
-    await redis.setEx(cacheKey, 300, JSON.stringify(discounts));
 
     res.status(200).json({ success: true, message: 'Pricing Plan Discounts fetched', ...discounts });
   } catch (err) {
@@ -69,17 +60,11 @@ export const getAllPricingPlanDiscounts = async (req, res) => {
 export const getPricingPlanDiscountById = async (req, res) => {
   try {
     const { discountId } = req.params;
-    const redis = await initRedis();
-    const cached = await redis.get(`pricingPlanDiscount:${discountId}`);
 
-    if (cached) {
-      return res.status(200).json({ success: true, data: JSON.parse(cached), fromCache: true });
-    }
 
     const discount = await pricingPlanDiscountService.getPricingPlanDiscountById(discountId);
     if (!discount) return res.status(404).json({ success: false, message: 'Pricing Plan Discount not found' });
 
-    await redis.setEx(`pricingPlanDiscount:${discountId}`, 300, JSON.stringify(discount));
     res.status(200).json({ success: true, data: discount });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -101,9 +86,6 @@ export const updatePricingPlanDiscount = async (req, res) => {
 
     const updated = await pricingPlanDiscountService.updatePricingPlanDiscount(discountId, discountData);
 
-    const redis = await initRedis();
-    await redis.del('pricingPlanDiscounts:all*');
-    await redis.del(`pricingPlanDiscount:${discountId}`);
 
     res.status(200).json({ success: true, message: 'Pricing Plan Discount updated', data: updated });
   } catch (err) {
@@ -116,9 +98,6 @@ export const deletePricingPlanDiscount = async (req, res) => {
     const { discountId } = req.params;
     const deleted = await pricingPlanDiscountService.deletePricingPlanDiscount(discountId);
 
-    const redis = await initRedis();
-    await redis.del('pricingPlanDiscounts:all*');
-    await redis.del(`pricingPlanDiscount:${discountId}`);
 
     res.status(200).json({ success: true, message: 'Pricing Plan Discount deleted', data: deleted });
   } catch (err) {
@@ -147,20 +126,9 @@ export const getDiscountsByCourseId = async (req, res) => {
     };
 
     const cacheKey = `pricingPlanDiscounts:course:${courseId}:${JSON.stringify(options)}`;
-    const redis = await initRedis();
-    const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      return res.status(200).json({
-        success: true,
-        message: 'Pricing Plan Discounts (by course) fetched from cache',
-        ...JSON.parse(cached),
-        fromCache: true
-      });
-    }
 
     const discounts = await pricingPlanDiscountService.getAllPricingPlanDiscounts(options);
-    await redis.setEx(cacheKey, 300, JSON.stringify(discounts));
 
     res.status(200).json({
       success: true,

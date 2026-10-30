@@ -40,10 +40,8 @@ passport.use(
   "jwt",
   new JwtStrategy(opts, async function (req, jwt_payload, done) {
     try {
-      // SECURITY: centrally enforce token revocation. Logout and forced device
-      // deauthorisation blacklist access tokens in Redis; without this check,
-      // routes gated only by passport kept accepting revoked tokens until natural
-      // TTL expiry.
+      // SECURITY: centrally enforce token revocation (MongoDB blacklist). Without
+      // this check, passport-only routes would accept revoked tokens until TTL expiry.
       const rawToken = tokenExtractor(req);
       if (rawToken && (await isAccessTokenBlacklisted(rawToken, jwt_payload))) {
         return done(null, false);
